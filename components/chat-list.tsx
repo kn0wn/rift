@@ -2,14 +2,27 @@
 
 import Link from "next/link";
 import { DeleteChatDialog } from "./delete-chat-dialog";
-import { Chat } from "@/server/db/schema";
 import { useOptimistic, startTransition } from "react";
-import { attempt } from "@/lib/try-catch";
-import { deleteChat, toggleChatPin } from "@/server/actions/chat";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { groupChatsByDate } from "@/lib/utils";
 import PinChatButton from "./pin-chat-button";
 
-export default function ChatList({ chats }: { chats: Chat[] }) {
+// Define the chat type that matches Convex data
+interface ConvexChat {
+  id: string;
+  title: string;
+  userId: string;
+  pinned: boolean;
+  createdAt: Date;
+}
+
+export default function ChatList({ chats }: { chats: ConvexChat[] }) {
+  // Convex mutations
+  const deleteChatMutation = useMutation(api.chats.deleteChat);
+  const toggleChatPinMutation = useMutation(api.chats.toggleChatPin);
+
   const pinnedChats = chats.filter((chat) => chat.pinned);
   const unpinnedChats = chats.filter((chat) => !chat.pinned);
 
@@ -17,7 +30,7 @@ export default function ChatList({ chats }: { chats: Chat[] }) {
     unpinnedChats,
     (
       currentHistory,
-      action: { type: "delete" | "toggle"; chatId: string; chat?: Chat },
+      action: { type: "delete" | "toggle"; chatId: string; chat?: ConvexChat },
     ) => {
       if (action.type === "delete") {
         return currentHistory.filter((chat) => chat.id !== action.chatId);
@@ -33,7 +46,7 @@ export default function ChatList({ chats }: { chats: Chat[] }) {
     pinnedChats,
     (
       currentPinnedChats,
-      action: { type: "delete" | "toggle"; chatId: string; chat?: Chat },
+      action: { type: "delete" | "toggle"; chatId: string; chat?: ConvexChat },
     ) => {
       if (action.type === "delete") {
         return currentPinnedChats.filter((chat) => chat.id !== action.chatId);
@@ -60,12 +73,12 @@ export default function ChatList({ chats }: { chats: Chat[] }) {
       setOptimisticPinnedChats({ type: "delete", chatId });
     });
 
-    const [, error] = await attempt(async () => {
-      await deleteChat({ id: chatId });
-    });
-
-    if (error) {
-      console.error(error);
+    try {
+      await deleteChatMutation({ id: chatId as Id<"chats"> });
+    } catch (error) {
+      console.error("Failed to delete chat:", error);
+      // Revert optimistic updates on error
+      window.location.reload();
     }
   };
 
@@ -80,12 +93,12 @@ export default function ChatList({ chats }: { chats: Chat[] }) {
       setOptimisticPinnedChats({ type: "toggle", chatId, chat: chatToToggle });
     });
 
-    const [, error] = await attempt(async () => {
-      await toggleChatPin({ id: chatId });
-    });
-
-    if (error) {
-      console.error(error);
+    try {
+      await toggleChatPinMutation({ id: chatId as Id<"chats"> });
+    } catch (error) {
+      console.error("Failed to toggle chat pin:", error);
+      // Revert optimistic updates on error
+      window.location.reload();
     }
   };
 

@@ -4,7 +4,6 @@ import { Key } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { hasValidApiKey } from "@/lib/api-keys";
 import { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
 
 interface ApiKeyIndicatorProps {
   modelId: string;
@@ -15,15 +14,9 @@ export default function ApiKeyIndicator({
   modelId,
   className,
 }: ApiKeyIndicatorProps) {
-  const { isSignedIn } = useUser();
   const [usingCustomKey, setUsingCustomKey] = useState(false);
 
   useEffect(() => {
-    if (!isSignedIn) {
-      setUsingCustomKey(false);
-      return;
-    }
-
     // Check if user has a custom API key for the current model's provider
     if (modelId.startsWith("openai:")) {
       setUsingCustomKey(hasValidApiKey("openai"));
@@ -32,7 +25,7 @@ export default function ApiKeyIndicator({
     } else {
       setUsingCustomKey(false);
     }
-  }, [modelId, isSignedIn]);
+  }, [modelId]);
 
   if (!usingCustomKey) {
     return null;

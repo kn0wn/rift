@@ -14,7 +14,6 @@ import {
   type ApiKeyProvider,
 } from "@/lib/api-keys";
 import { toast } from "sonner";
-import { useUser } from "@clerk/nextjs";
 import CustomButton from "@/components/custom-button";
 
 // API Key provider configuration
@@ -46,7 +45,6 @@ const API_PROVIDERS = [
 ] as const;
 
 export default function ApiKeysTab() {
-  const { isSignedIn } = useUser();
   const [apiKeys, setApiKeys] = useState<Record<string, string>>({
     openai: "",
     openrouter: "",
@@ -60,17 +58,8 @@ export default function ApiKeysTab() {
   >({});
   const [savedKeys, setSavedKeys] = useState<Record<string, boolean>>({});
 
-  // Load saved API keys on component mount and when user signs in
+  // Load saved API keys on component mount
   useEffect(() => {
-    if (!isSignedIn) {
-      // Kullanıcı çıkış yaptıysa state'i temizle
-      setApiKeys({ openai: "", openrouter: "" });
-      setSavedKeys({});
-      setValidationErrors({});
-      setShowKeys({ openai: false, openrouter: false });
-      return;
-    }
-
     const storedKeys = getStoredApiKeys();
     const loadedKeys: Record<string, string> = {};
     const savedStates: Record<string, boolean> = {};
@@ -85,7 +74,7 @@ export default function ApiKeysTab() {
 
     setApiKeys((prev) => ({ ...prev, ...loadedKeys }));
     setSavedKeys(savedStates);
-  }, [isSignedIn]);
+  }, []);
 
   const handleApiKeyChange = (providerId: string, value: string) => {
     setApiKeys((prev) => ({
@@ -101,208 +90,168 @@ export default function ApiKeysTab() {
         return newErrors;
       });
     }
+  };
 
-    // Mark as not saved when modified
-    setSavedKeys((prev) => ({
+  const toggleKeyVisibility = (providerId: string) => {
+    setShowKeys((prev) => ({
       ...prev,
-      [providerId]: false,
+      [providerId]: !prev[providerId],
     }));
   };
 
-  const handleSave = async (providerId: string) => {
+  const handleSaveApiKey = async (providerId: string) => {
     const apiKey = apiKeys[providerId];
-
     if (!apiKey.trim()) {
-      setValidationErrors((prev) => ({
-        ...prev,
-        [providerId]: "API key is required",
-      }));
-      return;
-    }
-
-    // Validate the API key format
-    const validation = validateApiKey(providerId as ApiKeyProvider, apiKey);
-
-    if (!validation.isValid) {
-      setValidationErrors((prev) => ({
-        ...prev,
-        [providerId]: validation.error || "Invalid API key format",
-      }));
+      toast.error("Please enter an API key");
       return;
     }
 
     try {
-      // Save the API key
-      saveApiKey(providerId as ApiKeyProvider, apiKey);
+      const isValid = await validateApiKey(providerId as ApiKeyProvider, apiKey);
+      if (!isValid) {
+        setValidationErrors((prev) => ({
+          ...prev,
+          [providerId]: "Invalid API key format",
+        }));
+        return;
+      }
 
-      // Mark as saved
-      setSavedKeys((prev) => ({
-        ...prev,
-        [providerId]: true,
-      }));
-
-      // Clear any validation errors
+      await saveApiKey(providerId as ApiKeyProvider, apiKey);
+      setSavedKeys((prev) => ({ ...prev, [providerId]: true }));
       setValidationErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[providerId];
         return newErrors;
       });
-
-      toast.success(
-        `${providerId.charAt(0).toUpperCase() + providerId.slice(1)} API key saved successfully!`,
-      );
-    } catch {
-      toast.error("Failed to save API key. Please try again.");
+      toast.success("API key saved successfully!");
+    } catch (error) {
+      console.error("Error saving API key:", error);
+      toast.error("Failed to save API key");
     }
   };
 
-  const handleRemove = (providerId: string) => {
+  const handleRemoveApiKey = async (providerId: string) => {
     try {
-      removeApiKey(providerId as ApiKeyProvider);
-
-      setApiKeys((prev) => ({
-        ...prev,
-        [providerId]: "",
-      }));
-
-      setSavedKeys((prev) => ({
-        ...prev,
-        [providerId]: false,
-      }));
-
-      toast.success(
-        `${providerId.charAt(0).toUpperCase() + providerId.slice(1)} API key removed successfully!`,
-      );
-    } catch {
-      toast.error("Failed to remove API key. Please try again.");
+      await removeApiKey(providerId as ApiKeyProvider);
+      setApiKeys((prev) => ({ ...prev, [providerId]: "" }));
+      setSavedKeys((prev) => ({ ...prev, [providerId]: false }));
+      setValidationErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[providerId];
+        return newErrors;
+      });
+      toast.success("API key removed successfully!");
+    } catch (error) {
+      console.error("Error removing API key:", error);
+      toast.error("Failed to remove API key");
     }
   };
+
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="space-y-2">
-        <h2 className="text-foreground text-2xl font-semibold">API Keys</h2>
-        <p className="text-muted-foreground">
-          Bring your own API keys for select models. Messages sent using your
-          API keys will not count towards your monthly limits.
+      <div>
+        <h2 className="text-lg font-semibold mb-2">API Keys</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Add your own API keys to use premium models and avoid rate limits.
+          Your keys are stored locally in your browser.
         </p>
       </div>
 
-      {/* API Key Sections */}
-      <form className="space-y-4">
+      <div className="space-y-6">
         {API_PROVIDERS.map((provider) => (
-          <div key={provider.id} className="space-y-4 rounded-lg border p-6">
-            {/* Provider Header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Key className="text-muted-foreground h-4 w-4" />
-                <h3 className="text-foreground text-lg font-medium">
-                  {provider.name}
-                </h3>
-              </div>
-
+          <div key={provider.id} className="space-y-3">
+            <div className="flex items-center gap-2">
+              {provider.icon}
+              <h3 className="font-medium">{provider.name}</h3>
               {savedKeys[provider.id] && (
-                <CustomButton
-                  className="bg-transparent hover:bg-red-50 hover:text-red-600"
-                  onClick={() => handleRemove(provider.id)}
-                >
-                  <Trash className="h-4 w-4" />
-                </CustomButton>
+                <Badge variant="secondary" className="text-xs">
+                  <CheckCircle className="mr-1 h-3 w-3" />
+                  Saved
+                </Badge>
               )}
             </div>
 
-            {/* Models Used */}
-            <div className="space-y-3">
-              <p className="text-muted-foreground text-sm">
-                Used for the following models:
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {provider.models.map((model) => (
-                  <Badge
-                    key={model}
-                    variant="secondary"
-                    className="bg-sidebar-border-light text-xs font-normal"
-                  >
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>Available models:</p>
+              <div className="flex flex-wrap gap-1">
+                {provider.models.slice(0, 3).map((model) => (
+                  <Badge key={model} variant="outline" className="text-xs py-0">
                     {model}
                   </Badge>
                 ))}
+                {provider.models.length > 3 && (
+                  <Badge variant="outline" className="text-xs py-0">
+                    +{provider.models.length - 3} more
+                  </Badge>
+                )}
               </div>
             </div>
 
-            {/* API Key Input */}
-            <div className="space-y-3">
-              {savedKeys[provider.id] && !validationErrors[provider.id] ? (
-                <>
-                  {
-                    <p className="mt-1 flex items-center gap-1 text-xs text-green-600">
-                      <CheckCircle className="h-3 w-3" />
-                      API key configured
-                    </p>
-                  }
-                </>
-              ) : (
-                <>
-                  <div className="relative">
-                    <Input
-                      type={showKeys[provider.id] ? "text" : "password"}
-                      value={apiKeys[provider.id]}
-                      onChange={(e) =>
-                        handleApiKeyChange(provider.id, e.target.value)
-                      }
-                      placeholder={provider.placeholder}
-                      className={`pr-20 font-mono text-sm ${
-                        validationErrors[provider.id] ? "border-red-500" : ""
-                      } ${savedKeys[provider.id] ? "border-green-500" : ""}`}
-                    />
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    type={showKeys[provider.id] ? "text" : "password"}
+                    placeholder={provider.placeholder}
+                    value={apiKeys[provider.id]}
+                    onChange={(e) => handleApiKeyChange(provider.id, e.target.value)}
+                    className={`pr-10 ${validationErrors[provider.id] ? "border-red-500" : ""}`}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 px-0"
+                    onClick={() => toggleKeyVisibility(provider.id)}
+                  >
+                    <Key className="h-4 w-4" />
+                  </Button>
+                </div>
+                <CustomButton
+                  onClick={() => handleSaveApiKey(provider.id)}
+                  disabled={!apiKeys[provider.id].trim()}
+                  className="shrink-0"
+                >
+                  Save
+                </CustomButton>
+              </div>
 
-                    {/* Status Indicator */}
-                    {savedKeys[provider.id] && (
-                      <CheckCircle className="absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 transform text-green-500" />
-                    )}
-                    {validationErrors[provider.id] && (
-                      <XCircle className="absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 transform text-red-500" />
-                    )}
-                  </div>
+              {validationErrors[provider.id] && (
+                <div className="flex items-center gap-1 text-sm text-red-500">
+                  <XCircle className="h-4 w-4" />
+                  {validationErrors[provider.id]}
+                </div>
+              )}
 
-                  {/* Validation Error */}
-                  {validationErrors[provider.id] && (
-                    <p className="mt-1 text-xs text-red-500">
-                      {validationErrors[provider.id]}
-                    </p>
-                  )}
-
-                  {/* Console Link */}
-                  <p className="text-muted-foreground text-sm">
-                    Get your API key from{" "}
-                    <a
-                      href={provider.consoleLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      {provider.consoleUrl}
-                    </a>
-                  </p>
-                </>
+              {savedKeys[provider.id] && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRemoveApiKey(provider.id)}
+                  className="w-fit"
+                >
+                  <Trash className="mr-2 h-4 w-4" />
+                  Remove
+                </Button>
               )}
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-2">
-              <Button
-                onClick={() => handleSave(provider.id)}
-                className="bg-interactive-primary hover:bg-interactive-primary-hover px-6 text-white"
-                disabled={
-                  !apiKeys[provider.id].trim() || savedKeys[provider.id]
-                }
+            <div className="text-xs text-muted-foreground">
+              Get your API key from{" "}
+              <a
+                href={provider.consoleLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline hover:no-underline"
               >
-                {savedKeys[provider.id] ? "Saved" : "Save"}
-              </Button>
+                {provider.consoleUrl}
+              </a>
             </div>
           </div>
         ))}
-      </form>
+      </div>
     </div>
   );
 }

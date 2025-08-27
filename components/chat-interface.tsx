@@ -6,8 +6,9 @@ import ChatWelcome from "@/components/chat-welcome";
 import { ChatMessageArea } from "@/components/ui/chat-message-area";
 import { MessageLoading } from "@/components/ui/message-loading";
 import { useScrollToBottom } from "@/hooks/use-scroll-to-bottom";
-import { attempt } from "@/lib/try-catch";
-import { storePausedMessages } from "@/server/actions/chat";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 
 import { Message, useChat } from "@ai-sdk/react";
 import { usePathname, useRouter } from "next/navigation";
@@ -27,6 +28,10 @@ export default function ChatInterface({
   const router = useRouter();
   const pathname = usePathname();
   const { selectedModel } = useModel();
+  
+  // Convex mutation for storing paused messages
+  const storePausedMessagesMutation = useMutation(api.chatActions.storePausedMessages);
+
   const {
     messages,
     input,
@@ -199,11 +204,11 @@ export default function ChatInterface({
       ];
     });
 
-    // update the messages in the server:
-    const [, error] = await attempt(async () => {
+    // update the messages in Convex:
+    try {
       if (lastMessage.role === "assistant") {
-        return await storePausedMessages({
-          id,
+        await storePausedMessagesMutation({
+          chatId: id as Id<"chats">,
           responseMessage: {
             id: lastMessage.id,
             role: "assistant",
@@ -213,14 +218,12 @@ export default function ChatInterface({
                 text: lastMessage.content,
               },
             ],
-            createdAt: lastMessage.createdAt,
           },
           modelId: usedModel,
         });
       }
-    });
-
-    if (error) {
+    } catch (error) {
+      console.error("Error saving chat on stop:", error);
       toast.error("Error saving chat on stop");
     }
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useUser } from "@clerk/nextjs";
 import { useState } from "react";
 
 import {
@@ -53,34 +52,20 @@ const actionQuestions = {
 };
 
 export default function ChatWelcome({
-  isPreview,
   onQuestionClick,
 }: {
-  isPreview?: boolean;
   onQuestionClick?: (q: string) => void;
 }) {
-  const { user, isLoaded } = useUser();
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
-  const userName = user?.firstName ?? "";
 
   const handleActionClick = (actionName: string) => {
     setSelectedAction(actionName);
   };
 
-  if (!isLoaded && !isPreview) {
-    return (
-      <div className="animate-in fade-in-50 zoom-in-95 flex h-full flex-col items-center justify-center px-10 duration-300">
-        <h2 className="text-interactive-secondary-text text-3xl font-bold tracking-wide">
-          Loading...
-        </h2>
-      </div>
-    );
-  }
-
   return (
     <div className="animate-in fade-in-50 zoom-in-95 flex h-full flex-col items-center justify-center px-10 duration-300">
       <h2 className="text-interactive-secondary-text text-3xl font-bold tracking-wide">
-        How can I help you{userName ? `, ${userName}` : ""}?
+        How can I help you today?
       </h2>
 
       <div className="my-8 flex w-full flex-col gap-4 sm:flex-row">

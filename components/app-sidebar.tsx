@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Sidebar,
   SidebarContent,
@@ -8,14 +10,11 @@ import { Button } from "./ui/button";
 import Link from "next/link";
 import ModeToggle from "./mode-toggle";
 import SidebarProfile from "./sidebar-profile";
-import { auth } from "@clerk/nextjs/server";
 import SidebarHistory from "./sidebar-history";
 import { Suspense } from "react";
 import SidebarProfileSkeleton from "./skeletons/sidebar-profile-skeleton";
 
-export async function AppSidebar() {
-  const { userId } = await auth();
-
+export function AppSidebar() {
   return (
     <Sidebar className="duration-100">
       <SidebarHeader className="px-4 py-4">
@@ -42,11 +41,7 @@ export async function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="scrollbar-hide overflow-y-auto px-4">
-        {userId ? (
-          <SidebarHistory userId={userId} />
-        ) : (
-          <div>Please sign in to continue</div>
-        )}
+        <SidebarHistory />
       </SidebarContent>
 
       <SidebarFooter className="border-sidebar-border-light px-4">

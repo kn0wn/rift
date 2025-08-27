@@ -1,15 +1,31 @@
-import { getChatHistory } from "@/server/actions/chat";
-import { attempt } from "@/lib/try-catch";
+"use client";
+
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import ChatList from "./chat-list";
 
-export default async function SidebarHistory({ userId }: { userId: string }) {
-  const [chatHistory, chatHistoryError] = await attempt(
-    getChatHistory({ userId }),
+// Use a default guest user ID for all users since we removed authentication
+const GUEST_USER_ID = "guest-user";
+
+export default function SidebarHistory() {
+  // Load chat history for the guest user
+  const chatHistory = useQuery(
+    api.chats.getChatHistory, 
+    { userId: GUEST_USER_ID }
   );
 
-  if (chatHistoryError) {
-    return <div>Error loading chat history</div>;
+  if (chatHistory === undefined) {
+    return <div>Loading chat history...</div>;
   }
 
-  return <ChatList chats={chatHistory} />;
+  // Transform Convex data to match the expected format
+  const transformedChats = chatHistory.map(chat => ({
+    id: chat._id,
+    title: chat.title,
+    userId: chat.userId,
+    pinned: chat.pinned,
+    createdAt: new Date(chat._creationTime),
+  }));
+
+  return <ChatList chats={transformedChats} />;
 }
