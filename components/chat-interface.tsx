@@ -13,7 +13,7 @@ import { generateUUID } from "@/lib/utils";
 import { useModel } from "@/contexts/model-context";
 import { getStoredApiKeys } from "@/lib/api-keys";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
@@ -28,7 +28,9 @@ export default function ChatInterface({
   const pathname = usePathname();
   const { selectedModel } = useModel();
   const [input, setInput] = useState("");
+  
   const createThread = useMutation(api.threads.createThread);
+  const sendMessage = useMutation(api.threads.sendMessage);
 
   const {
     messages,
@@ -63,6 +65,13 @@ export default function ChatInterface({
     },
   });
 
+  // Set initial messages when the component mounts
+  useEffect(() => {
+    if (initialMessages && initialMessages.length > 0) {
+      setMessages(initialMessages);
+    }
+  }, [initialMessages, setMessages]);
+
   const [containerRef, showScrollButton, scrollToBottom] =
     useScrollToBottom<HTMLDivElement>();
 
@@ -88,26 +97,64 @@ export default function ChatInterface({
   const handleSubmit = async () => {
     if (!input.trim()) return;
 
-    try {
-      // Create thread and message using the createThread mutation
-      const result = await createThread({
-        threadId: id,
-        content: input.trim(),
-        model: selectedModel,
-        messageId: generateUUID(),
-      });
+    const messageContent = input.trim();
+    const messageId = generateUUID();
+    const threadId = id;
 
-      console.log("Thread and message created:", result);
+    // Optimistic UI update - add the message immediately
+    const optimisticMessage: UIMessage = {
+      id: messageId,
+      role: "user",
+      parts: [{ type: "text", text: messageContent }],
+    };
+
+    // Add the optimistic message to the UI
+    setMessages((prevMessages) => [...prevMessages, optimisticMessage]);
+
+    // Clear the input immediately for snappy UI
+    setInput("");
+
+    try {
+      // Determine if we're in an existing thread or need to create a new one
+      const isExistingThread = pathname.startsWith("/chat/") && pathname !== "/";
       
-      // Clear the input after successful creation
-      setInput("");
-      
-      // TODO: Navigate to the new thread or update the current view
-      // For now, we'll just show a success message
-      toast.success("Message sent successfully!");
+      if (isExistingThread) {
+        // We're in an existing thread, use sendMessage
+        const result = await sendMessage({
+          threadId: threadId,
+          content: messageContent,
+          model: selectedModel,
+          messageId: messageId,
+        });
+
+        console.log("Message sent to existing thread:", result);
+      } else {
+        // We're on the home page, create a new thread
+        const result = await createThread({
+          threadId: threadId,
+          content: messageContent,
+          model: selectedModel,
+          messageId: messageId,
+        });
+
+        console.log("Thread and message created:", result);
+        
+        // Route to the newly created thread
+        router.push(`/chat/${threadId}`);
+        router.refresh();
+      }
       
     } catch (error) {
-      console.error("Failed to create thread:", error);
+      console.error("Failed to send message:", error);
+      
+      // Remove the optimistic message on error
+      setMessages((prevMessages) => 
+        prevMessages.filter(msg => msg.id !== messageId)
+      );
+      
+      // Restore the input content on error
+      setInput(messageContent);
+      
       toast.error("Failed to send message. Please try again.");
     }
   };
