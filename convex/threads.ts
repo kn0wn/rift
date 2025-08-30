@@ -10,9 +10,7 @@ import { paginationOptsValidator } from "convex/server";
 export const createThread = mutation({
   args: {
     threadId: v.string(), // Client-generated thread ID
-    content: v.string(), // Initial message content
     model: v.string(),
-    messageId: v.string(), // Client-generated message ID
     modelParams: v.optional(
       v.object({
         temperature: v.optional(v.number()),
@@ -30,9 +28,7 @@ export const createThread = mutation({
   },
   returns: v.object({
     threadId: v.string(),
-    messageId: v.string(),
     threadDocId: v.id("threads"),
-    messageDocId: v.id("messages"),
   }),
   handler: async (ctx, args) => {
     // Get the authenticated user ID using the helper
@@ -41,7 +37,7 @@ export const createThread = mutation({
     // Get current timestamp
     const now = Date.now();
 
-    // Create the thread
+    // Create the thread (no initial message; client will persist via chat route)
     const threadDocId = await ctx.db.insert("threads", {
       threadId: args.threadId,
       title: "Nuevo Chat", // Default title set server-side
@@ -59,26 +55,9 @@ export const createThread = mutation({
       backfill: false,
     });
 
-    // Create the initial message
-    const messageDocId = await ctx.db.insert("messages", {
-      messageId: args.messageId,
-      threadId: args.threadId,
-      userId: userId,
-      content: args.content,
-      status: "done" as const,
-      role: "user" as const,
-      created_at: now,
-      model: args.model,
-      attachmentsIds: [], // Empty array for initial message
-      modelParams: args.modelParams,
-      backfill: false,
-    });
-
     return {
       threadId: args.threadId,
-      messageId: args.messageId,
       threadDocId,
-      messageDocId,
     };
   },
 });
@@ -196,6 +175,21 @@ export const sendMessage = mutation({
     if (!thread) {
       throw new Error("Thread not found or access denied");
     }
+
+    // // Idempotency: if a message with this messageId already exists for this user, return it
+    // const existing = await ctx.db
+    //   .query("messages")
+    //   .withIndex("by_messageId_and_userId", (q) =>
+    //     q.eq("messageId", args.messageId).eq("userId", userId)
+    //   )
+    //   .unique();
+
+    // if (existing) {
+    //   return {
+    //     messageId: existing.messageId,
+    //     messageDocId: existing._id,
+    //   };
+    // }
 
     // Create the message
     const messageDocId = await ctx.db.insert("messages", {
