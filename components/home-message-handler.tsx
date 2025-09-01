@@ -34,6 +34,21 @@ export function HomeMessageHandler({ action }: HomeMessageHandlerProps) {
         model: selectedModel,
       });
 
+      // Trigger title generation in the background
+      fetch("/api/generate-title", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          threadId: newThreadId,
+          userMessage:
+            message.parts?.find((p) => p.type === "text")?.text || "",
+        }),
+      }).catch((error) => {
+        console.warn("Failed to generate title:", error);
+      });
+
       // Navigate directly to the chat page - clean URL without parameters
       router.push(`/chat/${newThreadId}`);
     } catch (error) {

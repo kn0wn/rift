@@ -240,7 +240,12 @@ export const getThreadMessagesPaginated = query({
       .unique();
 
     if (!thread) {
-      throw new Error("Thread not found or access denied");
+      // Return empty pagination result instead of throwing error
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: "",
+      };
     }
 
     return await ctx.db
@@ -397,6 +402,38 @@ export const appendAssistantMessageDelta = mutation({
       updated_at: now,
       status: "streaming" as const,
     });
+
+    return null;
+  },
+});
+
+// Agent update thread title
+export const autoUpdateThreadTitle = mutation({
+  args: {
+    threadId: v.string(),
+    title: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+
+    const thread = await ctx.db
+      .query("threads")
+      .withIndex("by_user_and_threadId", (q) =>
+        q.eq("userId", userId).eq("threadId", args.threadId),
+      )
+      .unique();
+
+    if (!thread) {
+      throw new Error("Thread not found or access denied");
+    }
+
+    // Only update if user hasn't manually set a title
+    if (!thread.userSetTitle) {
+      await ctx.db.patch(thread._id, {
+        title: args.title,
+      });
+    }
 
     return null;
   },

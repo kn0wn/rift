@@ -77,13 +77,15 @@ function AuthenticatedContent() {
 
   const handleDeleteThread = async (threadId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    // If we're currently viewing the thread to be deleted, redirect first
+    if (pathname === `/chat/${threadId}`) {
+      router.replace("/");
+    }
+    
     try {
       await deleteThread({ threadId });
       toast.success("Thread deleted");
-      // If we're currently viewing the deleted thread, redirect to home
-      if (pathname === `/chat/${threadId}`) {
-        router.push("/");
-      }
     } catch (error) {
       console.error("Failed to delete thread:", error);
       toast.error("Failed to delete thread");
