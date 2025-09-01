@@ -9,6 +9,7 @@ import { getLanguageModel } from "@/lib/ai/ai-providers";
 import { api } from "@/convex/_generated/api";
 import { fetchMutation } from "convex/nextjs";
 import { withAuth } from "@workos-inc/authkit-nextjs";
+import { Id } from "@/convex/_generated/dataModel";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
@@ -49,7 +50,9 @@ export async function POST(req: Request) {
       let lastFlushAt = Date.now();
       const FLUSH_EVERY_MS = 1500;
       let gotAnyDelta = false;
-      let startAssistantPromise: Promise<any> | null = null;
+      let startAssistantPromise: Promise<
+        { messageDocId: Id<"messages"> } | undefined
+      > | null = null;
 
       const ensureAuth = async () => {
         if (!accessToken) {
@@ -62,9 +65,13 @@ export async function POST(req: Request) {
         // Ensure assistant message doc exists before appending deltas
         if (startAssistantPromise) {
           try {
-            await startAssistantPromise;
+            const result = await startAssistantPromise;
+            if (!result) {
+              return; // Skip persisting if message creation failed
+            }
           } catch {
             // If creation failed, skip persisting deltas
+            return;
           }
         }
         await ensureAuth();
@@ -83,7 +90,7 @@ export async function POST(req: Request) {
 
       // Start streaming from the model
       const result = streamText({
-        // @ts-ignore accept union model from registry
+        // Accept union model from registry
         model: languageModel,
         messages: convertToModelMessages(messages),
         onChunk: async ({ chunk }) => {
@@ -104,10 +111,10 @@ export async function POST(req: Request) {
             return finalizationPromise;
           }
 
-          finalizationPromise = (async () => {
+          finalizationPromise = (async (): Promise<void> => {
             await ensureAuth();
             const ok = gotAnyDelta || (text?.length ?? 0) > 0;
-            return fetchMutation(
+            await fetchMutation(
               api.threads.finalizeAssistantMessage,
               {
                 messageId: assistantMessageId,
@@ -134,8 +141,8 @@ export async function POST(req: Request) {
             return finalizationPromise;
           }
 
-          finalizationPromise = (async () => {
-            return fetchMutation(
+          finalizationPromise = (async (): Promise<void> => {
+            await fetchMutation(
               api.threads.finalizeAssistantMessage,
               {
                 messageId: assistantMessageId,
@@ -160,11 +167,17 @@ export async function POST(req: Request) {
           const lastUser = [...messages]
             .reverse()
             .find((m) => m.role === "user");
+
           const lastUserText =
             lastUser?.parts
-              ?.map((p: any) => (p?.type === "text" ? p.text : ""))
+              ?.map((p) => {
+                if (p.type === "text" && "text" in p) {
+                  return p.text;
+                }
+                return "";
+              })
               .join("") ?? "";
-          const lastUserId = (lastUser as any)?.id as string | undefined;
+          const lastUserId = lastUser?.id;
 
           if (lastUser && lastUserId) {
             await fetchMutation(

@@ -117,16 +117,22 @@ export default function ChatInterface({
   useEffect(() => {
     if (messages.length === 0 && threadDocs.length > 0 && isAuthenticated) {
       // Convert Convex messages to UIMessage format
-      const convexMessages = [...threadDocs].reverse().map((m: any) => ({
-        id: m.messageId,
-        role: m.role,
-        parts: [
-          ...(m.reasoning
-            ? [{ type: "reasoning", text: m.reasoning } as any]
-            : []),
-          ...(m.content ? [{ type: "text", text: m.content } as any] : []),
-        ],
-      }));
+      interface ConvexMessage {
+        messageId: string;
+        role: "user" | "assistant" | "system";
+        reasoning?: string;
+        content?: string;
+      }
+      const convexMessages = [...threadDocs]
+        .reverse()
+        .map((m: ConvexMessage) => ({
+          id: m.messageId,
+          role: m.role,
+          parts: [
+            ...(m.reasoning ? [{ type: "reasoning", text: m.reasoning }] : []),
+            ...(m.content ? [{ type: "text", text: m.content }] : []),
+          ],
+        })) as UIMessage[];
       setMessages(convexMessages);
     }
   }, [messages.length, threadDocs, setMessages, isAuthenticated]);
@@ -153,16 +159,22 @@ export default function ChatInterface({
     // Convert Convex messages to UIMessage format for display
     if (isThread && isAuthenticated && threadDocs.length > 0) {
       // Convert Convex messages to UIMessage format (oldest-first for display)
-      const convexMessages = [...threadDocs].reverse().map((m: any) => ({
-        id: m.messageId,
-        role: m.role,
-        parts: [
-          ...(m.reasoning
-            ? [{ type: "reasoning", text: m.reasoning } as any]
-            : []),
-          ...(m.content ? [{ type: "text", text: m.content } as any] : []),
-        ],
-      }));
+      interface ConvexMessage {
+        messageId: string;
+        role: "user" | "assistant" | "system";
+        reasoning?: string;
+        content?: string;
+      }
+      const convexMessages = [...threadDocs]
+        .reverse()
+        .map((m: ConvexMessage) => ({
+          id: m.messageId,
+          role: m.role,
+          parts: [
+            ...(m.reasoning ? [{ type: "reasoning", text: m.reasoning }] : []),
+            ...(m.content ? [{ type: "text", text: m.content }] : []),
+          ],
+        })) as UIMessage[];
 
       // If we have AI SDK messages (for streaming), merge them with Convex messages
       if (messages.length > 0) {
@@ -278,30 +290,29 @@ export default function ChatInterface({
                 <div key={message.id} className="group">
                   <Message from={message.role} key={message.id}>
                     <MessageContent from={message.role}>
-                      {message.parts.map((part: any, i: number) => {
-                        switch ((part as any).type) {
-                          case "text":
-                            return (
-                              <Response key={`${message.id}-${i}`}>
-                                {(part as any).text}
-                              </Response>
-                            );
-                          case "reasoning":
-                            return (
-                              <Reasoning
-                                key={`${message.id}-${i}`}
-                                className="w-full"
-                                isStreaming={status === "streaming"}
-                              >
-                                <ReasoningTrigger />
-                                <ReasoningContent>
-                                  {(part as any).text}
-                                </ReasoningContent>
-                              </Reasoning>
-                            );
-                          default:
-                            return null;
+                      {message.parts.map((part, i: number) => {
+                        if (part.type === "text" && "text" in part) {
+                          return (
+                            <Response key={`${message.id}-${i}`}>
+                              {part.text}
+                            </Response>
+                          );
                         }
+                        if (part.type === "reasoning" && "text" in part) {
+                          return (
+                            <Reasoning
+                              key={`${message.id}-${i}`}
+                              className="w-full"
+                              isStreaming={status === "streaming"}
+                            >
+                              <ReasoningTrigger />
+                              <ReasoningContent>
+                                {(part as { text: string }).text}
+                              </ReasoningContent>
+                            </Reasoning>
+                          );
+                        }
+                        return null;
                       })}
                     </MessageContent>
                   </Message>
@@ -320,8 +331,11 @@ export default function ChatInterface({
                           onClick={() => {
                             // Get the text content from all parts
                             const textContent = message.parts
-                              .filter((part: any) => part.type === "text")
-                              .map((part: any) => part.text)
+                              .filter(
+                                (part) =>
+                                  part.type === "text" && "text" in part,
+                              )
+                              .map((part) => (part as { text: string }).text)
                               .join("\n");
                             navigator.clipboard.writeText(textContent);
                             toast.success("Copied to clipboard");
@@ -374,8 +388,11 @@ export default function ChatInterface({
                           onClick={() => {
                             // Get the text content from all parts
                             const textContent = message.parts
-                              .filter((part: any) => part.type === "text")
-                              .map((part: any) => part.text)
+                              .filter(
+                                (part) =>
+                                  part.type === "text" && "text" in part,
+                              )
+                              .map((part) => (part as { text: string }).text)
                               .join("\n");
                             navigator.clipboard.writeText(textContent);
                             toast.success("Copied to clipboard");

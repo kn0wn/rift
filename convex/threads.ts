@@ -7,7 +7,7 @@ import { paginationOptsValidator } from "convex/server";
  * Create a new thread with an initial message.
  * This mutation is secure and only allows authenticated users to create threads.
  */
-export const nalizeassistantmessage = mutation({
+export const createThread = mutation({
   args: {
     threadId: v.string(), // Client-generated thread ID
     model: v.string(),
@@ -94,7 +94,7 @@ export const getThreadInfo = query({
       branchParentPublicMessageId: v.optional(v.string()),
       backfill: v.optional(v.boolean()),
     }),
-    v.null()
+    v.null(),
   ),
   handler: async (ctx, args) => {
     // Get the authenticated user ID using the helper
@@ -104,7 +104,7 @@ export const getThreadInfo = query({
     const thread = await ctx.db
       .query("threads")
       .withIndex("by_user_and_threadId", (q) =>
-        q.eq("userId", userId).eq("threadId", args.threadId)
+        q.eq("userId", userId).eq("threadId", args.threadId),
       )
       .unique();
 
@@ -168,7 +168,7 @@ export const sendMessage = mutation({
     const thread = await ctx.db
       .query("threads")
       .withIndex("by_user_and_threadId", (q) =>
-        q.eq("userId", userId).eq("threadId", args.threadId)
+        q.eq("userId", userId).eq("threadId", args.threadId),
       )
       .unique();
 
@@ -235,9 +235,13 @@ export const getThreadMessagesPaginated = query({
     const thread = await ctx.db
       .query("threads")
       .withIndex("by_user_and_threadId", (q) =>
-        q.eq("userId", userId).eq("threadId", args.threadId)
+        q.eq("userId", userId).eq("threadId", args.threadId),
       )
       .unique();
+
+    if (!thread) {
+      throw new Error("Thread not found or access denied");
+    }
 
     return await ctx.db
       .query("messages")
@@ -259,7 +263,7 @@ export const renameThread = mutation({
     const thread = await ctx.db
       .query("threads")
       .withIndex("by_user_and_threadId", (q) =>
-        q.eq("userId", userId).eq("threadId", args.threadId)
+        q.eq("userId", userId).eq("threadId", args.threadId),
       )
       .unique();
 
@@ -287,7 +291,7 @@ export const deleteThread = mutation({
     const thread = await ctx.db
       .query("threads")
       .withIndex("by_user_and_threadId", (q) =>
-        q.eq("userId", userId).eq("threadId", args.threadId)
+        q.eq("userId", userId).eq("threadId", args.threadId),
       )
       .unique();
 
@@ -326,7 +330,7 @@ export const startAssistantMessage = mutation({
     const thread = await ctx.db
       .query("threads")
       .withIndex("by_user_and_threadId", (q) =>
-        q.eq("userId", userId).eq("threadId", args.threadId)
+        q.eq("userId", userId).eq("threadId", args.threadId),
       )
       .unique();
 
@@ -378,7 +382,7 @@ export const appendAssistantMessageDelta = mutation({
     const message = await ctx.db
       .query("messages")
       .withIndex("by_messageId_and_userId", (q) =>
-        q.eq("messageId", args.messageId).eq("userId", userId)
+        q.eq("messageId", args.messageId).eq("userId", userId),
       )
       .unique();
 
@@ -406,7 +410,7 @@ export const finalizeAssistantMessage = mutation({
       v.object({
         type: v.string(),
         message: v.string(),
-      })
+      }),
     ),
   },
   returns: v.null(),
@@ -416,7 +420,7 @@ export const finalizeAssistantMessage = mutation({
     const message = await ctx.db
       .query("messages")
       .withIndex("by_messageId_and_userId", (q) =>
-        q.eq("messageId", args.messageId).eq("userId", userId)
+        q.eq("messageId", args.messageId).eq("userId", userId),
       )
       .unique();
 
@@ -439,7 +443,9 @@ export const finalizeAssistantMessage = mutation({
 
     if (thread) {
       await ctx.db.patch(thread._id, {
-        generationStatus: args.ok ? ("compleated" as const) : ("failed" as const),
+        generationStatus: args.ok
+          ? ("compleated" as const)
+          : ("failed" as const),
         updatedAt: Date.now(),
         lastMessageAt: Date.now(),
       });

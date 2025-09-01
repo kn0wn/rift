@@ -10,12 +10,12 @@ import { UIMessage } from "ai";
 import { ReactNode } from "react";
 
 interface HomeMessageHandlerProps {
-  children: (
+  action: (
     handleInitialMessage: (message: UIMessage) => Promise<void>,
   ) => ReactNode;
 }
 
-export function HomeMessageHandler({ children }: HomeMessageHandlerProps) {
+export function HomeMessageHandler({ action }: HomeMessageHandlerProps) {
   const router = useRouter();
   const { selectedModel } = useModel();
   const { setInitialMessage } = useInitialMessage();
@@ -42,5 +42,5 @@ export function HomeMessageHandler({ children }: HomeMessageHandlerProps) {
     }
   };
 
-  return <>{children(handleInitialMessage)}</>;
+  return <>{action(handleInitialMessage)}</>;
 }
