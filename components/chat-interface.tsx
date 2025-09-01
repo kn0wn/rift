@@ -3,7 +3,7 @@
 import { useChat, type UIMessage } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { usePathname, useRouter } from "next/navigation";
-import { generateUUID } from "../lib/utils";
+import { generateUUID, copyToClipboard } from "../lib/utils";
 import { useModel } from "@/contexts/model-context";
 import { useInitialMessage } from "@/contexts/initial-message-context";
 import { toast } from "sonner";
@@ -470,17 +470,13 @@ export default function ChatInterface({
                           <RefreshCwIcon className="size-4" />
                         </Action>
                         <Action
-                          onClick={() => {
-                            // Get the text content from all parts
+                          onClick={async () => {
                             const textContent = message.parts
-                              .filter(
-                                (part) =>
-                                  part.type === "text" && "text" in part,
-                              )
+                              .filter((part) => part.type === "text")
                               .map((part) => (part as { text: string }).text)
                               .join("\n");
-                            navigator.clipboard.writeText(textContent);
-                            toast.success("Copied to clipboard");
+                              await copyToClipboard(textContent);
+                              toast.success("Copied to clipboard");
                           }}
                           label="Copy"
                           tooltip="Copy to clipboard"
@@ -527,17 +523,12 @@ export default function ChatInterface({
                           <EditIcon className="size-4" />
                         </Action>
                         <Action
-                          onClick={() => {
-                            // Get the text content from all parts
+                          onClick={async () => {
                             const textContent = message.parts
-                              .filter(
-                                (part) =>
-                                  part.type === "text" && "text" in part,
-                              )
+                              .filter((part) => part.type === "text")
                               .map((part) => (part as { text: string }).text)
                               .join("\n");
-                            navigator.clipboard.writeText(textContent);
-                            toast.success("Copied to clipboard");
+                              await copyToClipboard(textContent);
                           }}
                           label="Copy"
                           tooltip="Copy to clipboard"

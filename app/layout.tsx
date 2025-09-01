@@ -7,7 +7,6 @@ import { Providers } from "./providers";
 import ChatShell from "@/components/ai/ChatShell";
 import ThreadSidebar from "@/components/thread-sidebar";
 import { cookies } from "next/headers";
-import { Inter } from "next/font/google";
 
 const inter = Inter({
   weight: ["400"],
@@ -35,7 +34,12 @@ export default async function RootLayout({
         className={`bg-background selection:bg-sidebar-logo relative antialiased selection:text-white dark:selection:text-black`}
       >
         <ConvexClientProvider>
-          <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem
+            disableTransitionOnChange
+          >
             <Providers initialModel={initialModel}>
               <ChatShell sidebar={<ThreadSidebar />}>{children}</ChatShell>
             </Providers>

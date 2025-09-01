@@ -189,7 +189,7 @@ export async function POST(req: Request) {
         // Accept union model from registry
         model: languageModel,
         messages: convertToModelMessages(messages),
-        // @ts-expect-error
+        // @ts-expect-error AI SDK
         tools,
         abortSignal: abortSignal,
         onChunk: async ({ chunk }) => {
