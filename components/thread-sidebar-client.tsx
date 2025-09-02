@@ -3,7 +3,7 @@
 import { Button } from "@/components/ai/ui/button";
 
 import Link from "next/link";
-import { ThreadSidebarWorking } from "./thread-sidebar-working";
+import { ThreadSidebarInteractive } from "./thread-sidebar-interactive";
 import { UserProfileSection } from "./user-profile-section";
 import { useRef, useEffect } from "react";
 import Image from "next/image";
@@ -146,7 +146,7 @@ export function ThreadSidebarClient({
           onMouseEnter={handleScrollContainerMouseEnter}
           onMouseLeave={handleScrollContainerMouseLeave}
         >
-          <ThreadSidebarWorking preloadedThreads={preloadedThreads} />
+          <ThreadSidebarInteractive preloadedThreads={preloadedThreads} />
         </div>
 
         {/* User Profile Section - Fixed at bottom */}

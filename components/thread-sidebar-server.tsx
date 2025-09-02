@@ -1,7 +1,7 @@
 import { preloadQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { getAccessToken } from "@/lib/auth";
-import { ThreadSidebarClient } from "./thread-sidebar-client-component";
+import { ThreadSidebarClient } from "./thread-sidebar-client";
 
 // Server component for preloading thread data
 export async function ThreadSidebarServer() {
