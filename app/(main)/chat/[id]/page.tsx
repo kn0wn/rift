@@ -1,4 +1,4 @@
-import ChatPage from "@/components/chat-page";
+import { ChatMessagesServer } from "@/components/chat-messages-server";
 
 export async function generateMetadata({
   params,
@@ -19,5 +19,5 @@ export default async function Page({
 }) {
   const { id } = await params;
 
-  return <ChatPage id={id} />;
+  return <ChatMessagesServer threadId={id} />;
 }

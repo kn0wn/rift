@@ -47,10 +47,10 @@ import {
 } from "@/components/ai/reasoning";
 import { Loader } from "@/components/ai/loader";
 import { MODELS } from "@/lib/ai/ai-providers";
-import { usePaginatedQuery } from "convex/react";
+import { usePaginatedQuery, usePreloadedQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { PaperclipIcon, SearchIcon } from "lucide-react";
-import { Authenticated, useConvexAuth } from "convex/react";
+import { Authenticated, useConvexAuth, Preloaded } from "convex/react";
 import {
   Conversation,
   ConversationContent,
@@ -62,11 +62,13 @@ export default function ChatInterface({
   initialMessages,
   disableInput = false,
   onInitialMessage,
+  preloadedMessages,
 }: {
   id: string;
   initialMessages?: UIMessage[];
   disableInput?: boolean;
   onInitialMessage?: (message: UIMessage) => Promise<void>;
+  preloadedMessages?: Preloaded<typeof api.threads.getThreadMessagesPaginatedSafe>;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -104,12 +106,18 @@ export default function ChatInterface({
 
   const isThread = id !== "welcome";
 
-  // Only run the Convex query when authenticated
+  // Use preloaded messages if available
+  const preloadedResults = preloadedMessages ? usePreloadedQuery(preloadedMessages) : null;
+
+  // Only run the Convex query when authenticated and no preloaded messages
   const { results: threadDocs = [] } = usePaginatedQuery(
-    api.threads.getThreadMessagesPaginated,
-    isThread && isAuthenticated ? { threadId: id } : "skip",
+    api.threads.getThreadMessagesPaginatedSafe,
+    isThread && !preloadedMessages ? { threadId: id } : "skip",
     { initialNumItems: 10 },
   );
+
+  // Use preloaded messages if available, otherwise use the query results
+  const effectiveThreadDocs = preloadedResults?.page || threadDocs;
 
   // Force useChat to re-initialize when model changes
   const [chatKey, setChatKey] = useState(0);
@@ -181,7 +189,8 @@ export default function ChatInterface({
   }, [initialMessages, setMessages, messages.length]);
 
   useEffect(() => {
-    if (messages.length === 0 && threadDocs.length > 0 && isAuthenticated) {
+    // Process messages immediately when available
+    if (messages.length === 0 && effectiveThreadDocs.length > 0) {
       // Convert Convex messages to UIMessage format
       interface ConvexMessage {
         messageId: string;
@@ -189,7 +198,7 @@ export default function ChatInterface({
         reasoning?: string;
         content?: string;
       }
-      const convexMessages = [...threadDocs]
+      const convexMessages = [...effectiveThreadDocs]
         .reverse()
         .map((m: ConvexMessage) => ({
           id: m.messageId,
@@ -201,7 +210,7 @@ export default function ChatInterface({
         })) as UIMessage[];
       setMessages(convexMessages);
     }
-  }, [messages.length, threadDocs, setMessages, isAuthenticated]);
+  }, [messages.length, effectiveThreadDocs, setMessages]);
 
   // Auto-start with initial message from context
   useEffect(() => {
@@ -223,7 +232,7 @@ export default function ChatInterface({
 
   const renderedMessages: UIMessage[] = useMemo(() => {
     // Convert Convex messages to UIMessage format for display
-    if (isThread && isAuthenticated && threadDocs.length > 0) {
+    if (isThread && effectiveThreadDocs.length > 0) {
       // Convert Convex messages to UIMessage format (oldest-first for display)
       interface ConvexMessage {
         messageId: string;
@@ -231,7 +240,7 @@ export default function ChatInterface({
         reasoning?: string;
         content?: string;
       }
-      const convexMessages = [...threadDocs]
+      const convexMessages = [...effectiveThreadDocs]
         .reverse()
         .map((m: ConvexMessage) => ({
           id: m.messageId,
@@ -267,7 +276,7 @@ export default function ChatInterface({
     }
 
     return [];
-  }, [isThread, isAuthenticated, threadDocs, messages, initialMessages]);
+  }, [isThread, effectiveThreadDocs, messages, initialMessages]);
 
   const hasAssistantMessage = useMemo(
     () => renderedMessages.some((m) => m.role === "assistant"),
@@ -349,7 +358,6 @@ export default function ChatInterface({
     <div className="flex h-screen w-full min-h-0 flex-col relative">
       {/* Single scrollable area that includes messages and actions - now takes full height */}
       <div className="flex-1 min-h-0">
-        <Authenticated>
           <Conversation>
             <ConversationContent className="mx-auto w-full max-w-3xl p-4 pb-30">
               {renderedMessages.map((message) => (
@@ -641,7 +649,6 @@ export default function ChatInterface({
             </ConversationContent>
             <ConversationScrollButton />
           </Conversation>
-        </Authenticated>
       </div>
 
       {/* Prompt input overlayed at bottom of the main area (not part of scroll flow) */}
@@ -651,9 +658,9 @@ export default function ChatInterface({
             <PromptInputTextarea
               onChange={handleInputChange}
               value={input}
-              disabled={disableInput || !isAuthenticated}
+              disabled={disableInput || (!isAuthenticated && !preloadedMessages)}
               placeholder={
-                !isAuthenticated
+                !isAuthenticated && !preloadedMessages
                   ? "Sign in to start chatting..."
                   : "Type your message..."
               }
@@ -663,7 +670,7 @@ export default function ChatInterface({
                 <PromptInputButton
                   onClick={handleAttachClick}
                   aria-label="Add attachments"
-                  disabled={disableInput || !isAuthenticated}
+                  disabled={disableInput || (!isAuthenticated && !preloadedMessages)}
                 >
                   <PaperclipIcon size={16} />
                 </PromptInputButton>
@@ -673,7 +680,7 @@ export default function ChatInterface({
                       <PromptInputButton
                         onClick={handleSearchToggle}
                         aria-label="Toggle web search"
-                        disabled={disableInput || !isAuthenticated}
+                        disabled={disableInput || (!isAuthenticated && !preloadedMessages)}
                         variant={isSearchEnabled ? "default" : "ghost"}
                         className={
                           isSearchEnabled
@@ -712,7 +719,7 @@ export default function ChatInterface({
                 </PromptInputModelSelect>
               </PromptInputTools>
               <PromptInputSubmit
-                disabled={disableInput || !isAuthenticated}
+                disabled={disableInput || (!isAuthenticated && !preloadedMessages)}
                 status={status}
                 onStop={() => {
                   // Preserve current streaming message content before stopping

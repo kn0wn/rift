@@ -271,6 +271,63 @@ export const getThreadMessagesPaginated = query({
   },
 });
 
+/**
+ * Safe version of getThreadMessagesPaginated that returns empty results when unauthenticated.
+ * This prevents authentication errors during server rendering and client-side loading
+ * when the user's authentication state hasn't been established yet.
+ *
+ * Used for instant UI rendering with preloaded data and graceful auth handling.
+ */
+export const getThreadMessagesPaginatedSafe = query({
+  args: {
+    threadId: v.string(),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    // Use the safe auth helper that returns null instead of throwing
+    const identity = await ctx.auth.getUserIdentity();
+
+    // If not authenticated, return empty results
+    if (!identity) {
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: "",
+      };
+    }
+
+    const userId = identity.subject;
+
+    // Ensure the thread belongs to the current user
+    const thread = await ctx.db
+      .query("threads")
+      .withIndex("by_user_and_threadId", (q) =>
+        q.eq("userId", userId).eq("threadId", args.threadId),
+      )
+      .unique();
+
+    if (!thread) {
+      // Return empty pagination result instead of throwing error
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: "",
+      };
+    }
+
+    return await ctx.db
+      .query("messages")
+      .withIndex("by_treadId", (q) => q.eq("threadId", args.threadId))
+      .order("desc") // Newest first; client can reverse for display
+      .paginate(args.paginationOpts);
+  },
+});
+
+/**
+ * Rename a thread.
+ * This mutation is secure and only allows authenticated users to rename their own threads.
+ */
+
 export const renameThread = mutation({
   args: {
     threadId: v.string(),
@@ -300,6 +357,10 @@ export const renameThread = mutation({
   },
 });
 
+/**
+ * Delete a thread.
+ * This mutation is secure and only allows authenticated users to delete their own threads.
+ */
 export const deleteThread = mutation({
   args: {
     threadId: v.string(),
@@ -335,7 +396,9 @@ export const deleteThread = mutation({
   },
 });
 
-// New: Begin assistant streaming lifecycle
+/**
+ * Begin assistant streaming lifecycle
+ */
 export const startAssistantMessage = mutation({
   args: {
     threadId: v.string(),
@@ -390,6 +453,9 @@ export const startAssistantMessage = mutation({
   },
 });
 
+/**
+ * Append assistant message delta
+ */
 export const appendAssistantMessageDelta = mutation({
   args: {
     messageId: v.string(),
@@ -455,7 +521,9 @@ export const regenerateAssistantMessageDelta = mutation({
     return null;
   },
 });
-// Agent update thread title
+/**
+ * Agent update thread title
+ */
 export const autoUpdateThreadTitle = mutation({
   args: {
     threadId: v.string(),
@@ -487,6 +555,9 @@ export const autoUpdateThreadTitle = mutation({
   },
 });
 
+/**
+ * Finalize assistant message
+ */
 export const finalizeAssistantMessage = mutation({
   args: {
     messageId: v.string(),
