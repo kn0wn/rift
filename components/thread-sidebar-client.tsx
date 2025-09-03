@@ -7,6 +7,7 @@ import { ThreadSidebarInteractive } from "./thread-sidebar-interactive";
 import { UserProfileSection } from "./user-profile-section";
 import { useRef, useEffect } from "react";
 import Image from "next/image";
+import { PlusIcon, AppLogo } from "@/components/ui/icons/svg-icons";
 import { Preloaded } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
@@ -118,23 +119,25 @@ export function ThreadSidebarClient({
         style={{ borderColor: "#EAEAEA" }}
       >
         {/* Header */}
-        <div className="p-4 border-b border-border flex-shrink-0">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">Chats</h2>
-            <Link href="/">
-              <Button size="sm" variant="outline" className="h-8 w-8 p-0">
-                <Image src="/plus.svg" alt="Plus" width={16} height={16} />
-              </Button>
-            </Link>
+        <div className="p-4 flex-shrink-0">
+          <div className="flex items-center justify-center">
+            <AppLogo className="h-6 text-foreground" />
           </div>
         </div>
 
-        <div className="relative px-4 py-3 flex-shrink-0 border-b border-border">
+        <div className="px-3 py-3 flex-shrink-0">
+          <div className="mb-3">
+            <Link href="/">
+              <Button size="lg" variant="default" className="w-full">
+                Crear nuevo chat
+              </Button>
+            </Link>
+          </div>
           <input
             id="thread-search-input"
             type="text"
             placeholder="Search chats..."
-            className="w-full px-3 py-2 text-sm border border-input rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+            className="w-full px-2 py-1.5 text-xs border-0 rounded-sm bg-transparent text-muted-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:bg-background focus:text-foreground focus:border focus:border-input/50 transition-all duration-200"
             readOnly
           />
         </div>

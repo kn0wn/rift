@@ -7,7 +7,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ai/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { BrainIcon, ChevronDownIcon } from "lucide-react";
+import { ChevronDownIcon } from "lucide-react";
+import { ReasoningIcon } from "@/components/ui/icons/svg-icons";
 import type { ComponentProps } from "react";
 import { createContext, memo, useContext, useEffect, useState } from "react";
 
@@ -125,7 +126,7 @@ export const ReasoningTrigger = memo(
       >
         {children ?? (
           <>
-            <BrainIcon className="size-4" />
+            <ReasoningIcon className="size-4" />
             {isStreaming || duration === 0 ? (
               <p>Thinking step by step...</p>
             ) : (

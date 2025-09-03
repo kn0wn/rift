@@ -68,6 +68,7 @@ export const createThread = mutation({
  * when the user's authentication state hasn't been established yet.
  *
  * Used for instant UI rendering with preloaded data and graceful auth handling.
+ * Returns threads sorted by pinned status first, then by most recently updated.
  */
 export const getUserThreadsPaginatedSafe = query({
   args: {
@@ -88,11 +89,34 @@ export const getUserThreadsPaginatedSafe = query({
 
     const userId = identity.subject;
 
-    return await ctx.db
+    // Get all threads for the user (we need to sort by pinned status first)
+    const allThreads = await ctx.db
       .query("threads")
       .withIndex("by_user_and_updatedAt", (q) => q.eq("userId", userId))
       .order("desc") // Most recently updated first
-      .paginate(args.paginationOpts);
+      .collect();
+
+    // Sort by pinned status first, then by updatedAt
+    const sortedThreads = allThreads.sort((a, b) => {
+      // Pinned threads first
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      
+      // Then by most recently updated
+      return b.updatedAt - a.updatedAt;
+    });
+
+    // Apply pagination manually
+    const startIndex = 0;
+    const endIndex = Math.min(startIndex + args.paginationOpts.numItems, sortedThreads.length);
+    const page = sortedThreads.slice(startIndex, endIndex);
+    const isDone = endIndex >= sortedThreads.length;
+
+    return {
+      page,
+      isDone,
+      continueCursor: isDone ? "" : endIndex.toString(),
+    };
   },
 });
 
@@ -351,6 +375,38 @@ export const renameThread = mutation({
     await ctx.db.patch(thread._id, {
       title: args.title,
       userSetTitle: true,
+    });
+
+    return null;
+  },
+});
+
+/**
+ * Toggle pin status of a thread.
+ * This mutation is secure and only allows authenticated users to pin/unpin their own threads.
+ */
+export const togglePinThread = mutation({
+  args: {
+    threadId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+
+    const thread = await ctx.db
+      .query("threads")
+      .withIndex("by_user_and_threadId", (q) =>
+        q.eq("userId", userId).eq("threadId", args.threadId),
+      )
+      .unique();
+
+    if (!thread) {
+      throw new Error("Thread not found or access denied");
+    }
+
+    await ctx.db.patch(thread._id, {
+      pinned: !thread.pinned,
+      updatedAt: Date.now(),
     });
 
     return null;

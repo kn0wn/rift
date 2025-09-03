@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ToolType, getDefaultTools } from "@/lib/ai/model-tools";
 import Image from "next/image";
+import { SearchIcon, AttachmentsIcon, RedoIcon, CopyIcon, BranchIcon, EditIcon, GlobeIcon, ReasoningIcon, StopIconAlt, PinIcon, DeleteIcon } from "@/components/ui/icons/svg-icons";
 import {
   Tooltip,
   TooltipContent,
@@ -525,12 +526,7 @@ export default function ChatInterface({
                           label="Retry"
                           tooltip="Regenerate response"
                         >
-                          <Image
-                            src={"/redo.svg"}
-                            alt="Redo"
-                            width={16}
-                            height={16}
-                          />
+                          <RedoIcon className="size-4" />
                         </Action>
                         <Action
                           onClick={async () => {
@@ -544,13 +540,9 @@ export default function ChatInterface({
                           label="Copy"
                           tooltip="Copy to clipboard"
                         >
-                          <Image
-                            src={"/copy.svg"}
-                            alt="Copy"
-                            width={16}
-                            height={16}
-                          />
+                          <CopyIcon className="size-4" />
                         </Action>
+
                         <Action
                           onClick={() => {
                             // TODO: Implement branch functionality
@@ -559,12 +551,7 @@ export default function ChatInterface({
                           label="Branch"
                           tooltip="Create a new branch"
                         >
-                          <Image
-                            src={"/branch.svg"}
-                            alt="Branch"
-                            width={16}
-                            height={16}
-                          />
+                          <BranchIcon className="size-4" />
                         </Action>
                       </Actions>
                     </div>
@@ -583,12 +570,7 @@ export default function ChatInterface({
                           label="Retry"
                           tooltip="Retry message"
                         >
-                          <Image
-                            src={"/redo.svg"}
-                            alt="Redo"
-                            width={16}
-                            height={16}
-                          />
+                          <RedoIcon className="size-4" />
                         </Action>
                         <Action
                           onClick={() => {
@@ -598,12 +580,7 @@ export default function ChatInterface({
                           label="Edit"
                           tooltip="Edit message"
                         >
-                          <Image
-                            src={"/edit.svg"}
-                            alt="Edit"
-                            width={16}
-                            height={16}
-                          />
+                          <EditIcon className="size-4" />
                         </Action>
                         <Action
                           onClick={async () => {
@@ -616,13 +593,9 @@ export default function ChatInterface({
                           label="Copy"
                           tooltip="Copy to clipboard"
                         >
-                          <Image
-                            src={"/copy.svg"}
-                            alt="Copy"
-                            width={16}
-                            height={16}
-                          />
+                          <CopyIcon className="size-4" />
                         </Action>
+
                         <Action
                           onClick={() => {
                             // TODO: Implement branch functionality
@@ -631,12 +604,7 @@ export default function ChatInterface({
                           label="Branch"
                           tooltip="Create a new branch"
                         >
-                          <Image
-                            src={"/branch.svg"}
-                            alt="Branch"
-                            width={16}
-                            height={16}
-                          />
+                          <BranchIcon className="size-4" />
                         </Action>
                       </Actions>
                     </div>
@@ -671,7 +639,7 @@ export default function ChatInterface({
                   aria-label="Add attachments"
                   disabled={disableInput || (!isAuthenticated && !preloadedMessages)}
                 >
-                  <Image src="/attachements.svg" alt="Add attachments" width={16} height={16} />
+                  <AttachmentsIcon className="size-4" />
                 </PromptInputButton>
                 <TooltipProvider>
                   <Tooltip>
@@ -687,7 +655,7 @@ export default function ChatInterface({
                             : ""
                         }
                       >
-                        <Image src="/search.svg" alt="Toggle web search" width={16} height={16} />
+                        <GlobeIcon className="size-4" />
                       </PromptInputButton>
                     </TooltipTrigger>
                     <TooltipContent side="top" align="center">

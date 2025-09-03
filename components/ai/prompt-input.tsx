@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ai/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { ChatStatus } from "ai";
 import Image from "next/image";
+import { SentIcon, LoadingIcon, StopIcon, DeleteIcon } from "@/components/ui/icons/svg-icons";
 import type {
   ComponentProps,
   HTMLAttributes,
@@ -106,8 +107,8 @@ export const PromptInputButton = ({
   return (
     <Button
       className={cn(
-        "shrink-0 gap-1.5 rounded-lg",
-        variant === "ghost" && "text-muted-foreground",
+        "shrink-0 gap-1.5",
+        variant === "ghost" && "text-black",
         newSize === "default" && "px-3",
         className,
       )}
@@ -134,19 +135,19 @@ export const PromptInputSubmit = ({
   onClick,
   ...props
 }: PromptInputSubmitProps) => {
-  let Icon = <Image src="/sent.svg" alt="Send" width={16} height={16} className="size-4" />;
+  let Icon = <SentIcon className="size-5" />;
   let isStreaming = false;
   let buttonTitle = "Send message";
 
   if (status === "submitted") {
-    Icon = <Image src="/loading.svg" alt="Loading" width={16} height={16} className="size-4 animate-spin" />;
+    Icon = <LoadingIcon className="size-5 animate-spin" />;
     buttonTitle = "Sending...";
   } else if (status === "streaming") {
-    Icon = <Image src="/stop.svg" alt="Stop" width={16} height={16} className="size-4" />;
+    Icon = <StopIcon className="size-5" />;
     isStreaming = true;
     buttonTitle = "Stop generation";
   } else if (status === "error") {
-    Icon = <Image src="/Delete.svg" alt="Error" width={16} height={16} className="size-4" />;
+    Icon = <DeleteIcon className="size-5" />;
     buttonTitle = "Error occurred";
   }
 
@@ -162,7 +163,7 @@ export const PromptInputSubmit = ({
 
   return (
     <Button
-      className={cn("gap-1.5 rounded-lg", className)}
+      className={cn("gap-1.5 rounded-lg transition-colors shadow-container-small", className)}
       size={size}
       type={isStreaming ? "button" : "submit"}
       variant={variant}
@@ -192,9 +193,6 @@ export const PromptInputModelSelectTrigger = ({
 }: PromptInputModelSelectTriggerProps) => (
   <SelectTrigger
     className={cn(
-      "border-none font-medium text-muted-foreground shadow-none transition-colors",
-      "!bg-transparent hover:!bg-accent hover:text-foreground",
-      "dark:!bg-transparent dark:hover:!bg-accent",
       className,
     )}
     {...props}

@@ -1,0 +1,659 @@
+import React from 'react'
+
+interface IconProps extends React.SVGProps<SVGSVGElement> {
+  className?: string
+}
+
+export function SearchIcon({ className, ...props }: IconProps) {
+  return (
+    <svg 
+      width="42" 
+      height="42" 
+      viewBox="0 0 42 42" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <g clipPath="url(#clip0_1_2543)">
+        <path 
+          opacity="0.4" 
+          d="M27 27L30 30M39.1334 39.1334C37.9782 40.2888 36.105 40.2888 34.9496 39.1334L30.8666 35.0504C29.7112 33.895 29.7112 32.0218 30.8666 30.8666C32.0218 29.7112 33.895 29.7112 35.0504 30.8666L39.1334 34.9496C40.2888 36.105 40.2888 37.9782 39.1334 39.1334Z" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        />
+        <path 
+          d="M30 16C30 8.26802 23.732 2 16 2C8.26802 2 2 8.26802 2 16C2 23.732 8.26802 30 16 30C23.732 30 30 23.732 30 16Z" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        />
+      </g>
+      <defs>
+        <clipPath id="clip0_1_2543">
+          <rect width="42" height="42" fill="white"/>
+        </clipPath>
+      </defs>
+    </svg>
+  )
+}
+
+export function SentIcon({ className, ...props }: IconProps) {
+  return (
+    <svg 
+      width="42" 
+      height="42" 
+      viewBox="0 0 42 42" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <g clipPath="url(#clip0_1_2520)">
+        <path 
+          opacity="0.4" 
+          d="M36.3936 0.566282C37.794 0.701262 39.2598 1.07836 40.1946 2.08514C41.1018 3.06212 41.3998 4.53112 41.4776 5.92954C41.5596 7.40414 41.412 9.1646 41.1136 11.0602C40.5154 14.8612 39.2736 19.4346 37.7834 23.8192C36.2924 28.2056 34.5304 32.4694 32.8664 35.6494C32.0384 37.2318 31.2062 38.601 30.4142 39.5906C30.02 40.0828 29.595 40.5332 29.143 40.8688C28.7142 41.1876 28.0888 41.531 27.3366 41.4978C26.1284 41.4444 25.2104 40.7826 24.5356 39.9066C23.889 39.0672 23.3784 37.929 22.9246 36.6142C22.0146 33.9776 21.1596 30.0894 20.0576 25.0782C19.8208 24.0014 19.6216 23.636 19.4426 23.4432C19.271 23.2582 18.9448 23.0452 17.9292 22.7604C17.3036 22.5848 16.3558 22.3916 15.1604 22.148C14.7928 22.073 14.4017 21.9934 13.9895 21.908C12.2869 21.5552 10.3065 21.12 8.42323 20.5584C6.55997 20.0028 4.68569 19.2934 3.24655 18.352C1.83659 17.4298 0.512588 16.0558 0.500048 14.1116C0.495288 13.371 0.842468 12.7566 1.17247 12.3247C1.51845 11.872 1.97839 11.4466 2.48243 11.0517C3.49469 10.2586 4.88711 9.43296 6.49253 8.61694C9.71829 6.9773 14.0256 5.2659 18.4444 3.84352C22.8604 2.42204 27.4576 1.26674 31.2626 0.767642C33.16 0.518782 34.9222 0.424462 36.3936 0.566282Z" 
+          fill="currentColor"
+        />
+        <path 
+          d="M20.0008 24.8268C19.789 23.9426 19.6076 23.6202 19.4434 23.4432C19.2718 23.2582 18.9454 23.0452 17.93 22.7604C17.6046 22.669 17.1922 22.573 16.7031 22.4676L25.5856 13.5857C26.3668 12.8047 27.633 12.8048 28.414 13.5858C29.195 14.3669 29.195 15.6332 28.414 16.4143L20.0008 24.8268Z" 
+          fill="currentColor"
+        />
+      </g>
+      <defs>
+        <clipPath id="clip0_1_2520">
+          <rect width="42" height="42" fill="white"/>
+        </clipPath>
+      </defs>
+    </svg>
+  )
+}
+
+export function LoadingIcon({ className, ...props }: IconProps) {
+  return (
+    <svg 
+      width="40" 
+      height="40" 
+      viewBox="0 0 40 40" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <g clipPath="url(#clip0_1_2524)">
+        <path 
+          d="M20 2V8" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinecap="round"
+        />
+        <path 
+          opacity="0.4" 
+          d="M20 32V38" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinecap="round"
+        />
+        <path 
+          opacity="0.4" 
+          d="M38 20H32" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinecap="round"
+        />
+        <path 
+          d="M8 20H2" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinecap="round"
+        />
+        <path 
+          opacity="0.4" 
+          d="M32.727 7.27344L28.4844 11.5161" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinecap="round"
+        />
+        <path 
+          d="M11.5161 28.4844L7.27344 32.727" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinecap="round"
+        />
+        <path 
+          opacity="0.4" 
+          d="M32.727 32.727L28.4844 28.4844" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinecap="round"
+        />
+        <path 
+          d="M11.5161 11.5161L7.27344 7.27344" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinecap="round"
+        />
+      </g>
+      <defs>
+        <clipPath id="clip0_1_2524">
+          <rect width="40" height="40" fill="white"/>
+        </clipPath>
+      </defs>
+    </svg>
+  )
+}
+
+export function StopIcon({ className, ...props }: IconProps) {
+  return (
+    <svg 
+      width="44" 
+      height="44" 
+      viewBox="0 0 44 44" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <g clipPath="url(#clip0_1_2535)">
+        <path 
+          d="M22 42C33.0457 42 42 33.0457 42 22C42 10.9543 33.0457 2 22 2C10.9543 2 2 10.9543 2 22C2 33.0457 10.9543 42 22 42Z" 
+          stroke="currentColor" 
+          strokeWidth="3"
+        />
+        <path 
+          opacity="0.4" 
+          d="M16.7777 28.3258C17.7866 29 19.191 29 22 29C24.809 29 26.2134 29 27.2222 28.3258C27.659 28.034 28.034 27.659 28.3258 27.2222C29 26.2134 29 24.809 29 22C29 19.191 29 17.7866 28.3258 16.7777C28.034 16.341 27.659 15.966 27.2222 15.6741C26.2134 15 24.809 15 22 15C19.191 15 17.7866 15 16.7777 15.6741C16.341 15.966 15.966 16.341 15.6741 16.7777C15 17.7866 15 19.191 15 22C15 24.809 15 26.2134 15.6741 27.2222C15.966 27.659 16.341 28.034 16.7777 28.3258Z" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        />
+      </g>
+      <defs>
+        <clipPath id="clip0_1_2535">
+          <rect width="44" height="44" fill="white"/>
+        </clipPath>
+      </defs>
+    </svg>
+  )
+}
+
+export function DeleteIcon({ className, ...props }: IconProps) {
+  return (
+    <svg 
+      width="40" 
+      height="44" 
+      viewBox="0 0 40 44" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <g clipPath="url(#clip0_10_1140)">
+        <path 
+          opacity="0.4" 
+          d="M35.165 29.3128C35.0116 31.8192 34.8898 33.8082 34.6404 35.3968C34.3844 37.0262 33.9748 38.383 33.1554 39.5698C32.4058 40.6556 31.4408 41.572 30.3216 42.2606C29.0982 43.0134 27.7322 43.3426 26.1062 43.5L13.8548 43.4998C12.227 43.342 10.8594 43.0122 9.6352 42.258C8.51526 41.5682 7.54988 40.6502 6.80056 39.5626C5.98146 38.3738 5.57312 37.015 5.31914 35.3834C5.07148 33.7924 4.95246 31.8006 4.80244 29.2906L3.5 7.5H36.5L35.165 29.3128Z" 
+          fill="currentColor"
+        />
+        <path 
+          fillRule="evenodd" 
+          clipRule="evenodd" 
+          d="M15 33.9296C14.1716 33.9296 13.5 33.2582 13.5 32.4296V20.4296C13.5 19.6012 14.1716 18.9296 15 18.9296C15.8284 18.9296 16.5 19.6012 16.5 20.4296V32.4296C16.5 33.2582 15.8284 33.9296 15 33.9296Z" 
+          fill="currentColor"
+        />
+        <path 
+          fillRule="evenodd" 
+          clipRule="evenodd" 
+          d="M25 18.9296C25.8284 18.9296 26.5 19.6012 26.5 20.4296V32.4296C26.5 33.2582 25.8284 33.9296 25 33.9296C24.1716 33.9296 23.5 33.2582 23.5 32.4296V20.4296C23.5 19.6012 24.1716 18.9296 25 18.9296Z" 
+          fill="currentColor"
+        />
+        <path 
+          fillRule="evenodd" 
+          clipRule="evenodd" 
+          d="M22.6946 0.565535C23.8248 0.666615 24.887 1.01152 25.7992 1.69182C26.4738 2.19496 26.9424 2.81084 27.3428 3.47786C27.7138 4.09596 28.0874 4.8666 28.511 5.7408L29.3646 7.5014H38C39.1046 7.5014 40 8.39684 40 9.5014C40 10.606 39.1046 11.5014 38 11.5014C25.9996 11.5014 14.0004 11.5014 2 11.5014C0.89544 11.5014 0 10.606 0 9.5014C0 8.39684 0.89544 7.5014 2 7.5014H10.8195L11.5311 5.94032C11.9442 5.03392 12.3081 4.23564 12.6735 3.59508C13.0677 2.90414 13.5344 2.26474 14.2172 1.74092C15.1406 1.03252 16.2242 0.673375 17.3798 0.568175C18.2498 0.488975 19.1268 0.499875 20 0.501275C21.0216 0.502915 21.94 0.498035 22.6946 0.565535ZM15.2155 7.5014H24.9194C24.466 6.56662 24.176 5.97414 23.9132 5.5364C23.5286 4.89574 23.0678 4.6149 22.3382 4.54964C21.8196 4.50326 21.1438 4.5014 20.069 4.5014C18.9674 4.5014 18.274 4.50332 17.7424 4.5517C16.9942 4.61982 16.5278 4.91136 16.1478 5.57732C15.8988 6.01374 15.6277 6.59794 15.2155 7.5014Z" 
+          fill="currentColor"
+        />
+      </g>
+      <defs>
+        <clipPath id="clip0_10_1140">
+          <rect width="40" height="44" fill="white"/>
+        </clipPath>
+      </defs>
+    </svg>
+  )
+}
+
+export function PlusIcon({ className, ...props }: IconProps) {
+  return (
+    <svg 
+      width="38" 
+      height="38" 
+      viewBox="0 0 38 38" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <g clipPath="url(#clip0_1_2508)">
+        <path 
+          fillRule="evenodd" 
+          clipRule="evenodd" 
+          d="M19 0.5C20.3808 0.5 21.5 1.61928 21.5 3V16.5H35C36.3808 16.5 37.5 17.6192 37.5 19C37.5 20.3808 36.3808 21.5 35 21.5H21.5V35C21.5 36.3808 20.3808 37.5 19 37.5C17.6192 37.5 16.5 36.3808 16.5 35V21.5H3C1.61928 21.5 0.5 20.3808 0.5 19C0.5 17.6192 1.61928 16.5 3 16.5H16.5V3C16.5 1.61928 17.6192 0.5 19 0.5Z" 
+          fill="currentColor"
+        />
+      </g>
+      <defs>
+        <clipPath id="clip0_1_2508">
+          <rect width="38" height="38" fill="white"/>
+        </clipPath>
+      </defs>
+    </svg>
+  )
+}
+
+export function RedoIcon({ className, ...props }: IconProps) {
+  return (
+    <svg 
+      width="48" 
+      height="48" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <path 
+        d="M15.1667 0.999756L15.7646 2.11753C16.1689 2.87322 16.371 3.25107 16.2374 3.41289C16.1037 3.57471 15.6635 3.44402 14.7831 3.18264C13.9029 2.92131 12.9684 2.78071 12 2.78071C6.75329 2.78071 2.5 6.90822 2.5 11.9998C2.5 13.6789 2.96262 15.2533 3.77093 16.6093" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      />
+      <path 
+        opacity="0.4" 
+        d="M8.83246 22.9999L8.23448 21.8821C7.8302 21.1264 7.62806 20.7486 7.76173 20.5868C7.89539 20.4249 8.33561 20.5556 9.21601 20.817C10.0962 21.0783 11.0307 21.219 11.9991 21.219C17.2458 21.219 21.4991 17.0914 21.4991 11.9999C21.4991 10.3207 21.0365 8.74638 20.2282 7.39038" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+export function CopyIcon({ className, ...props }: IconProps) {
+  return (
+    <svg 
+      width="44" 
+      height="44" 
+      viewBox="0 0 44 44" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <g clipPath="url(#clip0_6_1156)">
+        <path 
+          d="M16 28C16 22.3432 16 19.5148 17.7574 17.7574C19.5148 16 22.3432 16 28 16H30C35.6568 16 38.4852 16 40.2426 17.7574C42 19.5148 42 22.3432 42 28V30C42 35.6568 42 38.4852 40.2426 40.2426C38.4852 42 35.6568 42 30 42H28C22.3432 42 19.5148 42 17.7574 40.2426C16 38.4852 16 35.6568 16 30V28Z" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        />
+        <path 
+          opacity="0.4" 
+          d="M31.9998 16C31.995 10.0858 31.9056 7.02242 30.184 4.92486C29.8516 4.51978 29.4802 4.14836 29.0752 3.81592C26.8624 2 23.575 2 17 2C10.425 2 7.13756 2 4.92486 3.81592C4.51978 4.14834 4.14836 4.51978 3.81592 4.92486C2 7.13756 2 10.425 2 17C2 23.575 2 26.8624 3.81592 29.0752C4.14834 29.4802 4.51978 29.8516 4.92486 30.184C7.02242 31.9056 10.0858 31.995 16 31.9998" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        />
+      </g>
+      <defs>
+        <clipPath id="clip0_6_1156">
+          <rect width="44" height="44" fill="white"/>
+        </clipPath>
+      </defs>
+    </svg>
+  )
+}
+
+export function BranchIcon({ className, ...props }: IconProps) {
+  return (
+    <svg 
+      width="41" 
+      height="40" 
+      viewBox="0 0 41 40" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <g clipPath="url(#clip0_5_1144)">
+        <path 
+          d="M37.1768 23C37.528 23.0002 37.9594 23.0006 38.3122 22.9564L38.319 22.9556C38.5718 22.924 39.724 22.7804 40.2726 21.6492C40.8226 20.5156 40.2186 19.5152 40.088 19.2988L39.4098 18.362C38.8206 17.6102 38.0092 16.5814 37.2482 15.7993C36.8686 15.4091 36.434 15.0066 35.9722 14.6889C35.5618 14.4065 34.8614 14 34 14C33.1386 14 32.4382 14.4065 32.0278 14.6889C31.566 15.0066 31.1314 15.4091 30.7518 15.7993C29.9908 16.5814 29.1796 17.6102 28.5902 18.3618L27.912 19.2988C27.7814 19.5152 27.1774 20.5156 27.7274 21.6492C28.276 22.7804 29.4282 22.924 29.681 22.9556L29.6878 22.9564C30.0406 23.0006 30.472 23.0002 30.8232 23H37.1768Z" 
+          fill="currentColor"
+        />
+        <path 
+          opacity="0.4" 
+          d="M31.9994 22.996C31.996 25.332 31.9714 27.0238 31.7982 28.3124C31.6084 29.7244 31.2736 30.3786 30.8284 30.8236C30.3832 31.2688 29.7292 31.6036 28.3172 31.7934C26.8474 31.991 24.885 31.9952 22 31.9952H10C8.89544 31.9952 8 32.8906 8 33.9952C8 35.0998 8.89544 35.9952 10 35.9952H22.1412C24.8494 35.9952 27.0826 35.9954 28.8502 35.7578C30.7058 35.5082 32.3446 34.9642 33.6568 33.652C34.969 32.3398 35.513 30.701 35.7624 28.8454C35.9738 27.274 35.9972 25.3102 35.9998 22.996H31.9994Z" 
+          fill="currentColor"
+        />
+        <path 
+          opacity="0.4" 
+          fillRule="evenodd" 
+          clipRule="evenodd" 
+          d="M6 8C7.10456 8 8 8.89544 8 10V30C8 31.1046 7.10458 32 6 32C4.89544 32 4 31.1046 4 30V10C4 8.89544 4.89544 8 6 8Z" 
+          fill="currentColor"
+        />
+        <path 
+          fillRule="evenodd" 
+          clipRule="evenodd" 
+          d="M0.5 6C0.5 2.96244 2.96244 0.5 6 0.5C9.03756 0.5 11.5 2.96244 11.5 6C11.5 9.03756 9.03756 11.5 6 11.5C2.96244 11.5 0.5 9.03756 0.5 6Z" 
+          fill="currentColor"
+        />
+        <path 
+          fillRule="evenodd" 
+          clipRule="evenodd" 
+          d="M28.5 6C28.5 2.96244 30.9624 0.5 34 0.5C37.0376 0.5 39.5 2.96244 39.5 6C39.5 9.03756 37.0376 11.5 34 11.5C30.9624 11.5 28.5 9.03756 28.5 6Z" 
+          fill="currentColor"
+        />
+        <path 
+          fillRule="evenodd" 
+          clipRule="evenodd" 
+          d="M0.5 34C0.5 30.9624 2.96244 28.5 6 28.5C9.03756 28.5 11.5 30.9624 11.5 34C11.5 37.0376 9.03756 39.5 6 39.5C2.96244 39.5 0.5 37.0376 0.5 34Z" 
+          fill="currentColor"
+        />
+      </g>
+      <defs>
+        <clipPath id="clip0_5_1144">
+          <rect width="41" height="40" fill="white"/>
+        </clipPath>
+      </defs>
+    </svg>
+  )
+}
+
+export function EditIcon({ className, ...props }: IconProps) {
+  return (
+    <svg 
+      width="40" 
+      height="40" 
+      viewBox="0 0 40 40" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <g clipPath="url(#clip0_6_1160)">
+        <path 
+          d="M28.8498 5.21018L30.8298 3.2302C32.4702 1.58994 35.1296 1.58994 36.7698 3.2302C38.41 4.87048 38.41 7.52986 36.7698 9.17014L34.7898 11.1501M28.8498 5.21018L15.5312 18.5288C14.5161 19.544 13.7961 20.8156 13.4479 22.2082L12 28L17.7918 26.552C19.1844 26.204 20.456 25.4838 21.4712 24.4688L34.7898 11.1501M28.8498 5.21018L34.7898 11.1501" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinejoin="round"
+        />
+        <path 
+          opacity="0.4" 
+          d="M33.9998 23C33.9998 29.575 33.9998 32.8624 32.184 35.0752C31.8516 35.4802 31.4802 35.8516 31.075 36.184C28.8624 38 25.5748 38 18.9998 38H18C10.4575 38 6.68632 38 4.34318 35.6568C2.00006 33.3138 2 29.5424 2 22V21C2 14.425 2 11.1376 3.81588 8.92488C4.14834 8.5198 4.5198 8.14834 4.92488 7.81588C7.13758 6 10.425 6 17 6" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        />
+      </g>
+      <defs>
+        <clipPath id="clip0_6_1160">
+          <rect width="40" height="40" fill="white"/>
+        </clipPath>
+      </defs>
+    </svg>
+  )
+}
+
+export function AttachmentsIcon({ className, ...props }: IconProps) {
+  return (
+    <svg 
+      width="40" 
+      height="40" 
+      viewBox="0 0 40 40" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <g clipPath="url(#clip0_1_2511)">
+        <path 
+          opacity="0.4" 
+          d="M7.64676 20L4.55844 16.9116C1.14719 13.5004 1.14719 7.9697 4.55844 4.55844C7.9697 1.14719 13.5004 1.14719 16.9116 4.55844L35.4416 23.0884C38.8528 26.4996 38.8528 32.0304 35.4416 35.4416C32.0304 38.8528 26.4996 38.8528 23.0884 35.4416L16.1396 28.4928C14.0076 26.3608 14.0076 22.9042 16.1396 20.772C18.2716 18.64 21.7284 18.64 23.8604 20.772L27.7208 24.6324" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        />
+        <path 
+          d="M35.44 23.089C38.8512 26.5004 38.8512 32.031 35.44 35.4424C32.0288 38.8536 26.498 38.8536 23.0868 35.4424L16.138 28.4936C14.006 26.3616 14.006 22.9048 16.138 20.7728C18.2702 18.6408 21.7268 18.6408 23.8588 20.7728L27.7192 24.6332" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        />
+      </g>
+      <defs>
+        <clipPath id="clip0_1_2511">
+          <rect width="40" height="40" fill="white"/>
+        </clipPath>
+      </defs>
+    </svg>
+  )
+}
+
+export function GlobeIcon({ className, ...props }: IconProps) {
+  return (
+    <svg 
+      width="44" 
+      height="44" 
+      viewBox="0 0 44 44" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <g clipPath="url(#clip0_1_2515)">
+        <path 
+          d="M22 42C33.0457 42 42 33.0457 42 22C42 10.9543 33.0457 2 22 2C10.9543 2 2 10.9543 2 22C2 33.0457 10.9543 42 22 42Z" 
+          stroke="currentColor" 
+          strokeWidth="3"
+        />
+        <path 
+          d="M13 22C13 34 22 42 22 42C22 42 31 34 31 22C31 10 22 2 22 2C22 2 13 10 13 22Z" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinejoin="round"
+        />
+        <path 
+          d="M42 22H2" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        />
+      </g>
+      <defs>
+        <clipPath id="clip0_1_2515">
+          <rect width="44" height="44" fill="white"/>
+        </clipPath>
+      </defs>
+    </svg>
+  )
+}
+
+export function ReasoningIcon({ className, ...props }: IconProps) {
+  return (
+    <svg 
+      width="44" 
+      height="40" 
+      viewBox="0 0 44 40" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <g clipPath="url(#clip0_5_1152)">
+        <path 
+          d="M31.996 10.253C32.6364 10.0879 33.308 10 34 10C38.4182 10 42 13.5817 42 18C42 22.4182 38.4182 26 34 26C33.2902 26 32.6018 25.9076 31.9466 25.734M31.996 10.253C31.9986 10.169 32 10.0847 32 10C32 5.58172 28.4182 2 24 2C20.1648 2 16.9599 4.69878 16.1808 8.30086M31.996 10.253C31.9538 11.6153 31.5708 12.8917 30.9298 14M31.9466 25.734C31.9818 25.4944 32 25.2494 32 25C32 22.581 30.2822 20.5632 28 20.1M31.9466 25.734C31.5914 28.1474 29.512 30 27 30H26C21.5818 30 18 33.5818 18 38M16.1808 8.30086C15.4875 8.10486 14.756 8 14 8C9.58172 8 6 11.5817 6 16C6 16.7772 6.11084 17.5286 6.31756 18.239M16.1808 8.30086C18.203 8.8725 19.8996 10.2193 20.9298 12M6.31756 18.239C3.8228 18.9664 2 21.2704 2 24C2 27.3138 4.6863 30 8 30C10.6124 30 12.8349 28.3304 13.6586 26M6.31756 18.239C6.49842 18.8606 6.75264 19.451 7.07026 20" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        />
+        <path 
+          opacity="0.4" 
+          d="M21.6722 19.487C20.6514 20.4706 18.906 20.6404 17.4143 19.8016C15.9224 18.9628 15.1606 17.3834 15.4707 16" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinecap="round"
+        />
+      </g>
+      <defs>
+        <clipPath id="clip0_5_1152">
+          <rect width="44" height="40" fill="white"/>
+        </clipPath>
+      </defs>
+    </svg>
+  )
+}
+
+export function StopIconAlt({ className, ...props }: IconProps) {
+  return (
+    <svg 
+      width="44" 
+      height="44" 
+      viewBox="0 0 44 44" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <g clipPath="url(#clip0_1_2535)">
+        <path 
+          d="M22 42C33.0457 42 42 33.0457 42 22C42 10.9543 33.0457 2 22 2C10.9543 2 2 10.9543 2 22C2 33.0457 10.9543 42 22 42Z" 
+          stroke="currentColor" 
+          strokeWidth="3"
+        />
+        <path 
+          opacity="0.4" 
+          d="M16.7777 28.3258C17.7866 29 19.191 29 22 29C24.809 29 26.2134 29 27.2222 28.3258C27.659 28.034 28.034 27.659 28.3258 27.2222C29 26.2134 29 24.809 29 22C29 19.191 29 17.7866 28.3258 16.7777C28.034 16.341 27.659 15.966 27.2222 15.6741C26.2134 15 24.809 15 22 15C19.191 15 17.7866 15 16.7777 15.6741C16.341 15.966 15.966 16.341 15.6741 16.7777C15 17.7866 15 19.191 15 22C15 24.809 15 26.2134 15.6741 27.2222C15.966 27.659 16.341 28.034 16.7777 28.3258Z" 
+          stroke="currentColor" 
+          strokeWidth="3" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        />
+      </g>
+      <defs>
+        <clipPath id="clip0_1_2535">
+          <rect width="44" height="44" fill="white"/>
+        </clipPath>
+      </defs>
+    </svg>
+  )
+}
+
+export function PinIcon({ className, ...props }: IconProps) {
+  return (
+    <svg 
+      width="40" 
+      height="40" 
+      viewBox="0 0 40 40" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <g clipPath="url(#clip0_20_1140)">
+        <path 
+          opacity="0.4" 
+          d="M2 38L12 28" 
+          stroke="currentColor" 
+          strokeWidth="4" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        />
+        <path 
+          d="M22.4776 33.8234C14.972 32.1192 7.88056 25.028 6.17642 17.5224C5.70216 15.4335 6.14468 14.0678 7.98536 12.9179C10.1435 11.5696 12.4804 11.1409 14.9057 11.3554C18.3088 11.6564 20.0102 11.8069 20.859 11.3647C22.7994 10.3537 23.8582 7.06722 24.8996 5.20018C25.8622 3.4743 26.3436 2.61134 27.4758 2.20454C28.6082 1.79776 29.2896 2.0441 30.6524 2.53678C33.8394 3.689 36.311 6.16064 37.4632 9.3476C37.9558 10.7104 38.2022 11.3918 37.7954 12.5241C37.3886 13.6563 36.5256 14.1377 34.7998 15.1004C32.9216 16.148 29.5908 17.2216 28.581 19.1796C28.1388 20.0368 28.2994 21.7012 28.6206 25.0302C28.8566 27.4782 28.4496 29.8306 27.0832 32.0154C25.9322 33.856 24.5668 34.2978 22.4776 33.8234Z" 
+          stroke="currentColor" 
+          strokeWidth="4" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        />
+      </g>
+      <defs>
+        <clipPath id="clip0_20_1140">
+          <rect width="40" height="40" fill="white"/>
+        </clipPath>
+      </defs>
+    </svg>
+  )
+}
+
+export function MoreOptionsIcon({ className, ...props }: IconProps) {
+  return (
+    <svg 
+      width="16" 
+      height="16" 
+      viewBox="0 0 16 16" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <circle cx="8" cy="2" r="1.5" fill="currentColor"/>
+      <circle cx="8" cy="8" r="1.5" fill="currentColor"/>
+      <circle cx="8" cy="14" r="1.5" fill="currentColor"/>
+    </svg>
+  )
+}
+
+export function AppLogo({ className, ...props }: IconProps) {
+  return (
+    <svg 
+      width="130" 
+      height="25" 
+      viewBox="0 0 130 25" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      <g clipPath="url(#clip0_9_50)">
+        <path 
+          d="M14.0556 1.18312H18.8607V15.9579C18.8607 17.6158 18.4693 19.0701 17.6769 20.3111C16.8909 21.5585 15.7899 22.5259 14.3707 23.2196C12.9578 23.907 11.3094 24.257 9.42876 24.257C7.54175 24.257 5.89018 23.907 4.47732 23.2196C3.06442 22.5259 1.9634 21.5553 1.1774 20.3111C0.394589 19.0701 0 17.6158 0 15.9579V1.18312H4.81144V15.5474C4.81144 16.4193 4.99918 17.1831 5.38423 17.8609C5.76608 18.5323 6.30068 19.0605 7.00078 19.4456C7.69446 19.8306 8.50594 20.0247 9.42876 20.0247C10.3611 20.0247 11.1758 19.8306 11.8695 19.4456C12.5632 19.0605 13.101 18.5323 13.4797 17.8609C13.8615 17.1831 14.0525 16.4162 14.0525 15.5474V1.18312H14.0556Z" 
+          fill="currentColor"
+        />
+        <path 
+          d="M51.0134 1.18295V23.9354H46.8576L36.9641 9.61885H36.7956V23.9354H31.9936L31.984 1.18295H36.2066L46.0238 15.4932H46.2272V1.18295H51.0134Z" 
+          fill="currentColor"
+        />
+        <path 
+          d="M68.9638 1.18295V23.9354H64.1617L64.1524 1.18295H68.9638Z" 
+          fill="currentColor"
+        />
+        <path 
+          d="M82.1063 23.9354L82.0966 1.18295H97.1485L97.1579 5.15111L86.908 5.13836V10.5735H96.1618V14.5353L86.908 14.5226V23.9354H82.1063Z" 
+          fill="currentColor"
+        />
+        <path 
+          d="M108.232 1.18295H113.616L118.806 10.984H119.029L124.216 1.18295H129.6L121.301 15.8909V23.9354H116.528V15.8909L108.232 1.18295Z" 
+          fill="currentColor"
+        />
+      </g>
+      <defs>
+        <clipPath id="clip0_9_50">
+          <rect width="129.6" height="23.76" fill="white" transform="translate(0 0.84)"/>
+        </clipPath>
+      </defs>
+    </svg>
+  )
+}
