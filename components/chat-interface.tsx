@@ -28,16 +28,12 @@ import { Message, MessageContent } from "@/components/ai/message";
 import {
   PromptInput,
   PromptInputButton,
-  PromptInputModelSelect,
-  PromptInputModelSelectContent,
-  PromptInputModelSelectItem,
-  PromptInputModelSelectTrigger,
-  PromptInputModelSelectValue,
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputToolbar,
   PromptInputTools,
 } from "@/components/ai/prompt-input";
+import { ModelSelector } from "@/components/ai/model-selector";
 import { Response } from "@/components/ai/response";
 import { Actions, Action } from "@/components/ai/actions";
 
@@ -666,24 +662,10 @@ export default function ChatInterface({
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                <PromptInputModelSelect
+                <ModelSelector
                   value={selectedModel}
                   onValueChange={setSelectedModel}
-                >
-                  <PromptInputModelSelectTrigger>
-                    <PromptInputModelSelectValue />
-                  </PromptInputModelSelectTrigger>
-                  <PromptInputModelSelectContent>
-                    {models.map((model) => (
-                      <PromptInputModelSelectItem
-                        key={model.id}
-                        value={model.id}
-                      >
-                        {model.name}
-                      </PromptInputModelSelectItem>
-                    ))}
-                  </PromptInputModelSelectContent>
-                </PromptInputModelSelect>
+                />
               </PromptInputTools>
               <PromptInputSubmit
                 disabled={disableInput || (!isAuthenticated && !preloadedMessages)}
