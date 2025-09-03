@@ -3,6 +3,8 @@
 import { google } from "@ai-sdk/google";
 import { openai } from "@ai-sdk/openai";
 import { anthropic } from "@ai-sdk/anthropic";
+import { xai } from "@ai-sdk/xai";
+import { mistral } from "@ai-sdk/mistral";
 import { createProviderRegistry } from "ai";
 import { ToolType } from "./model-tools";
 
@@ -373,6 +375,157 @@ export const MODELS: ModelConfig[] = [
     supportedTools: ["google_search", "url_context"],
     defaultTools: ["url_context"],
   },
+
+  // xAI Models
+  {
+    id: "xai:grok-4",
+    name: "Grok 4",
+    provider: "xai",
+    description:
+      "xAI's most advanced reasoning model with enhanced capabilities.",
+    contextWindow: 128000,
+    pricing: { input: 10, output: 30 },
+    isPremium: true,
+    capabilities: {
+      supportsTools: true,
+      supportsSearch: true,
+      supportsUrlContext: false,
+      supportsStreaming: true,
+      supportsReasoning: true,
+      maxTokens: 8192,
+      contextWindow: 128000,
+    },
+    supportedTools: [],
+    defaultTools: [],
+  },
+  {
+    id: "xai:grok-code-fast-1",
+    name: "Grok Code Fast 1",
+    provider: "xai",
+    description:
+      "xAI's specialized coding model optimized for programming tasks.",
+    contextWindow: 32000,
+    pricing: { input: 2, output: 6 },
+    isPremium: false,
+    capabilities: {
+      supportsTools: true,
+      supportsSearch: true,
+      supportsUrlContext: false,
+      supportsStreaming: true,
+      supportsReasoning: true,
+      maxTokens: 8192,
+      contextWindow: 32000,
+    },
+    supportedTools: [],
+    defaultTools: [],
+  },
+  {
+    id: "xai:grok-3",
+    name: "Grok 3",
+    provider: "xai",
+    description:
+      "xAI's powerful general-purpose model with strong reasoning abilities.",
+    contextWindow: 128000,
+    pricing: { input: 5, output: 15 },
+    isPremium: true,
+    capabilities: {
+      supportsTools: true,
+      supportsSearch: true,
+      supportsUrlContext: false,
+      supportsStreaming: true,
+      supportsReasoning: false,
+      maxTokens: 8192,
+      contextWindow: 128000,
+    },
+    supportedTools: [],
+    defaultTools: [],
+  },
+  {
+    id: "xai:grok-3-mini",
+    name: "Grok 3 Mini",
+    provider: "xai",
+    description:
+      "Compact version of Grok 3 with balanced performance and cost efficiency.",
+    contextWindow: 64000,
+    pricing: { input: 1, output: 3 },
+    isPremium: false,
+    capabilities: {
+      supportsTools: true,
+      supportsSearch: true,
+      supportsUrlContext: false,
+      supportsStreaming: true,
+      supportsReasoning: false,
+      maxTokens: 8192,
+      contextWindow: 64000,
+    },
+    supportedTools: [],
+    defaultTools: [],
+  },
+
+  // Mistral Models
+  {
+    id: "mistral:magistral-small-latest",
+    name: "Magistral Small",
+    provider: "mistral",
+    description:
+      "Mistral's latest small reasoning model with step-by-step thinking capabilities.",
+    contextWindow: 128000,
+    pricing: { input: 2, output: 6 },
+    isPremium: false,
+    capabilities: {
+      supportsTools: true,
+      supportsSearch: false,
+      supportsUrlContext: false,
+      supportsStreaming: true,
+      supportsReasoning: true,
+      maxTokens: 8192,
+      contextWindow: 128000,
+    },
+    supportedTools: [],
+    defaultTools: [],
+  },
+  {
+    id: "mistral:mistral-medium-latest",
+    name: "Mistral Medium",
+    provider: "mistral",
+    description:
+      "Mistral's balanced medium model with strong performance across tasks.",
+    contextWindow: 128000,
+    pricing: { input: 3, output: 9 },
+    isPremium: false,
+    capabilities: {
+      supportsTools: true,
+      supportsSearch: false,
+      supportsUrlContext: false,
+      supportsStreaming: true,
+      supportsReasoning: false,
+      maxTokens: 8192,
+      contextWindow: 128000,
+    },
+    supportedTools: [],
+    defaultTools: [],
+  },
+  {
+    id: "mistral:magistral-small-2506",
+    name: "Magistral Small 2506",
+    provider: "mistral",
+    description:
+      "Mistral's latest small reasoning model (January 2025) with enhanced capabilities.",
+    contextWindow: 128000,
+    pricing: { input: 2, output: 6 },
+    isPremium: false,
+    capabilities: {
+      supportsTools: true,
+      supportsSearch: false,
+      supportsUrlContext: false,
+      supportsStreaming: true,
+      supportsReasoning: true,
+      maxTokens: 8192,
+      contextWindow: 128000,
+    },
+    supportedTools: [],
+    defaultTools: [],
+  },
 ];
 
 // Provider registry (not strictly necessary, but kept for API symmetry)
@@ -421,7 +574,15 @@ export function isModelCapable(
 }
 
 // Reasoning models that should use the responses API
-const REASONING_MODELS = ["gpt-5", "o3", "o4-mini", "o1", "o3-mini"];
+const REASONING_MODELS = [
+  "gpt-5",
+  "o3",
+  "o4-mini",
+  "o1",
+  "o3-mini",
+  "magistral-small",
+  "magistral-small-2506",
+];
 
 // Check if a model is a reasoning model
 function isReasoningModel(modelName: string): boolean {
@@ -455,6 +616,20 @@ export function getLanguageModel(modelId: string) {
   if (modelId.startsWith("anthropic:")) {
     const modelName = modelId.replace("anthropic:", "");
     return anthropic(modelName as any);
+  }
+
+  if (modelId.startsWith("xai:")) {
+    const modelName = modelId.replace("xai:", "");
+    return xai(modelName as any);
+  }
+
+  if (modelId.startsWith("mistral:")) {
+    const modelName = modelId.replace("mistral:", "");
+    // Use special handling for reasoning models if needed
+    if (isReasoningModel(modelName)) {
+      return mistral(modelName as any);
+    }
+    return mistral(modelName as any);
   }
 
   // Fallback: use default model
