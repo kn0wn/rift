@@ -133,7 +133,7 @@ export function ThreadSidebarClient({
             </Link>
           </div>
           <div className="mb-3">
-            <Link href="/">
+            <Link href="/chat">
               <Button size="lg" variant="outline" className="w-full">
                 Crear nuevo chat
               </Button>

@@ -240,7 +240,7 @@ function ModelSelector({
       <SelectPrimitive.Portal>
         <SelectPrimitive.Content
           className={cn(
-            "bg-popover-main text-popover-text data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-50 max-h-[600px] w-[700px] origin-top overflow-hidden rounded-xl border shadow-lg",
+            "bg-popover-main backdrop-blur-sm text-popover-text data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-50 max-h-[600px] w-[700px] origin-top overflow-hidden rounded-xl border shadow-lg",
           )}
           position="popper"
           sideOffset={4}

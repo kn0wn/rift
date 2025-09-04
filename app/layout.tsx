@@ -4,8 +4,6 @@ import "@/styles/globals.css";
 import { ConvexClientProvider } from "@/components/ConvexClientProvider";
 import { ThemeProvider } from "next-themes";
 import { Providers } from "./providers";
-import ChatShell from "@/components/ai/ChatShell";
-import ThreadSidebar from "@/components/thread-sidebar";
 import { cookies } from "next/headers";
 
 const inter = Inter({
@@ -30,9 +28,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className={`${inter.className}`} suppressHydrationWarning>
-      <body
-        className={`bg-background relative antialiased`}
-      >
+      <body className={`bg-background relative antialiased`}>
         <ConvexClientProvider>
           <ThemeProvider
             attribute="class"
@@ -40,9 +36,7 @@ export default async function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <Providers initialModel={initialModel}>
-              <ChatShell sidebar={<ThreadSidebar />}>{children}</ChatShell>
-            </Providers>
+            <Providers initialModel={initialModel}>{children}</Providers>
           </ThemeProvider>
         </ConvexClientProvider>
       </body>
