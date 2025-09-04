@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 
 type ChatShellClientProps = {
   children: React.ReactNode;
@@ -57,11 +58,15 @@ export function ChatShellClient({ children, className, sidebar }: ChatShellClien
             aria-pressed={isOpen}
             title={`${isOpen ? 'Hide' : 'Show'} sidebar (⌘+B)`}
             className={cn(
-              "absolute top-4 left-4 z-10 inline-flex h-9 items-center rounded-md border bg-background/80 backdrop-blur-sm px-3 text-sm transition-colors shadow-sm",
+              "absolute top-4 left-4 z-10 inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background/80 backdrop-blur-sm transition-colors shadow-sm",
               "hover:bg-background hover:shadow-md"
             )}
           >
-            {isOpen ? "Hide sidebar" : "Show sidebar"}
+            {isOpen ? (
+              <ChevronLeftIcon className="size-4" />
+            ) : (
+              <ChevronRightIcon className="size-4" />
+            )}
           </button>
 
           <div className={cn("flex-1 min-h-0")}>

@@ -44,7 +44,7 @@ export const MODELS: ModelConfig[] = [
     name: "GPT-5",
     provider: "openai",
     description:
-      "OpenAI's next-generation model with enhanced reasoning and capabilities.",
+      "Modelo de próxima generación de OpenAI con razonamiento y capacidades mejoradas.",
     contextWindow: 200000,
     pricing: { input: 10, output: 30 },
     isPremium: true,
@@ -65,7 +65,7 @@ export const MODELS: ModelConfig[] = [
     name: "o3",
     provider: "openai",
     description:
-      "OpenAI's reasoning model optimized for complex problem solving.",
+      "Modelo de razonamiento de OpenAI optimizado para resolución de problemas complejos.",
     contextWindow: 128000,
     pricing: { input: 15, output: 45 },
     isPremium: true,
@@ -86,7 +86,7 @@ export const MODELS: ModelConfig[] = [
     name: "GPT-4o",
     provider: "openai",
     description:
-      "OpenAI's flagship model with vision and advanced reasoning capabilities.",
+      "Modelo insignia de OpenAI con capacidades de visión y razonamiento avanzado.",
     contextWindow: 128000,
     pricing: { input: 5, output: 15 },
     isPremium: true,
@@ -108,7 +108,7 @@ export const MODELS: ModelConfig[] = [
     name: "GPT-4o Nano",
     provider: "openai",
     description:
-      "Ultra-fast and efficient model for simple conversational tasks.",
+      "Modelo ultra-rápido y eficiente para tareas conversacionales simples.",
     contextWindow: 64000,
     pricing: { input: 0.05, output: 0.2 },
     isPremium: false,
@@ -129,7 +129,7 @@ export const MODELS: ModelConfig[] = [
     name: "GPT-4.1",
     provider: "openai",
     description:
-      "Enhanced version of GPT-4 with improved performance and capabilities.",
+      "Versión mejorada de GPT-4 con rendimiento y capacidades mejoradas.",
     contextWindow: 128000,
     pricing: { input: 8, output: 24 },
     isPremium: true,
@@ -150,7 +150,7 @@ export const MODELS: ModelConfig[] = [
     name: "GPT-4.1 Mini",
     provider: "openai",
     description:
-      "Compact version of GPT-4.1 with balanced performance and cost.",
+      "Versión compacta de GPT-4.1 con rendimiento y costo equilibrados.",
     contextWindow: 64000,
     pricing: { input: 1, output: 3 },
     isPremium: false,
@@ -170,7 +170,7 @@ export const MODELS: ModelConfig[] = [
     id: "openai:gpt-4.1-nano",
     name: "GPT-4.1 Nano",
     provider: "openai",
-    description: "Smallest version of GPT-4.1 for lightweight applications.",
+    description: "Versión más pequeña de GPT-4.1 para aplicaciones ligeras.",
     contextWindow: 32000,
     pricing: { input: 0.1, output: 0.3 },
     isPremium: false,
@@ -191,7 +191,7 @@ export const MODELS: ModelConfig[] = [
     name: "GPT-4",
     provider: "openai",
     description:
-      "OpenAI's powerful model with excellent reasoning capabilities.",
+      "Modelo potente de OpenAI con excelentes capacidades de razonamiento.",
     contextWindow: 8192,
     pricing: { input: 30, output: 60 },
     isPremium: true,
@@ -211,7 +211,7 @@ export const MODELS: ModelConfig[] = [
     id: "openai:gpt-3.5-turbo",
     name: "GPT-3.5 Turbo",
     provider: "openai",
-    description: "Fast and efficient model for most conversational tasks.",
+    description: "Modelo rápido y eficiente para la mayoría de tareas conversacionales.",
     contextWindow: 16385,
     pricing: { input: 0.5, output: 1.5 },
     isPremium: false,
@@ -233,7 +233,7 @@ export const MODELS: ModelConfig[] = [
     name: "Claude 4 Opus",
     provider: "anthropic",
     description:
-      "Anthropic's most capable model with advanced reasoning and web search.",
+      "Modelo más capaz de Anthropic con razonamiento avanzado y búsqueda web.",
     contextWindow: 200000,
     pricing: { input: 15, output: 75 },
     isPremium: true,
@@ -254,7 +254,7 @@ export const MODELS: ModelConfig[] = [
     name: "Claude 4 Sonnet",
     provider: "anthropic",
     description:
-      "Balanced Claude 4 model with excellent performance and reasoning.",
+      "Modelo Claude 4 equilibrado con excelente rendimiento y razonamiento.",
     contextWindow: 200000,
     pricing: { input: 3, output: 15 },
     isPremium: true,
@@ -275,7 +275,7 @@ export const MODELS: ModelConfig[] = [
     name: "Claude 3.7 Sonnet",
     provider: "anthropic",
     description:
-      "Enhanced Claude 3.5 with improved reasoning and capabilities.",
+      "Claude 3.5 mejorado con razonamiento y capacidades mejoradas.",
     contextWindow: 200000,
     pricing: { input: 3, output: 15 },
     isPremium: false,
@@ -298,7 +298,7 @@ export const MODELS: ModelConfig[] = [
     name: "Gemini 2.5 Flash",
     provider: "google",
     description:
-      "Google's latest fast model with strong capabilities and web search grounding.",
+      "Modelo rápido más reciente de Google con capacidades sólidas y búsqueda web.",
     contextWindow: 1048576,
     pricing: { input: 0, output: 0 },
     isPremium: false,
@@ -319,7 +319,7 @@ export const MODELS: ModelConfig[] = [
     name: "Gemini 2.5 Pro",
     provider: "google",
     description:
-      "Google's higher quality model with advanced reasoning and tool use.",
+      "Modelo de mayor calidad de Google con razonamiento avanzado y uso de herramientas.",
     contextWindow: 1048576,
     pricing: { input: 0, output: 0 },
     isPremium: true,
@@ -382,7 +382,7 @@ export const MODELS: ModelConfig[] = [
     name: "Grok 4",
     provider: "xai",
     description:
-      "xAI's most advanced reasoning model with enhanced capabilities.",
+      "Modelo de razonamiento más avanzado de xAI con capacidades mejoradas.",
     contextWindow: 128000,
     pricing: { input: 10, output: 30 },
     isPremium: true,
@@ -403,7 +403,7 @@ export const MODELS: ModelConfig[] = [
     name: "Grok Code Fast 1",
     provider: "xai",
     description:
-      "xAI's specialized coding model optimized for programming tasks.",
+      "Modelo especializado en programación de xAI optimizado para tareas de programación.",
     contextWindow: 32000,
     pricing: { input: 2, output: 6 },
     isPremium: false,
@@ -468,7 +468,7 @@ export const MODELS: ModelConfig[] = [
     name: "Magistral Small",
     provider: "openrouter",
     description:
-      "Mistral's latest small reasoning model with step-by-step thinking capabilities via OpenRouter.",
+      "Modelo de razonamiento pequeño más reciente de Mistral con capacidades de pensamiento paso a paso vía OpenRouter.",
     contextWindow: 128000,
     pricing: { input: 2, output: 6 },
     isPremium: false,
@@ -489,7 +489,7 @@ export const MODELS: ModelConfig[] = [
     name: "Mistral Medium",
     provider: "openrouter",
     description:
-      "Mistral's balanced medium model with strong performance across tasks via OpenRouter.",
+      "Modelo medio equilibrado de Mistral con rendimiento sólido en tareas vía OpenRouter.",
     contextWindow: 128000,
     pricing: { input: 3, output: 9 },
     isPremium: false,

@@ -125,9 +125,16 @@ export function ThreadSidebarClient({
         </div>
 
         <div className="px-3 py-3 flex-shrink-0">
+          <div className="mb-2">
+            <Link href="/info-ia">
+              <Button size="lg" variant="outline" className="w-full">
+                Aprender
+              </Button>
+            </Link>
+          </div>
           <div className="mb-3">
             <Link href="/">
-              <Button size="lg" variant="default" className="w-full">
+              <Button size="lg" variant="outline" className="w-full">
                 Crear nuevo chat
               </Button>
             </Link>

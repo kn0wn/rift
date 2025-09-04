@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import {
   CheckIcon,
@@ -10,6 +11,7 @@ import {
   GlobeIcon,
   BrainIcon,
   WrenchIcon,
+  HelpCircleIcon,
 } from "lucide-react";
 import {
   AutoIcon,
@@ -111,6 +113,7 @@ function ModelSelector({
   const [activeTab, setActiveTab] = React.useState<"recomendado" | "avanzado">(
     "recomendado",
   );
+  const router = useRouter();
   const selectedModel = MODELS.find((model) => model.id === value);
   const providers = getAllProviders();
 
@@ -283,6 +286,21 @@ function ModelSelector({
 
             {activeTab === "avanzado" && (
               <div className="p-6">
+                <div className="text-center mb-6 relative">
+                  <h3 className="text-lg font-semibold text-popover-text mb-2">
+                    Selección Avanzada
+                  </h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Elige manualmente entre todos los modelos disponibles
+                  </p>
+                  <button
+                    onClick={() => router.push("/info-ia")}
+                    className="absolute top-0 right-0 flex items-center justify-center w-8 h-8 rounded-full bg-popover-secondary hover:bg-popover-secondary/80 text-muted-foreground hover:text-popover-text transition-colors"
+                    title="Información sobre IA"
+                  >
+                    <HelpCircleIcon className="size-4" />
+                  </button>
+                </div>
                 <div className="grid grid-cols-2 gap-8">
                   <div className="space-y-6">
                     {leftColumn.map(({ provider, models }) => {
