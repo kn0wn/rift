@@ -118,13 +118,13 @@ export function ThreadSidebarClient({
         style={{ borderColor: "#EAEAEA" }}
       >
         {/* Header */}
-        <div className="p-4 flex-shrink-0">
+        <div className="p-6 flex-shrink-0">
           <div className="flex items-center justify-center">
-            <AppLogo className="h-6 text-foreground" />
+            <AppLogo className="h-8 text-foreground" />
           </div>
         </div>
 
-        <div className="px-3 py-3 flex-shrink-0">
+        <div className="px-3 pb-3 flex-shrink-0">
           <div className="mb-2">
             <Link href="/info-ia">
               <Button size="lg" variant="outline" className="w-full">
