@@ -1,5 +1,9 @@
-import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import { Button } from '@/components/ai/ui/button';
 
-export default function RootPage() {
-  redirect('/chat');
+export default function LandingPage() {
+  return (
+    <div className="">
+    </div>
+  );
 }

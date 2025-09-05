@@ -13,7 +13,7 @@ export default function SettingsLayout({
         {/* Close button - positioned absolutely in top right */}
         <div className="absolute top-4 right-4 z-10">
           <Link 
-            href="/"
+            href="/chat"
             className="flex items-center justify-center w-10 h-10 rounded-full bg-background-settings border shadow-container-small-n hover:bg-hover"
             title="Close Settings"
           >
