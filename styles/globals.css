@@ -7,6 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-background-settings: var(--background-settings);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
@@ -37,6 +38,7 @@
   --color-accent-less: var(--accent-less);
   --color-danger: var(--danger);
   --color-accent-green: var(--accent-green);
+  --color-accent-green-2: var(--accent-green-2);
   --color-background-secondary: var(--background-secondary);
   --color-stroke-primary: var(--stroke-primary);
   --color-text-primary: var(--text-primary);
@@ -56,6 +58,7 @@
 
   --background: oklch(0.9851 0 0);
   --background-secondary: oklch(0.9761 0 0);
+  --background-settings: oklch(0.967 0.0029 264.54);
 
   --stroke-primary: oklch(0.937 0 0);
 
@@ -147,6 +150,11 @@
       0px 10px 15px -3px rgba(0, 0, 0, 0.1);
     border-radius: 12px;
   }
+  .shadow-container-n {
+    box-shadow:
+      0px 4px 6px -2px rgba(0, 0, 0, 0.05),
+      0px 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
   .shadow-container-small {
     box-shadow:
       0px 0px 2px rgba(0, 0, 0, 0.06),
@@ -157,7 +165,6 @@
     box-shadow:
       0px 0px 2px rgba(0, 0, 0, 0.06),
       0px 1px 3px rgba(0, 0, 0, 0.1);
-    border-radius: 0px;
   }
 }
 

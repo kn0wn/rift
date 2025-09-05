@@ -1,44 +1,97 @@
+import { 
+  SettingsSection, 
+  StatusBadge, 
+  SettingRow, 
+  OrganizationIcon, 
+  SettingsInput, 
+  SettingsDivider 
+} from '@/components/settings';
+
 export default function SettingsPage() {
   return (
-    <div className="p-8">
-      <div className="max-w-4xl">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Overview</h1>
-        <p className="text-gray-600 mb-8">
-          Manage your workspace settings and preferences.
-        </p>
+    <div className="pt-12 pb-12 pl-12 pr-12 flex flex-col max-w-4xl min-w-[520px] w-full min-h-full box-border">
+      {/* Header */}
+      <h3 className="font-semibold text-xl leading-7 flex items-center mb-5">
+        <button className="font-semibold text-left transition-transform duration-150 text-gray-500 hover:text-gray-700">
+          Arisay's Workspace<span className="px-1">/</span>
+        </button>
+        Overview
+      </h3>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Workspace Information</h2>
+      {/* Organization Icon Section */}
+      <SettingsSection
+        title="Organization Icon"
+        description="Organization branding visible to all members."
+      >
+        <OrganizationIcon name="Arisay's Workspace" />
+      </SettingsSection>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Workspace Name
-              </label>
-              <div className="text-sm text-gray-900">Arisay's Workspace</div>
-            </div>
+      <SettingsDivider />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Members
-              </label>
-              <div className="text-sm text-gray-900">1 member</div>
-            </div>
+      {/* Organization Name Section */}
+      <SettingsSection
+        title="Organization Name"
+        description="The name of your organization visible to all members."
+      >
+        <SettingsInput
+          defaultValue="Arisay's Workspace"
+          maxLength={50}
+        />
+      </SettingsSection>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Plan
-              </label>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-900">Business Monthly</span>
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  TRIAL
-                </span>
-              </div>
-            </div>
-          </div>
+      <SettingsDivider />
+
+      {/* Organization Policy Section */}
+      <SettingsSection
+        title="Organization Policy"
+        description="Applies to all members authenticating to this organization."
+      >
+        <div className="space-y-4">
+          <SettingRow label="Single Sign-On (SSO) for domain members">
+            <StatusBadge status="not-required">Not required</StatusBadge>
+          </SettingRow>
+          
+          <SettingRow label="Single Sign-On (SSO) for guest members">
+            <StatusBadge status="not-required">Not required</StatusBadge>
+          </SettingRow>
+          
+          <SettingRow label="Multi-Factor Authentication">
+            <StatusBadge status="not-required">Not required</StatusBadge>
+          </SettingRow>
         </div>
-      </div>
+      </SettingsSection>
+
+      <SettingsDivider />
+
+      {/* Directory Sync Section */}
+      <SettingsSection
+        title="Directory Sync"
+        description="Manage user provisioning and synchronization settings."
+      >
+        <div className="space-y-4">
+          <SettingRow label="Directory Sync">
+            <StatusBadge status="enabled">Enable</StatusBadge>
+          </SettingRow>
+          
+          <SettingRow label="Just-in-time provisioning">
+            <StatusBadge status="disabled">Disable</StatusBadge>
+          </SettingRow>
+        </div>
+      </SettingsSection>
+
+      <SettingsDivider />
+
+      {/* Organization Stats Section */}
+      <SettingsSection
+        title="Organization Statistics"
+        description="Current organization usage and member count."
+      >
+        <div className="space-y-4">
+          <SettingRow label="Total Users">
+            <span className="text-sm font-semibold text-gray-900">1,247</span>
+          </SettingRow>
+        </div>
+      </SettingsSection>
     </div>
   );
 }

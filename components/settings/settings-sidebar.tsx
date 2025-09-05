@@ -5,9 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
 import {
   Users,
-  CreditCard,
   Home,
-  DollarSign,
   ReceiptText,
   Key,
   MessageSquare,
@@ -19,7 +17,6 @@ import {
   Mail,
   LogOut,
 } from "lucide-react";
-
 interface SettingsNavItem {
   title: string;
   href: string;
@@ -29,6 +26,94 @@ interface SettingsNavItem {
 interface SettingsSection {
   title: string;
   items: SettingsNavItem[];
+}
+
+// Inline components to avoid import issues
+function SettingItem({ 
+  title, 
+  href, 
+  icon: Icon, 
+  onClick, 
+  isLogout = false 
+}: {
+  title: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  onClick?: () => void;
+  isLogout?: boolean;
+}) {
+  const pathname = usePathname();
+  const isActive = pathname === href;
+
+  const baseClasses = `
+    w-full flex items-center px-2 py-1.5 mb-0.5 rounded-lg text-sm font-medium
+    ${isLogout 
+      ? 'text-red-600 hover:bg-red-50' 
+      : isActive 
+        ? 'text-gray-900 bg-gray-200' 
+        : 'text-gray-600 hover:bg-hover'
+    }
+  `;
+
+  const iconClasses = `
+    w-5 h-5 mr-2 flex-shrink-0
+    ${isLogout 
+      ? 'text-red-500' 
+      : isActive 
+        ? 'text-gray-700' 
+        : 'text-gray-500'
+    }
+  `;
+
+  const content = (
+    <button
+      className={baseClasses}
+      onClick={onClick}
+      type={isLogout ? "button" : undefined}
+    >
+      <Icon className={iconClasses} />
+      <span className="flex-1 text-left truncate">{title}</span>
+    </button>
+  );
+
+  if (isLogout || onClick) {
+    return content;
+  }
+
+  return (
+    <Link href={href}>
+      {content}
+    </Link>
+  );
+}
+
+function SettingSection({ title, items, isLast = false }: {
+  title: string;
+  items: SettingsNavItem[];
+  isLast?: boolean;
+}) {
+  return (
+    <div className="">
+      <span className="text-xs font-semibold text-gray-500 px-2 py-1.5 mt-4 mb-1.5 block">
+        {title}
+      </span>
+      
+      {items.map((item) => (
+        <SettingItem
+          key={item.href}
+          title={item.title}
+          href={item.href}
+          icon={item.icon}
+        />
+      ))}
+
+      {!isLast && (
+        <div className="px-2 my-4">
+          <hr className="border-gray-200" />
+        </div>
+      )}
+    </div>
+  );
 }
 
 const settingsSections: SettingsSection[] = [
@@ -44,11 +129,6 @@ const settingsSections: SettingsSection[] = [
         title: "Members",
         href: "/settings/members",
         icon: Users,
-      },
-      {
-        title: "Billing",
-        href: "/settings/billing",
-        icon: DollarSign,
       },
       {
         title: "Plans",
@@ -116,9 +196,7 @@ const footerItems: SettingsNavItem[] = [
     icon: Mail,
   },
 ];
-
 export function SettingsSidebar() {
-  const pathname = usePathname();
   const { signOut } = useAuth();
 
   const handleLogout = async () => {
@@ -129,275 +207,32 @@ export function SettingsSidebar() {
     }
   };
 
-  const getHoverStyle = (isActive: boolean) => ({
-    ":hover": {
-      backgroundColor: isActive ? "rgb(220, 220, 220)" : "rgb(235, 235, 235)",
-    },
-  });
-
   return (
-    <div
-      style={{
-        flexBasis: "320px",
-        scrollbarWidth: "none",
-        userSelect: "none",
-        cursor: "default",
-        transitionProperty:
-          "color, background-color, border-color, text-decoration-color, fill, stroke",
-        transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
-        transitionDuration: "0.15s",
-        paddingLeft: "24px",
-        paddingRight: "24px",
-        backgroundColor: "rgb(242, 242, 242)",
-        overflowY: "scroll",
-        height: "100vh",
-        boxSizing: "border-box",
-        borderWidth: "0px",
-        borderStyle: "solid",
-        borderColor: "rgb(205, 205, 205)",
-      }}
-    >
-      <nav
-        aria-label="Main"
-        data-orientation="vertical"
-        dir="ltr"
-        style={{
-          appRegion: "no-drag",
-          cursor: "pointer",
-          userSelect: "none",
-          paddingTop: "48px",
-          paddingBottom: "48px",
-          flexDirection: "column",
-          width: "12rem",
-          display: "flex",
-          marginLeft: "auto",
-          boxSizing: "border-box",
-          borderWidth: "0px",
-          borderStyle: "solid",
-          borderColor: "rgb(205, 205, 205)",
-        }}
-      >
-        <div
-          style={{
-            position: "relative",
-            appRegion: "no-drag",
-            cursor: "pointer",
-            userSelect: "none",
-            boxSizing: "border-box",
-            borderWidth: "0px",
-            borderStyle: "solid",
-            borderColor: "rgb(205, 205, 205)",
-          }}
-        >
-          <ul
-            data-orientation="vertical"
-            dir="ltr"
-            style={{
-              appRegion: "no-drag",
-              cursor: "pointer",
-              userSelect: "none",
-              flexDirection: "column",
-              display: "flex",
-              marginTop: "-6px",
-              listStyle: "outside none none",
-              margin: "-6px 0px 0px",
-              padding: "0px",
-              boxSizing: "border-box",
-              borderWidth: "0px",
-              borderStyle: "solid",
-              borderColor: "rgb(205, 205, 205)",
-            }}
-          >
+    <div className="w-80 bg-background-settings h-screen overflow-y-auto scrollbar-hide select-none pr-6">
+      <nav className="py-12 flex flex-col w-48 ml-auto">
+        <div className="relative">
+          <ul className="flex flex-col -mt-1.5 list-none p-0">
             {/* Organization Header Button */}
             <button
               type="button"
-              style={{
-                appRegion: "no-drag",
-                cursor: "pointer",
-                fontWeight: "530",
-                textAlign: "left",
-                userSelect: "none",
-                fontVariationSettings: "'wght' 530",
-                transitionProperty:
-                  "color, background-color, border-color, text-decoration-color, fill, stroke",
-                transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
-                transitionDuration: "0.15s",
-                fontSize: "14px",
-                lineHeight: "20px",
-                paddingTop: "6px",
-                paddingBottom: "6px",
-                paddingLeft: "8px",
-                paddingRight: "8px",
-                borderRadius: "8px",
-                textOverflow: "ellipsis",
-                overflow: "hidden",
-                whiteSpace: "nowrap",
-                gap: "8px",
-                alignItems: "center",
-                appearance: "none",
-                display: "flex",
-                marginTop: "2px",
-                marginBottom: "2px",
-                position: "relative",
-                backgroundColor: "rgba(0, 0, 0, 0)",
-                backgroundImage: "none",
-                textTransform: "none",
-                fontFamily:
-                  "'Inter var', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'",
-                fontFeatureSettings: "'ss01', 'calt', 'case'",
-                letterSpacing: "-0.003px",
-                color: "rgb(23, 23, 23)",
-                margin: "2px 0px",
-                padding: "6px 8px",
-                boxSizing: "border-box",
-                borderWidth: "0px",
-                borderStyle: "solid",
-                borderColor: "rgb(205, 205, 205)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "rgb(230, 230, 230)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "rgba(0, 0, 0, 0)";
-              }}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-hover transition-all duration-150 ease-in-out my-0.5"
             >
-              <div
-                style={{
-                  appRegion: "no-drag",
-                  cursor: "pointer",
-                  userSelect: "none",
-                  color: "rgb(23, 23, 23)",
-                  boxSizing: "border-box",
-                  borderWidth: "0px",
-                  borderStyle: "solid",
-                  borderColor: "rgb(205, 205, 205)",
-                }}
-              >
-                <div
-                  style={{
-                    width: "20px",
-                    height: "20px",
-                    appRegion: "no-drag",
-                    cursor: "pointer",
-                    userSelect: "none",
-                    borderRadius: "12px",
-                    overflow: "hidden",
-                    flexShrink: "0",
-                    position: "relative",
-                    pointerEvents: "none",
-                    boxSizing: "border-box",
-                    borderWidth: "0px",
-                    borderStyle: "solid",
-                    borderColor: "rgb(205, 205, 205)",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "20px",
-                      height: "20px",
-                      appRegion: "no-drag",
-                      cursor: "pointer",
-                      userSelect: "none",
-                      flexShrink: "0",
-                      pointerEvents: "none",
-                      boxSizing: "border-box",
-                      borderWidth: "0px",
-                      borderStyle: "solid",
-                      borderColor: "rgb(205, 205, 205)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        appRegion: "no-drag",
-                        cursor: "pointer",
-                        userSelect: "none",
-                        color: "rgb(250, 250, 250)",
-                        backgroundImage:
-                          "linear-gradient(to top, rgb(160, 160, 160), rgb(190, 190, 190))",
-                        backgroundColor: "rgb(190, 190, 190)",
-                        borderRadius: "9999px",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        width: "100%",
-                        height: "20px",
-                        display: "flex",
-                        position: "absolute",
-                        inset: "0px",
-                        boxSizing: "border-box",
-                        borderWidth: "0px",
-                        borderStyle: "solid",
-                        borderColor: "rgb(205, 205, 205)",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: "10px",
-                          appRegion: "no-drag",
-                          cursor: "pointer",
-                          userSelect: "none",
-                          fontVariationSettings: "'wght' 750",
-                          fontWeight: "750",
-                          boxSizing: "border-box",
-                          borderWidth: "0px",
-                          borderStyle: "solid",
-                          borderColor: "rgb(205, 205, 205)",
-                        }}
-                      >
-                        A
-                      </span>
-                    </div>
+              <div className="w-5 h-5 rounded-xl overflow-hidden flex-shrink-0 relative">
+                <div className="w-5 h-5 flex-shrink-0 pointer-events-none">
+                  <div className="absolute inset-0 w-full h-5 bg-gradient-to-t from-gray-400 to-gray-300 rounded-full flex items-center justify-center">
+                    <span className="text-xs font-bold text-gray-50">A</span>
                   </div>
                 </div>
               </div>
-              <span
-                style={{
-                  appRegion: "no-drag",
-                  cursor: "pointer",
-                  userSelect: "none",
-                  textOverflow: "ellipsis",
-                  overflow: "hidden",
-                  whiteSpace: "nowrap",
-                  gap: "4px",
-                  alignItems: "center",
-                  width: "fit-content",
-                  boxSizing: "border-box",
-                  borderWidth: "0px",
-                  borderStyle: "solid",
-                  borderColor: "rgb(205, 205, 205)",
-                }}
-              >
-                Arisay's Organization
-              </span>
-              <span
-                style={{
-                  appRegion: "no-drag",
-                  cursor: "pointer",
-                  userSelect: "none",
-                  color: "rgb(145, 145, 145)",
-                  marginLeft: "auto",
-                  boxSizing: "border-box",
-                  borderWidth: "0px",
-                  borderStyle: "solid",
-                  borderColor: "rgb(205, 205, 205)",
-                }}
-              >
+              <span className="truncate">Arisay's Organization</span>
+              <span className="ml-auto text-gray-400">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="14"
                   height="14"
                   viewBox="0 0 16 16"
                   fill="none"
-                  style={{
-                    appRegion: "no-drag",
-                    cursor: "pointer",
-                    userSelect: "none",
-                    display: "block",
-                    verticalAlign: "middle",
-                    boxSizing: "border-box",
-                    borderWidth: "0px",
-                    borderStyle: "solid",
-                    borderColor: "rgb(205, 205, 205)",
-                  }}
+                  className="block align-middle"
                 >
                   <path
                     stroke="currentColor"
@@ -412,499 +247,42 @@ export function SettingsSidebar() {
 
             {/* Navigation Sections */}
             {settingsSections.map((section, sectionIndex) => (
-              <div key={section.title}>
-                <span
-                  style={{
-                    appRegion: "no-drag",
-                    cursor: "pointer",
-                    userSelect: "none",
-                    fontVariationSettings: "'wght' 600",
-                    color: "rgb(115, 115, 115)",
-                    fontWeight: "600",
-                    fontSize: "12px",
-                    lineHeight: "15.84px",
-                    paddingLeft: "8px",
-                    paddingRight: "8px",
-                    marginTop: "8px",
-                    marginBottom: "6px",
-                    boxSizing: "border-box",
-                    borderWidth: "0px",
-                    borderStyle: "solid",
-                    borderColor: "rgb(205, 205, 205)",
-                  }}
-                >
-                  {section.title}
-                </span>
-
-                {section.items.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = pathname === item.href;
-
-                  return (
-                    <Link key={item.href} href={item.href}>
-                      <button
-                        style={{
-                          appRegion: "no-drag",
-                          cursor: "pointer",
-                          fontWeight: "530",
-                          textAlign: "left",
-                          userSelect: "none",
-                          fontVariationSettings: "'wght' 530",
-                          transitionProperty:
-                            "color, background-color, border-color, text-decoration-color, fill, stroke",
-                          transitionTimingFunction:
-                            "cubic-bezier(0.4, 0, 0.2, 1)",
-                          transitionDuration: "0.15s",
-                          color: isActive
-                            ? "rgb(23, 23, 23)"
-                            : "rgb(115, 115, 115)",
-                          fontSize: "14px",
-                          lineHeight: "20px",
-                          paddingTop: "6px",
-                          paddingBottom: "6px",
-                          paddingLeft: "8px",
-                          paddingRight: "8px",
-                          backgroundColor: isActive
-                            ? "rgb(220, 220, 220)"
-                            : "rgba(0, 0, 0, 0)",
-                          borderRadius: "8px",
-                          alignItems: "center",
-                          display: "flex",
-                          marginTop: "2px",
-                          marginBottom: "2px",
-                          position: "relative",
-                          appearance: "button",
-                          backgroundImage: "none",
-                          textTransform: "none",
-                          fontFamily:
-                            "'Inter var', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'",
-                          fontFeatureSettings: "'ss01', 'calt', 'case'",
-                          letterSpacing: "-0.003px",
-                          margin: "2px 0px",
-                          padding: "6px 8px",
-                          boxSizing: "border-box",
-                          borderWidth: "0px",
-                          borderStyle: "solid",
-                          borderColor: "rgb(205, 205, 205)",
-                          width: "100%",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isActive) {
-                            e.currentTarget.style.backgroundColor =
-                              "rgb(235, 235, 235)";
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isActive) {
-                            e.currentTarget.style.backgroundColor =
-                              "rgba(0, 0, 0, 0)";
-                          }
-                        }}
-                      >
-                        <div
-                          style={{
-                            appRegion: "no-drag",
-                            cursor: "pointer",
-                            userSelect: "none",
-                            transitionProperty:
-                              "color, background-color, border-color, text-decoration-color, fill, stroke",
-                            transitionTimingFunction:
-                              "cubic-bezier(0.4, 0, 0.2, 1)",
-                            transitionDuration: "0.15s",
-                            color: isActive
-                              ? "rgb(92, 92, 92)"
-                              : "rgb(145, 145, 145)",
-                            width: "1.25rem",
-                            height: "20px",
-                            marginRight: "8px",
-                            boxSizing: "border-box",
-                            borderWidth: "0px",
-                            borderStyle: "solid",
-                            borderColor: "rgb(205, 205, 205)",
-                          }}
-                        >
-                          <Icon
-                            style={{
-                              appRegion: "no-drag",
-                              cursor: "pointer",
-                              userSelect: "none",
-                              width: "1.25rem",
-                              height: "20px",
-                              display: "block",
-                              verticalAlign: "middle",
-                              boxSizing: "border-box",
-                              borderWidth: "0px",
-                              borderStyle: "solid",
-                              borderColor: "rgb(205, 205, 205)",
-                            }}
-                          />
-                        </div>
-                        <span
-                          style={{
-                            appRegion: "no-drag",
-                            cursor: "pointer",
-                            userSelect: "none",
-                            flex: "1 1 0%",
-                            boxSizing: "border-box",
-                            borderWidth: "0px",
-                            borderStyle: "solid",
-                            borderColor: "rgb(205, 205, 205)",
-                          }}
-                        >
-                          {item.title}
-                        </span>
-                      </button>
-                    </Link>
-                  );
-                })}
-
-                {sectionIndex < settingsSections.length - 1 && (
-                  <div
-                    style={{
-                      appRegion: "no-drag",
-                      cursor: "pointer",
-                      userSelect: "none",
-                      paddingLeft: "8px",
-                      paddingRight: "8px",
-                      width: "100%",
-                      marginTop: "10px",
-                      marginBottom: "10px",
-                      boxSizing: "border-box",
-                      borderWidth: "0px",
-                      borderStyle: "solid",
-                      borderColor: "rgb(205, 205, 205)",
-                    }}
-                  >
-                    <hr
-                      style={{
-                        appRegion: "no-drag",
-                        cursor: "pointer",
-                        userSelect: "none",
-                        transitionProperty:
-                          "color, background-color, border-color, text-decoration-color, fill, stroke",
-                        transitionTimingFunction:
-                          "cubic-bezier(0.4, 0, 0.2, 1)",
-                        transitionDuration: "0.15s",
-                        backgroundColor: "rgba(0, 0, 0, 0.06)",
-                        borderWidth: "0px",
-                        width: "100%",
-                        height: "1px",
-                        margin: "0px",
-                        color: "rgb(23, 23, 23)",
-                        borderTopWidth: "0px",
-                        boxSizing: "border-box",
-                        borderStyle: "solid",
-                        borderColor: "rgb(205, 205, 205)",
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
+              <SettingSection
+                key={section.title}
+                title={section.title}
+                items={section.items}
+                isLast={sectionIndex === settingsSections.length - 1}
+              />
             ))}
 
-            {/* Divider */}
-            <div
-              style={{
-                appRegion: "no-drag",
-                cursor: "pointer",
-                userSelect: "none",
-                paddingLeft: "8px",
-                paddingRight: "8px",
-                width: "100%",
-                marginTop: "10px",
-                marginBottom: "10px",
-                boxSizing: "border-box",
-                borderWidth: "0px",
-                borderStyle: "solid",
-                borderColor: "rgb(205, 205, 205)",
-              }}
-            >
-              <hr
-                style={{
-                  appRegion: "no-drag",
-                  cursor: "pointer",
-                  userSelect: "none",
-                  transitionProperty:
-                    "color, background-color, border-color, text-decoration-color, fill, stroke",
-                  transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
-                  transitionDuration: "0.15s",
-                  backgroundColor: "rgba(0, 0, 0, 0.06)",
-                  borderWidth: "0px",
-                  width: "100%",
-                  height: "1px",
-                  margin: "0px",
-                  color: "rgb(23, 23, 23)",
-                  borderTopWidth: "0px",
-                  boxSizing: "border-box",
-                  borderStyle: "solid",
-                  borderColor: "rgb(205, 205, 205)",
-                }}
-              />
+            {/* Footer Divider */}
+            <div className="px-2 my-2.5">
+              <hr className="border-gray-200" />
             </div>
 
             {/* Footer Items */}
-            {footerItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
-
-              return (
-                <Link key={item.href} href={item.href}>
-                  <button
-                    style={{
-                      appRegion: "no-drag",
-                      cursor: "pointer",
-                      fontWeight: "530",
-                      textAlign: "left",
-                      userSelect: "none",
-                      fontVariationSettings: "'wght' 530",
-                      transitionProperty:
-                        "color, background-color, border-color, text-decoration-color, fill, stroke",
-                      transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
-                      transitionDuration: "0.15s",
-                      color: isActive
-                        ? "rgb(23, 23, 23)"
-                        : "rgb(115, 115, 115)",
-                      fontSize: "14px",
-                      lineHeight: "20px",
-                      paddingTop: "6px",
-                      paddingBottom: "6px",
-                      paddingLeft: "8px",
-                      paddingRight: "8px",
-                      backgroundColor: isActive
-                        ? "rgb(220, 220, 220)"
-                        : "rgba(0, 0, 0, 0)",
-                      borderRadius: "8px",
-                      alignItems: "center",
-                      display: "flex",
-                      marginTop: "2px",
-                      marginBottom: "2px",
-                      position: "relative",
-                      appearance: "button",
-                      backgroundImage: "none",
-                      textTransform: "none",
-                      fontFamily:
-                        "'Inter var', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'",
-                      fontFeatureSettings: "'ss01', 'calt', 'case'",
-                      letterSpacing: "-0.003px",
-                      margin: "2px 0px",
-                      padding: "6px 8px",
-                      boxSizing: "border-box",
-                      borderWidth: "0px",
-                      borderStyle: "solid",
-                      borderColor: "rgb(205, 205, 205)",
-                      width: "100%",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.backgroundColor =
-                          "rgb(235, 235, 235)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.backgroundColor =
-                          "rgba(0, 0, 0, 0)";
-                      }
-                    }}
-                  >
-                    <div
-                      style={{
-                        appRegion: "no-drag",
-                        cursor: "pointer",
-                        userSelect: "none",
-                        transitionProperty:
-                          "color, background-color, border-color, text-decoration-color, fill, stroke",
-                        transitionTimingFunction:
-                          "cubic-bezier(0.4, 0, 0.2, 1)",
-                        transitionDuration: "0.15s",
-                        color: isActive
-                          ? "rgb(92, 92, 92)"
-                          : "rgb(145, 145, 145)",
-                        width: "1.25rem",
-                        height: "20px",
-                        marginRight: "8px",
-                        boxSizing: "border-box",
-                        borderWidth: "0px",
-                        borderStyle: "solid",
-                        borderColor: "rgb(205, 205, 205)",
-                      }}
-                    >
-                      <Icon
-                        style={{
-                          appRegion: "no-drag",
-                          cursor: "pointer",
-                          userSelect: "none",
-                          width: "1.25rem",
-                          height: "20px",
-                          display: "block",
-                          verticalAlign: "middle",
-                          boxSizing: "border-box",
-                          borderWidth: "0px",
-                          borderStyle: "solid",
-                          borderColor: "rgb(205, 205, 205)",
-                        }}
-                      />
-                    </div>
-                    <span
-                      style={{
-                        appRegion: "no-drag",
-                        cursor: "pointer",
-                        userSelect: "none",
-                        flex: "1 1 0%",
-                        boxSizing: "border-box",
-                        borderWidth: "0px",
-                        borderStyle: "solid",
-                        borderColor: "rgb(205, 205, 205)",
-                      }}
-                    >
-                      {item.title}
-                    </span>
-                  </button>
-                </Link>
-              );
-            })}
+            {footerItems.map((item) => (
+              <SettingItem
+                key={item.href}
+                title={item.title}
+                href={item.href}
+                icon={item.icon}
+              />
+            ))}
 
             {/* Final Divider */}
-            <div
-              style={{
-                appRegion: "no-drag",
-                cursor: "pointer",
-                userSelect: "none",
-                paddingLeft: "8px",
-                paddingRight: "8px",
-                width: "100%",
-                marginTop: "10px",
-                marginBottom: "10px",
-                boxSizing: "border-box",
-                borderWidth: "0px",
-                borderStyle: "solid",
-                borderColor: "rgb(205, 205, 205)",
-              }}
-            >
-              <hr
-                style={{
-                  appRegion: "no-drag",
-                  cursor: "pointer",
-                  userSelect: "none",
-                  transitionProperty:
-                    "color, background-color, border-color, text-decoration-color, fill, stroke",
-                  transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
-                  transitionDuration: "0.15s",
-                  backgroundColor: "rgba(0, 0, 0, 0.06)",
-                  borderWidth: "0px",
-                  width: "100%",
-                  height: "1px",
-                  margin: "0px",
-                  color: "rgb(23, 23, 23)",
-                  borderTopWidth: "0px",
-                  boxSizing: "border-box",
-                  borderStyle: "solid",
-                  borderColor: "rgb(205, 205, 205)",
-                }}
-              />
+            <div className="px-2 my-2.5">
+              <hr className="border-gray-200" />
             </div>
 
             {/* Logout Button */}
-            <button
+            <SettingItem
+              title="Log out"
+              href="#"
+              icon={LogOut}
               onClick={handleLogout}
-              style={{
-                appRegion: "no-drag",
-                cursor: "pointer",
-                fontWeight: "530",
-                textAlign: "left",
-                userSelect: "none",
-                fontVariationSettings: "'wght' 530",
-                transitionProperty:
-                  "color, background-color, border-color, text-decoration-color, fill, stroke",
-                transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
-                transitionDuration: "0.15s",
-                color: "rgb(253, 43, 56)",
-                fontSize: "14px",
-                lineHeight: "20px",
-                paddingTop: "6px",
-                paddingBottom: "6px",
-                paddingLeft: "8px",
-                paddingRight: "8px",
-                borderRadius: "8px",
-                alignItems: "center",
-                display: "flex",
-                marginTop: "2px",
-                marginBottom: "2px",
-                position: "relative",
-                appearance: "button",
-                backgroundColor: "rgba(0, 0, 0, 0)",
-                backgroundImage: "none",
-                textTransform: "none",
-                fontFamily:
-                  "'Inter var', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'",
-                fontFeatureSettings: "'ss01', 'calt', 'case'",
-                letterSpacing: "-0.003px",
-                margin: "2px 0px",
-                padding: "6px 8px",
-                boxSizing: "border-box",
-                borderWidth: "0px",
-                borderStyle: "solid",
-                borderColor: "rgb(205, 205, 205)",
-                width: "100%",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "rgb(254, 242, 242)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "rgba(0, 0, 0, 0)";
-              }}
-            >
-              <div
-                style={{
-                  appRegion: "no-drag",
-                  cursor: "pointer",
-                  userSelect: "none",
-                  transitionProperty:
-                    "color, background-color, border-color, text-decoration-color, fill, stroke",
-                  transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
-                  transitionDuration: "0.15s",
-                  color: "rgb(253, 85, 97)",
-                  width: "1.25rem",
-                  height: "20px",
-                  marginRight: "8px",
-                  boxSizing: "border-box",
-                  borderWidth: "0px",
-                  borderStyle: "solid",
-                  borderColor: "rgb(205, 205, 205)",
-                }}
-              >
-                <LogOut
-                  style={{
-                    appRegion: "no-drag",
-                    cursor: "pointer",
-                    userSelect: "none",
-                    transform: "matrix(-1, 0, 0, -1, 0, 0)",
-                    width: "1.25rem",
-                    height: "20px",
-                    display: "block",
-                    verticalAlign: "middle",
-                    boxSizing: "border-box",
-                    borderWidth: "0px",
-                    borderStyle: "solid",
-                    borderColor: "rgb(205, 205, 205)",
-                  }}
-                />
-              </div>
-              <span
-                style={{
-                  appRegion: "no-drag",
-                  cursor: "pointer",
-                  userSelect: "none",
-                  flex: "1 1 0%",
-                  boxSizing: "border-box",
-                  borderWidth: "0px",
-                  borderStyle: "solid",
-                  borderColor: "rgb(205, 205, 205)",
-                }}
-              >
-                Log out
-              </span>
-            </button>
+              isLogout={true}
+            />
           </ul>
         </div>
       </nav>

@@ -19,6 +19,12 @@ export const MessagesStatusValidor = v.union(
 
 export default defineSchema({
   users: defineTable({
+    email: v.string(),
+    workos_id: v.string(),
+  }),
+  organizations: defineTable({
+    workos_id: v.string(),
+    name: v.string(),
   }),
   threads: defineTable({
     threadId: v.string(), // User client Defined

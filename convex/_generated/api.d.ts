@@ -9,7 +9,12 @@
  */
 
 import type * as helpers_getUser from "../helpers/getUser.js";
+import type * as http from "../http.js";
+import type * as organizations from "../organizations.js";
+import type * as stripe from "../stripe.js";
 import type * as threads from "../threads.js";
+import type * as users from "../users.js";
+import type * as workos from "../workos.js";
 
 import type {
   ApiFromModules,
@@ -27,7 +32,12 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   "helpers/getUser": typeof helpers_getUser;
+  http: typeof http;
+  organizations: typeof organizations;
+  stripe: typeof stripe;
   threads: typeof threads;
+  users: typeof users;
+  workos: typeof workos;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
 
