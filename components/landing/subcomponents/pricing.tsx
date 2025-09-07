@@ -18,162 +18,157 @@ import {
   PremiumIcon,
   TeamsIcon
 } from "@/components/ui/icons/landing-icons";
+import { withAuth } from "@workos-inc/authkit-nextjs";
+import { ModalDialog } from "./modal-dialog";
 
-export default function Pricing() {
+// Plans data structure
+const plans = [
+  {
+    name: 'Plus',
+    teamMembers: '1',
+    price: 190,
+    currency: '$',
+    cadence: 'monthly',
+    features: [
+      'Acesso a todos los modelos de IA',
+      '500 Mensajes standar al mes',
+      '100 Mensajes Premium al mes',
+      'Guias de uso de IA',
+      'Centro de conocimiento IA',
+      'Soporte tecnico',
+      'Mensajes super veloces'
+    ],
+    highlight: false,
+    description: 'Perfecto para la mayor parte de los usuarios'
+  },
+  {
+    name: 'Pro',
+    teamMembers: '1',
+    price: 540,
+    currency: '$',
+    cadence: 'monthly',
+    features: [
+      '700 Mensajes Standar totales al mes',
+      '300 Mensajes Premium totales al mes',
+      'Acesso anticipado a nuevas funciones',
+      'Soporte prioritario'
+    ],
+    highlight: true,
+    description: 'Para aquellos que necesitan mas mensajes'
+  },
+  {
+    name: 'Organizacion',
+    teamMembers: 'Unlimited',
+    price: 'Custom',
+    currency: '',
+    cadence: 'monthly',
+    features: [
+      'Onboarding personalizado',
+      'Creacion de equipos y gestion de usuarios',
+      'SCIM y Directory Sync',
+      'SSO/SAML/OIDC',
+      'Audit logs',
+      'Soporte Exclusivo'
+    ],
+    highlight: false,
+    description: 'Planes dedicados para organizaciones con funcionalidades avanzadas'
+  },
+];
+
+export default async function Pricing() {
+  const { user } = await withAuth();
   return (
     <div className="mx-auto">
       
       {/* Pricing Cards */}
       <div className="relative">
         <div className="grid grid-cols-1 lg:grid-cols-3">
-          {/* Plus Plan */}
-          <div className="border-r border-gray-200 py-10 px-8">
-            <div className="min-h-[304px]">
-              <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Plus</h3>
-              <p className="text-sm text-gray-600 mt-2">Perfecto para la mayor parte de los usuarios</p>
+          {plans.map((plan) => (
+            <div 
+              key={plan.name} 
+              className={`py-10 px-8 ${
+                plan.name !== 'Organizacion' ? 'border-r border-gray-200' : ''
+              } ${
+                plan.highlight 
+                  ? 'relative bg-gradient-to-br from-white to-gray-50 shadow-lg shadow-gray-200/50 ring-1 ring-gray-200/50' 
+                  : ''
+              }`}
+            >
+              {/* Best Value Badge for highlighted plan */}
+              {plan.highlight && (
+                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
+                  <span className="bg-accent/75 backdrop-blur-sm text-white text-xs font-semibold px-2 sm:px-3 py-1 rounded-full shadow-lg shadow-accent/25 border border-accent/30 whitespace-nowrap">
+                    Mejor Opción
+                  </span>
+                </div>
+              )}
+              
+              <div className="min-h-[304px]">
+                <h3 className="text-2xl font-bold text-gray-900 tracking-tight">{plan.name}</h3>
+                <p className="text-sm text-gray-600 mt-2">{plan.description}</p>
+                
                 <div className="mt-6">
                   <div className="flex items-baseline">
-                    <span className="text-5xl font-bold text-gray-900 tracking-tight">$190</span>
-                    <span className="ml-2 text-lg font-medium text-gray-600">MXN</span>
+                    <span className="text-5xl font-bold text-gray-900 tracking-tight">
+                      {plan.currency}{plan.price}
+                    </span>
+                    {plan.currency && (
+                      <span className="ml-2 text-lg font-medium text-gray-600">MXN</span>
+                    )}
                   </div>
-                <div className="mt-1">
-                  <p className="text-xs text-gray-500">por usuario/mes</p>
+                  <div className="mt-1">
+                    <p className="text-xs text-gray-500">
+                      {plan.price === 'Custom' 
+                        ? 'Contactanos para un presupuesto' 
+                        : `por usuario/mes`
+                      }
+                    </p>
+                  </div>
                 </div>
+                
+                {user && plan.price !== 'Custom' ? (
+                  <ModalDialog subscriptionLevel={plan.name} userId={user.id} />
+                ) : (
+                  <button className="w-full mt-6 px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent/90 transition-colors duration-200">
+                    {plan.price === 'Custom' ? 'Contactar' : 'Suscribir'}
+                  </button>
+                )}
               </div>
-              <button className="w-full mt-6 px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent/90 transition-colors duration-200">
-                Suscribir
-              </button>
-            </div>
-            <hr className="border-gray-200 my-0" />
-            <div>
-              <p className="text-sm font-semibold text-gray-700 mt-4">Una cuenta con:</p>
-              <ul className="text-sm mt-4 space-y-2">
-                <li className="flex items-center gap-2">
-                  <AIModelsIcon className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-600">Acesso a todos los modelos de IA</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <StandarIcon className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-600">500 Mensajes standar al mes</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <PremiumIcon className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-600">100 Mensajes Premium al mes</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <GuiasAIIcon className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-600">Guias de uso de IA</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CentroConocimientoIcon className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-600">Centro de conocimiento IA</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <SoporteIcon className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-600">Soporte tecnico</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <FastMessagesIcon className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-600">Mensajes super veloces</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Pro Plan */}
-          <div className="relative border-r border-gray-200 py-10 px-8 bg-gradient-to-br from-white to-gray-50 shadow-lg shadow-gray-200/50 ring-1 ring-gray-200/50">
-            {/* Best Value Badge */}
-            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
-              <span className="bg-accent/75 backdrop-blur-sm text-white text-xs font-semibold px-2 sm:px-3 py-1 rounded-full shadow-lg shadow-accent/25 border border-accent/30 whitespace-nowrap">
-                Mejor Opción
-              </span>
-            </div>
-            <div className="min-h-[304px]">
-              <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Pro</h3>
-              <p className="text-sm text-gray-600 mt-2">Para aquellos que necesitan mas mensajes</p>
-              <div className="mt-6">
-                <div className="flex items-baseline">
-                  <span className="text-5xl font-bold text-gray-900 tracking-tight">$540</span>
-                  <span className="ml-2 text-lg font-medium text-gray-600">MXN</span>
-                </div>
-                <div className="mt-1">
-                  <p className="text-xs text-gray-500">por usuario/mes</p>
-                </div>
+              
+              <hr className="border-gray-200 my-0" />
+              <div>
+                <p className="text-sm font-semibold text-gray-700 mt-4">
+                  {plan.name === 'Plus' ? 'Una cuenta con:' : 
+                   plan.name === 'Pro' ? 'Todo lo que incluye el plan Plus, mas:' :
+                   'Limites de mensajes personalizados para cada organizacion'}
+                </p>
+                <ul className="text-sm mt-4 space-y-2">
+                  {plan.features.map((feature, index) => (
+                    <li key={index} className="flex items-center gap-2">
+                      {plan.name === 'Plus' && index === 0 && <AIModelsIcon className="w-5 h-5 text-gray-500" />}
+                      {plan.name === 'Plus' && index === 1 && <StandarIcon className="w-5 h-5 text-gray-500" />}
+                      {plan.name === 'Plus' && index === 2 && <PremiumIcon className="w-5 h-5 text-gray-500" />}
+                      {plan.name === 'Plus' && index === 3 && <GuiasAIIcon className="w-5 h-5 text-gray-500" />}
+                      {plan.name === 'Plus' && index === 4 && <CentroConocimientoIcon className="w-5 h-5 text-gray-500" />}
+                      {plan.name === 'Plus' && index === 5 && <SoporteIcon className="w-5 h-5 text-gray-500" />}
+                      {plan.name === 'Plus' && index === 6 && <FastMessagesIcon className="w-5 h-5 text-gray-500" />}
+                      {plan.name === 'Pro' && index === 0 && <StandarIcon className="w-5 h-5 text-gray-500" />}
+                      {plan.name === 'Pro' && index === 1 && <PremiumIcon className="w-5 h-5 text-gray-500" />}
+                      {plan.name === 'Pro' && index === 2 && <EarlyAccessIcon className="w-5 h-5 text-gray-500" />}
+                      {plan.name === 'Pro' && index === 3 && <SoporteIcon className="w-5 h-5 text-gray-500" />}
+                      {plan.name === 'Organizacion' && index === 0 && <OnboardingIcon className="w-5 h-5 text-gray-500" />}
+                      {plan.name === 'Organizacion' && index === 1 && <TeamsIcon className="w-5 h-5 text-gray-500" />}
+                      {plan.name === 'Organizacion' && index === 2 && <DirectorySyncIcon className="w-5 h-5 text-gray-500" />}
+                      {plan.name === 'Organizacion' && index === 3 && <SSOIcon className="w-5 h-5 text-gray-500" />}
+                      {plan.name === 'Organizacion' && index === 4 && <LogsIcon className="w-5 h-5 text-gray-500" />}
+                      {plan.name === 'Organizacion' && index === 5 && <SoporteIcon className="w-5 h-5 text-gray-500" />}
+                      <span className="text-gray-600">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <button className="w-full mt-6 px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent/90 transition-colors duration-200">
-                Suscribir
-              </button>
             </div>
-            <hr className="border-gray-200 my-0" />
-            <div>
-              <p className="text-sm font-semibold text-gray-700 mt-4">Todo lo que incluye el plan Plus, mas:</p>
-              <ul className="text-sm mt-4 space-y-2">
-                <li className="flex items-center gap-2">
-                  <StandarIcon className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-600">700 Mensajes Standar totales al mes</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <PremiumIcon className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-600">300 Mensajes Premium totales al mes</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <EarlyAccessIcon className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-600">Acesso anticipado a nuevas funciones</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <SoporteIcon className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-600">Soporte prioritario</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Enterprise Plan */}
-          <div className="py-10 px-8">
-            <div className="min-h-[304px]">
-              <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Organizacion</h3>
-              <p className="text-sm text-gray-600 mt-2">Planes dedicados para organizaciones con funcionalidades avanzadas</p>
-              <div className="mt-6">
-                <span className="text-5xl font-bold text-gray-900 tracking-tight">Custom</span>
-                <div className="mt-1">
-                  <p className="text-xs text-gray-500">Contactanos para un presupuesto</p>
-                </div>
-              </div>
-              <button className="w-full mt-6 px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent/90 transition-colors duration-200">
-                Contactar
-              </button>
-            </div>
-            <hr className="border-gray-200 my-0" />
-            <div>
-              <p className="text-sm font-semibold text-gray-700 mt-4">Limites de mensajes personalizados para cada organizacion</p>
-              <ul className="text-sm mt-4 space-y-2">
-                <li className="flex items-center gap-2">
-                  <OnboardingIcon className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-600">Onboarding personalizado</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <TeamsIcon className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-600">Creacion de equipos y gestion de usuarios</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <DirectorySyncIcon className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-600">SCIM y Directory Sync</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <SSOIcon className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-600">SSO/SAML/OIDC</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <LogsIcon className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-600">Audit logs</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <SoporteIcon className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-600">Soporte Exclusivo</span>
-                </li>
-              </ul>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
