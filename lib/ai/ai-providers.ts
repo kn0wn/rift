@@ -1,12 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { google } from "@ai-sdk/google";
-import { openai } from "@ai-sdk/openai";
-import { anthropic } from "@ai-sdk/anthropic";
-import { xai } from "@ai-sdk/xai";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { gateway } from "@ai-sdk/gateway";
 import { createProviderRegistry } from "ai";
 import { ToolType } from "./model-tools";
+
+// Vercel AI Gateway configuration
+const AI_GATEWAY_API_KEY = process.env.AI_GATEWAY_API_KEY;
 
 // Model capabilities interface
 export interface ModelCapabilities {
@@ -40,7 +39,7 @@ export type ModelConfig = {
 export const MODELS: ModelConfig[] = [
   // OpenAI Models
   {
-    id: "openai:gpt-5",
+    id: "openai/gpt-5",
     name: "GPT-5",
     provider: "openai",
     description:
@@ -61,7 +60,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "openai:o3",
+    id: "openai/o3",
     name: "o3",
     provider: "openai",
     description:
@@ -82,7 +81,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "openai:gpt-4o",
+    id: "openai/gpt-4o",
     name: "GPT-4o",
     provider: "openai",
     description:
@@ -104,7 +103,7 @@ export const MODELS: ModelConfig[] = [
   },
 
   {
-    id: "openai:gpt-4o-nano",
+    id: "openai/gpt-4o-nano",
     name: "GPT-4o Nano",
     provider: "openai",
     description:
@@ -125,7 +124,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "openai:gpt-4.1",
+    id: "openai/gpt-4.1",
     name: "GPT-4.1",
     provider: "openai",
     description:
@@ -146,7 +145,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "openai:gpt-4.1-mini",
+    id: "openai/gpt-4.1-mini",
     name: "GPT-4.1 Mini",
     provider: "openai",
     description:
@@ -167,7 +166,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "openai:gpt-4.1-nano",
+    id: "openai/gpt-4.1-nano",
     name: "GPT-4.1 Nano",
     provider: "openai",
     description: "Versión más pequeña de GPT-4.1 para aplicaciones ligeras.",
@@ -187,7 +186,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "openai:gpt-4",
+    id: "openai/gpt-4",
     name: "GPT-4",
     provider: "openai",
     description:
@@ -208,7 +207,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "openai:gpt-3.5-turbo",
+    id: "openai/gpt-3.5-turbo",
     name: "GPT-3.5 Turbo",
     provider: "openai",
     description: "Modelo rápido y eficiente para la mayoría de tareas conversacionales.",
@@ -229,7 +228,7 @@ export const MODELS: ModelConfig[] = [
   },
   // Anthropic Models
   {
-    id: "anthropic:claude-opus-4-20250514",
+    id: "anthropic/claude-opus-4-20250514",
     name: "Claude 4 Opus",
     provider: "anthropic",
     description:
@@ -250,7 +249,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "anthropic:claude-sonnet-4-20250514",
+    id: "anthropic/claude-sonnet-4-20250514",
     name: "Claude 4 Sonnet",
     provider: "anthropic",
     description:
@@ -271,7 +270,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "anthropic:claude-3-7-sonnet-20250219",
+    id: "anthropic/claude-3-7-sonnet-20250219",
     name: "Claude 3.7 Sonnet",
     provider: "anthropic",
     description:
@@ -294,7 +293,7 @@ export const MODELS: ModelConfig[] = [
 
   // Google Models
   {
-    id: "google:gemini-2.5-flash",
+    id: "google/gemini-2.5-flash",
     name: "Gemini 2.5 Flash",
     provider: "google",
     description:
@@ -315,7 +314,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: ["url_context"],
   },
   {
-    id: "google:gemini-2.5-pro",
+    id: "google/gemini-2.5-pro",
     name: "Gemini 2.5 Pro",
     provider: "google",
     description:
@@ -336,7 +335,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: ["url_context"],
   },
   {
-    id: "google:gemini-2.0-flash",
+    id: "google/gemini-2.0-flash",
     name: "Gemini 2.0 Flash",
     provider: "google",
     description: "Fast, cost-effective, multi-modal model.",
@@ -356,7 +355,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: ["url_context"],
   },
   {
-    id: "google:gemini-2.0-flash-lite",
+    id: "google/gemini-2.0-flash-lite",
     name: "Gemini 2.0 Flash Lite",
     provider: "google",
     description: "Popular fast model with tool calling and multi-modal input.",
@@ -378,7 +377,7 @@ export const MODELS: ModelConfig[] = [
 
   // xAI Models
   {
-    id: "xai:grok-4",
+    id: "xai/grok-4",
     name: "Grok 4",
     provider: "xai",
     description:
@@ -399,7 +398,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "xai:grok-code-fast-1",
+    id: "xai/grok-code-fast-1",
     name: "Grok Code Fast 1",
     provider: "xai",
     description:
@@ -420,7 +419,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "xai:grok-3",
+    id: "xai/grok-3",
     name: "Grok 3",
     provider: "xai",
     description:
@@ -441,7 +440,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "xai:grok-3-mini",
+    id: "xai/grok-3-mini",
     name: "Grok 3 Mini",
     provider: "xai",
     description:
@@ -464,7 +463,7 @@ export const MODELS: ModelConfig[] = [
 
   // OpenRouter Models
   {
-    id: "openrouter:mistralai/magistral-small-latest",
+    id: "mistralai/magistral-small-latest",
     name: "Magistral Small",
     provider: "openrouter",
     description:
@@ -485,7 +484,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "openrouter:mistralai/mistral-medium-latest",
+    id: "mistralai/mistral-medium-latest",
     name: "Mistral Medium",
     provider: "openrouter",
     description:
@@ -506,7 +505,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "openrouter:openai/gpt-oss-120b",
+    id: "openai/gpt-oss-120b",
     name: "GPT-OSS-120B",
     provider: "openrouter",
     description:
@@ -527,7 +526,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "openrouter:deepseek/deepseek-chat-v3.1",
+    id: "deepseek/deepseek-chat-v3.1",
     name: "DeepSeek Chat v3.1",
     provider: "openrouter",
     description:
@@ -548,7 +547,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "openrouter:deepseek/deepseek-r1-0528:free",
+    id: "deepseek/deepseek-r1-0528:free",
     name: "DeepSeek R1 (Free)",
     provider: "openrouter",
     description:
@@ -569,7 +568,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "openrouter:tngtech/deepseek-r1t2-chimera:free",
+    id: "tngtech/deepseek-r1t2-chimera:free",
     name: "DeepSeek R1T2 Chimera (Free)",
     provider: "openrouter",
     description:
@@ -590,7 +589,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "openrouter:z-ai/glm-4.5",
+    id: "z-ai/glm-4.5",
     name: "GLM-4.5",
     provider: "openrouter",
     description:
@@ -611,7 +610,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "openrouter:z-ai/glm-4.5v",
+    id: "z-ai/glm-4.5v",
     name: "GLM-4.5v",
     provider: "openrouter",
     description:
@@ -632,7 +631,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "openrouter:qwen/qwen3-30b-a3b",
+    id: "qwen/qwen3-30b-a3b",
     name: "Qwen3 30B",
     provider: "openrouter",
     description:
@@ -653,7 +652,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "openrouter:openrouter/horizon-beta",
+    id: "openrouter/horizon-beta",
     name: "Horizon Beta",
     provider: "openrouter",
     description:
@@ -674,7 +673,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "openrouter:moonshotai/kimi-k2",
+    id: "moonshotai/kimi-k2",
     name: "Kimi K2",
     provider: "openrouter",
     description:
@@ -695,7 +694,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "openrouter:qwen/qwen3-235b-a22b-thinking-2507",
+    id: "qwen/qwen3-235b-a22b-thinking-2507",
     name: "Qwen3 235B Thinking",
     provider: "openrouter",
     description:
@@ -716,7 +715,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "openrouter:meta-llama/llama-4-maverick",
+    id: "meta-llama/llama-4-maverick",
     name: "Llama 4 Maverick",
     provider: "openrouter",
     description:
@@ -737,7 +736,7 @@ export const MODELS: ModelConfig[] = [
     defaultTools: [],
   },
   {
-    id: "openrouter:qwen/qwen3-coder",
+    id: "qwen/qwen3-coder",
     name: "Qwen3 Coder",
     provider: "openrouter",
     description:
@@ -778,10 +777,10 @@ export function getAllProviders(): string[] {
 
 // Recommended options mapping
 export const RECOMMENDED_OPTIONS_MAP = {
-  "rec:automatico": "openrouter:openai/gpt-oss-120b", // GPT-OSS-120B
-  "rec:problemas-dificiles": "openai:gpt-5", // GPT-5
-  "rec:escritura": "anthropic:claude-sonnet-4-20250514", // Claude 4 Sonnet
-  "rec:sorpresa": "openrouter:mistralai/magistral-small-latest", // Magistral Small
+  "rec:automatico": "openai/gpt-oss-120b", // GPT-OSS-120B
+  "rec:problemas-dificiles": "openai/gpt-5", // GPT-5
+  "rec:escritura": "anthropic/claude-sonnet-4-20250514", // Claude 4 Sonnet
+  "rec:sorpresa": "mistralai/magistral-small-latest", // Magistral Small
 } as const;
 
 // Helper function to resolve recommended options to actual model IDs
@@ -793,7 +792,7 @@ export function resolveRecommendedModel(selectedModel: string): string {
 
   // Handle surprise option - now uses fixed model instead of random
   if (selectedModel === "rec:sorpresa") {
-    return "openrouter:mistralai/magistral-small-latest";
+    return "mistralai/magistral-small-latest";
   }
 
   // Map other recommended options to specific models
@@ -810,7 +809,7 @@ export function isRecommendedOption(modelId: string): boolean {
 }
 
 // Default model configuration
-export const DEFAULT_MODEL = "openai:gpt-4o";
+export const DEFAULT_MODEL = "openai/gpt-4o";
 
 // Enhanced model utilities
 export function getModelCapabilities(
@@ -870,50 +869,18 @@ export function modelSupportsReasoning(modelId: string): boolean {
   return Boolean(capabilities?.supportsReasoning);
 }
 
-// Resolve language model
+// Resolve language model using Vercel AI Gateway
 export function getLanguageModel(modelId: string) {
-  // Resolve recommended options to actual model IDs
   const resolvedModelId = resolveRecommendedModel(modelId);
-  if (resolvedModelId.startsWith("google:")) {
-    const modelName = resolvedModelId.replace("google:", "");
-    return google(modelName as any);
+  
+  // Check if AI Gateway is configured
+  if (!AI_GATEWAY_API_KEY) {
+    throw new Error("AI_GATEWAY_API_KEY environment variable is required");
   }
 
-  if (resolvedModelId.startsWith("openai:")) {
-    const modelName = resolvedModelId.replace("openai:", "");
-    // Use responses API for reasoning models
-    if (isReasoningModel(modelName)) {
-      return openai.responses(modelName as any);
-    }
-    return openai(modelName as any);
-  }
-
-  if (resolvedModelId.startsWith("anthropic:")) {
-    const modelName = resolvedModelId.replace("anthropic:", "");
-    return anthropic(modelName as any);
-  }
-
-  if (resolvedModelId.startsWith("xai:")) {
-    const modelName = resolvedModelId.replace("xai:", "");
-    return xai(modelName as any);
-  }
-
-  if (resolvedModelId.startsWith("openrouter:")) {
-    const modelName = resolvedModelId.replace("openrouter:", "");
-    const openrouter = createOpenRouter({
-      apiKey: process.env.OPENROUTER_API_KEY!,
-    });
-    return openrouter.chat(modelName as any);
-  }
-
-  // Fallback: use default model
-  if (DEFAULT_MODEL.startsWith("openai:")) {
-    const fallbackModelName = DEFAULT_MODEL.replace("openai:", "");
-    if (isReasoningModel(fallbackModelName)) {
-      return openai.responses(fallbackModelName as any);
-    }
-    return openai(fallbackModelName as any);
-  }
-
-  return google(DEFAULT_MODEL.replace("google:", "") as any);
+  // Use AI Gateway for all models
+  // The gateway provider handles all the different model providers internally
+  // OpenRouter models are now referenced directly (e.g., mistralai/magistral-small-latest)
+  // instead of with openrouter/ prefix
+  return gateway(resolvedModelId as any);
 }

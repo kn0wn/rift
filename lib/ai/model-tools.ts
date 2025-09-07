@@ -90,28 +90,28 @@ export const TOOL_CONFIGS: Record<ToolType, ToolConfig> = {
 // Model-specific tool configurations
 export const MODEL_TOOLS: Record<string, ModelToolConfig> = {
   // OpenAI Models
-  "openai:gpt-4o": {
-    modelId: "openai:gpt-4o",
+  "openai/gpt-4o": {
+    modelId: "openai/gpt-4o",
     supportedTools: [],
     defaultTools: [],
     toolImplementations: {},
   },
 
-  "openai:gpt-4": {
-    modelId: "openai:gpt-4",
+  "openai/gpt-4": {
+    modelId: "openai/gpt-4",
     supportedTools: [],
     defaultTools: [],
     toolImplementations: {},
   },
-  "openai:gpt-3.5-turbo": {
-    modelId: "openai:gpt-3.5-turbo",
+  "openai/gpt-3.5-turbo": {
+    modelId: "openai/gpt-3.5-turbo",
     supportedTools: [],
     defaultTools: [],
     toolImplementations: {},
   },
   // Google Gemini Models
-  "google:gemini-2.5-flash": {
-    modelId: "google:gemini-2.5-flash",
+  "google/gemini-2.5-flash": {
+    modelId: "google/gemini-2.5-flash",
     supportedTools: ["google_search", "url_context"],
     defaultTools: ["url_context"],
     toolImplementations: {
@@ -119,8 +119,8 @@ export const MODEL_TOOLS: Record<string, ModelToolConfig> = {
       url_context: () => google.tools.urlContext({}),
     },
   },
-  "google:gemini-2.5-pro": {
-    modelId: "google:gemini-2.5-pro",
+  "google/gemini-2.5-pro": {
+    modelId: "google/gemini-2.5-pro",
     supportedTools: ["google_search", "url_context"],
     defaultTools: ["url_context"],
     toolImplementations: {
@@ -128,8 +128,8 @@ export const MODEL_TOOLS: Record<string, ModelToolConfig> = {
       url_context: () => google.tools.urlContext({}),
     },
   },
-  "google:gemini-2.0-flash": {
-    modelId: "google:gemini-2.0-flash",
+  "google/gemini-2.0-flash": {
+    modelId: "google/gemini-2.0-flash",
     supportedTools: ["none"],
     defaultTools: ["none"],
     toolImplementations: {
@@ -137,8 +137,8 @@ export const MODEL_TOOLS: Record<string, ModelToolConfig> = {
       url_context: () => google.tools.urlContext({}),
     },
   },
-  "google:gemini-2.0-flash-lite": {
-    modelId: "google:gemini-2.0-flash-lite",
+  "google/gemini-2.0-flash-lite": {
+    modelId: "google/gemini-2.0-flash-lite",
     supportedTools: ["none"],
     defaultTools: ["none"],
     toolImplementations: {
@@ -147,8 +147,8 @@ export const MODEL_TOOLS: Record<string, ModelToolConfig> = {
     },
   },
   // Anthropic Models
-  "anthropic:claude-opus-4-20250514": {
-    modelId: "anthropic:claude-opus-4-20250514",
+  "anthropic/claude-opus-4-20250514": {
+    modelId: "anthropic/claude-opus-4-20250514",
     supportedTools: ["anthropic_web_search"],
     defaultTools: [],
     toolImplementations: {
@@ -156,8 +156,8 @@ export const MODEL_TOOLS: Record<string, ModelToolConfig> = {
         anthropic.tools.webSearch_20250305({ maxUses: 5 }),
     },
   },
-  "anthropic:claude-sonnet-4-20250514": {
-    modelId: "anthropic:claude-sonnet-4-20250514",
+  "anthropic/claude-sonnet-4-20250514": {
+    modelId: "anthropic/claude-sonnet-4-20250514",
     supportedTools: ["anthropic_web_search"],
     defaultTools: [],
     toolImplementations: {
@@ -165,8 +165,8 @@ export const MODEL_TOOLS: Record<string, ModelToolConfig> = {
         anthropic.tools.webSearch_20250305({ maxUses: 5 }),
     },
   },
-  "anthropic:claude-3-7-sonnet-20250219": {
-    modelId: "anthropic:claude-3-7-sonnet-20250219",
+  "anthropic/claude-3-7-sonnet-20250219": {
+    modelId: "anthropic/claude-3-7-sonnet-20250219",
     supportedTools: ["anthropic_web_search"],
     defaultTools: [],
     toolImplementations: {
@@ -176,38 +176,38 @@ export const MODEL_TOOLS: Record<string, ModelToolConfig> = {
   },
 
   // OpenAI new models
-  "openai:gpt-5": {
-    modelId: "openai:gpt-5",
+  "openai/gpt-5": {
+    modelId: "openai/gpt-5",
     supportedTools: [],
     defaultTools: [],
     toolImplementations: {},
   },
-  "openai:o3": {
-    modelId: "openai:o3",
+  "openai/o3": {
+    modelId: "openai/o3",
     supportedTools: [],
     defaultTools: [],
     toolImplementations: {},
   },
-  "openai:gpt-4o-nano": {
-    modelId: "openai:gpt-4o-nano",
+  "openai/gpt-4o-nano": {
+    modelId: "openai/gpt-4o-nano",
     supportedTools: [],
     defaultTools: [],
     toolImplementations: {},
   },
-  "openai:gpt-4.1": {
-    modelId: "openai:gpt-4.1",
+  "openai/gpt-4.1": {
+    modelId: "openai/gpt-4.1",
     supportedTools: [],
     defaultTools: [],
     toolImplementations: {},
   },
-  "openai:gpt-4.1-mini": {
-    modelId: "openai:gpt-4.1-mini",
+  "openai/gpt-4.1-mini": {
+    modelId: "openai/gpt-4.1-mini",
     supportedTools: [],
     defaultTools: [],
     toolImplementations: {},
   },
-  "openai:gpt-4.1-nano": {
-    modelId: "openai:gpt-4.1-nano",
+  "openai/gpt-4.1-nano": {
+    modelId: "openai/gpt-4.1-nano",
     supportedTools: [],
     defaultTools: [],
     toolImplementations: {},
