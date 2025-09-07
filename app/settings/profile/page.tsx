@@ -1,105 +1,80 @@
-export default function ProfilePage() {
+import { 
+  SettingsSection
+} from '@/components/settings';
+import { Box, Card, Flex, Heading, Text } from '@radix-ui/themes';
+import { WorkOsWidgets, UserProfile } from '@workos-inc/widgets';
+import { withAuth } from '@workos-inc/authkit-nextjs';
+import { workos } from '@/app/api/workos';
+
+export default async function ProfilePage() {
+  const { user, organizationId } = await withAuth({ ensureSignedIn: true });
+
+  // Try to get organizationId, but don't require it
+  let authToken = null;
+  if (organizationId) {
+    try {
+      authToken = await workos.widgets.getToken({
+        organizationId,
+        userId: user.id,
+        scopes: ['widgets:users-table:manage'],
+      });
+    } catch (error) {
+      console.error('Failed to get WorkOS token:', error);
+    }
+  }
+
   return (
-    <div className="p-8">
-      <div className="max-w-4xl">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Profile</h1>
-        <p className="text-gray-600 mb-8">
-          Manage your personal profile information and preferences.
-        </p>
+    <div className="pt-12 pb-12 pl-12 pr-12 flex flex-col max-w-4xl min-w-[520px] w-full min-h-full box-border">
+      {/* Header */}
+      <h3 className="font-semibold text-xl leading-7 flex items-center mb-5">
+        <button className="font-semibold text-left transition-transform duration-150 text-gray-500 hover:text-gray-700">
+          Arisay's Workspace<span className="px-1">/</span>
+        </button>
+        Profile
+      </h3>
 
-        <div className="space-y-8">
-          {/* Profile Picture Section */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Profile Picture</h2>
-            <div className="flex items-center gap-6">
-              <div className="w-20 h-20 bg-gray-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-2xl font-semibold">A</span>
-              </div>
-              <div>
-                <button className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">
-                  Change photo
-                </button>
-                <p className="text-sm text-gray-500 mt-1">
-                  JPG, PNG or GIF. Max size 5MB.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Personal Information */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Personal Information</h2>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  First Name
-                </label>
-                <input
-                  type="text"
-                  defaultValue="Arisay"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Last Name
-                </label>
-                <input
-                  type="text"
-                  defaultValue=""
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  defaultValue="arisay@example.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Preferences */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Preferences</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Time Zone
-                </label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option>Pacific Standard Time (PST)</option>
-                  <option>Eastern Standard Time (EST)</option>
-                  <option>Central Standard Time (CST)</option>
-                  <option>Mountain Standard Time (MST)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Language
-                </label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option>English</option>
-                  <option>Spanish</option>
-                  <option>French</option>
-                  <option>German</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Save Button */}
-          <div className="flex justify-end">
-            <button className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-              Save Changes
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* WorkOS User Profile Widget or Fallback */}
+      <SettingsSection
+        title="Profile Management"
+        description="Manage your personal profile information and preferences."
+      >
+        <Flex direction="column" gap="3" width="100%">
+          {authToken ? (
+            <WorkOsWidgets
+              theme={{
+                appearance: 'inherit',
+                accentColor: 'blue',
+                radius: 'large',
+                fontFamily: 'Inter',
+                panelBackground: 'translucent',
+              }}
+            >
+              <UserProfile authToken={authToken} />
+            </WorkOsWidgets>
+          ) : (
+            <Card>
+              <Flex direction="column" gap="3">
+                <Heading size="4">Profile Information</Heading>
+                <Text size="2" color="gray">
+                  First Name: {user.firstName || 'Not provided'}
+                </Text>
+                <Text size="2" color="gray">
+                  Last Name: {user.lastName || 'Not provided'}
+                </Text>
+                <Text size="2" color="gray">
+                  Email: {user.email || 'Not provided'}
+                </Text>
+                <Text size="2" color="gray">
+                  Profile Picture: {user.profilePictureUrl ? 'Available' : 'Not set'}
+                </Text>
+                <Text size="1" color="gray">
+                  Note: Full profile management requires an organization. Contact your administrator to join an organization for advanced features.
+                </Text>
+              </Flex>
+            </Card>
+          )}
+        </Flex>
+      </SettingsSection>
     </div>
   );
 }

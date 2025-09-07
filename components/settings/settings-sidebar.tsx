@@ -16,6 +16,7 @@ import {
   Bell,
   Mail,
   LogOut,
+  Shield,
 } from "lucide-react";
 interface SettingsNavItem {
   title: string;
@@ -144,6 +145,11 @@ const settingsSections: SettingsSection[] = [
         title: "Profile",
         href: "/settings/profile",
         icon: Users,
+      },
+      {
+        title: "Security",
+        href: "/settings/security",
+        icon: Shield,
       },
       {
         title: "API Keys",
