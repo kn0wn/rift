@@ -36,11 +36,11 @@ export default function PerformanceSection() {
             </p>
 
             <div className="flex flex-col items-center justify-center gap-7 w-full mb-8">
-              <iframe
+              {/*<iframe
                 src="http://192.168.0.160:3000/chat/"
                 width="100%"
                 height="600px"
-              ></iframe>
+              ></iframe>*/}
               <span className="text-xs leading-4 text-[rgb(160,160,160)]">
                 Prueba a enviar un mensaje
               </span>
@@ -69,7 +69,8 @@ export default function PerformanceSection() {
                     Una Sola Suscripción
                   </h4>
                   <p className="text-[rgb(92,92,92)] m-0">
-                    Accede a todos los modelos de IA con una sola suscripción. No necesitas múltiples cuentas ni pagos separados.
+                    Accede a todos los modelos de IA con una sola suscripción.
+                    No necesitas múltiples cuentas ni pagos separados.
                   </p>
                 </div>
               </div>
@@ -83,7 +84,8 @@ export default function PerformanceSection() {
                     Elige entre decenas de modelos
                   </h4>
                   <p className="text-[rgb(92,92,92)] m-0">
-                    Selecciona el modelo más adecuado para cada tarea desde nuestra amplia gama de opciones disponibles.
+                    Selecciona el modelo más adecuado para cada tarea desde
+                    nuestra amplia gama de opciones disponibles.
                   </p>
                 </div>
               </div>
@@ -97,7 +99,8 @@ export default function PerformanceSection() {
                     Sin limitaciones de empresa
                   </h4>
                   <p className="text-[rgb(92,92,92)] m-0">
-                    No te limitamos a usar únicamente una empresa de IA. Combina lo mejor de cada proveedor en una sola plataforma.
+                    No te limitamos a usar únicamente una empresa de IA. Combina
+                    lo mejor de cada proveedor en una sola plataforma.
                   </p>
                 </div>
               </div>
@@ -111,7 +114,8 @@ export default function PerformanceSection() {
                     Mejores resultados, más rapidez y más seguridad
                   </h4>
                   <p className="text-[rgb(92,92,92)] m-0">
-                    Obtén respuestas más precisas, rápidas y seguras combinando la potencia de múltiples modelos de IA.
+                    Obtén respuestas más precisas, rápidas y seguras combinando
+                    la potencia de múltiples modelos de IA.
                   </p>
                 </div>
               </div>

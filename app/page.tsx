@@ -37,7 +37,7 @@ export default function LandingPage() {
         <IntegrationsSection />
         <PricingSection />
         <CTASection />
-        </div>
+      </div>
       {/* Footer */}
       <Footer />
     </div>
