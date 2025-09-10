@@ -4,6 +4,41 @@ import { internal } from "./_generated/api";
 
 const http = httpRouter();
 
+// Protected endpoint to sync Stripe customer ID to an organization by WorkOS ID
+http.route({
+  path: "/sync-stripe-customer",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authHeader = request.headers.get("authorization") || "";
+    const expected = `Bearer ${process.env.CONVEX_SYNC_SECRET ?? ""}`;
+    if (!process.env.CONVEX_SYNC_SECRET || authHeader !== expected) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const body = await request.json();
+    const { workos_id, stripeCustomerId } = body ?? {};
+    if (!workos_id || !stripeCustomerId) {
+      return new Response(JSON.stringify({ error: "Missing fields" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    await ctx.runMutation(internal.organizations.setStripeCustomerIdByWorkOSId, {
+      workos_id,
+      stripeCustomerId,
+    });
+
+    return new Response(JSON.stringify({ status: "ok" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
 http.route({
   path: "/workos-webhook",
   method: "POST",

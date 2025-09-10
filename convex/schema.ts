@@ -26,6 +26,7 @@ export default defineSchema({
   organizations: defineTable({
     workos_id: v.string(),
     name: v.string(),
+    stripeCustomerId: v.optional(v.string()),
     billingCycleStart: v.optional(v.number()),
     billingCycleEnd: v.optional(v.number()),
   }).index("by_workos_id", ["workos_id"]),

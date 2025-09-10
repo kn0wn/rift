@@ -14,6 +14,7 @@ export const updateOrganization = internalMutation({
     patch: v.object({
       workos_id: v.optional(v.string()),
       name: v.optional(v.string()),
+      stripeCustomerId: v.optional(v.string()),
       billingCycleStart: v.optional(v.number()),
       billingCycleEnd: v.optional(v.number()),
     }),
@@ -35,7 +36,7 @@ export const getByWorkOSId = internalQuery({
   handler: async (ctx, args) => {
     const organization = await ctx.db
       .query("organizations")
-      .filter((q) => q.eq(q.field("workos_id"), args.workos_id))
+      .withIndex("by_workos_id", (q) => q.eq("workos_id", args.workos_id))
       .first();
     return organization;
   },
@@ -46,7 +47,7 @@ export const getOrganizationInfo = internalQuery({
   handler: async (ctx, args) => {
     const organization = await ctx.db
       .query("organizations")
-      .filter((q) => q.eq(q.field("workos_id"), args.workos_id))
+      .withIndex("by_workos_id", (q) => q.eq("workos_id", args.workos_id))
       .first();
 
     if (!organization) {
@@ -76,6 +77,29 @@ export const updateBillingCycle = internalMutation({
     await ctx.db.patch(args.organizationId, {
       billingCycleStart: args.billingCycleStart,
       billingCycleEnd: args.billingCycleEnd,
+    });
+  },
+});
+
+export const setStripeCustomerIdByWorkOSId = internalMutation({
+  args: { workos_id: v.string(), stripeCustomerId: v.string() },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("organizations")
+      .withIndex("by_workos_id", (q) => q.eq("workos_id", args.workos_id))
+      .first();
+
+    if (existing?._id) {
+      await ctx.db.patch(existing._id, {
+        stripeCustomerId: args.stripeCustomerId,
+      });
+      return existing._id;
+    }
+
+    return await ctx.db.insert("organizations", {
+      workos_id: args.workos_id,
+      name: "",
+      stripeCustomerId: args.stripeCustomerId,
     });
   },
 });

@@ -66,6 +66,31 @@ export const POST = async (req: NextRequest) => {
       stripeCustomerId: customer.id,
     });
 
+    // Sync Stripe customer ID into Convex organizations table (protected endpoint)
+    if (!process.env.CONVEX_HTTP || !process.env.CONVEX_SYNC_SECRET) {
+      console.warn("Missing CONVEX_HTTP or CONVEX_SYNC_SECRET; skipping Convex sync");
+    } else {
+      try {
+        const res = await fetch(`${process.env.CONVEX_HTTP}/sync-stripe-customer`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            authorization: `Bearer ${process.env.CONVEX_SYNC_SECRET}`,
+          },
+          body: JSON.stringify({
+            workos_id: organization.id,
+            stripeCustomerId: customer.id,
+          }),
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          console.error("Convex sync failed", res.status, text);
+        }
+      } catch (e) {
+        console.error("Convex sync error", e);
+      }
+    }
+
     const session = await stripe.checkout.sessions.create({
       customer: customer.id,
       billing_address_collection: "auto",
