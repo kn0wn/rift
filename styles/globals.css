@@ -115,24 +115,24 @@
 
   /* Text selection styles */
   ::selection {
-    background-color: var(--accent);
-    color: white;
+    background-color: var(--accent) !important;
+    color: white !important;
   }
 
   ::-moz-selection {
-    background-color: var(--accent);
-    color: white;
+    background-color: var(--accent) !important;
+    color: white !important;
   }
 
   /* Dark mode text selection */
   .dark ::selection {
-    background-color: var(--accent);
-    color: white;
+    background-color: var(--accent) !important;
+    color: white !important;
   }
 
   .dark ::-moz-selection {
-    background-color: var(--accent);
-    color: white;
+    background-color: var(--accent) !important;
+    color: white !important;
   }
 }
 

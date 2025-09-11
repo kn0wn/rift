@@ -31,12 +31,12 @@ interface SettingsSection {
 }
 
 // Inline components to avoid import issues
-function SettingItem({ 
-  title, 
-  href, 
-  icon: Icon, 
-  onClick, 
-  isLogout = false 
+function SettingItem({
+  title,
+  href,
+  icon: Icon,
+  onClick,
+  isLogout = false,
 }: {
   title: string;
   href: string;
@@ -49,22 +49,18 @@ function SettingItem({
 
   const baseClasses = `
     w-full flex items-center px-2 py-1.5 mb-0.5 rounded-lg text-sm font-medium
-    ${isLogout 
-      ? 'text-red-600 hover:bg-red-50' 
-      : isActive 
-        ? 'text-gray-900 bg-gray-200' 
-        : 'text-gray-600 hover:bg-hover'
+    ${
+      isLogout
+        ? "text-red-600 hover:bg-red-50"
+        : isActive
+          ? "text-gray-900 bg-gray-200"
+          : "text-gray-600 hover:bg-hover"
     }
   `;
 
   const iconClasses = `
     w-5 h-5 mr-2 flex-shrink-0
-    ${isLogout 
-      ? 'text-red-500' 
-      : isActive 
-        ? 'text-gray-700' 
-        : 'text-gray-500'
-    }
+    ${isLogout ? "text-red-500" : isActive ? "text-gray-700" : "text-gray-500"}
   `;
 
   const content = (
@@ -82,14 +78,14 @@ function SettingItem({
     return content;
   }
 
-  return (
-    <Link href={href}>
-      {content}
-    </Link>
-  );
+  return <Link href={href}>{content}</Link>;
 }
 
-function SettingSection({ title, items, isLast = false }: {
+function SettingSection({
+  title,
+  items,
+  isLast = false,
+}: {
   title: string;
   items: SettingsNavItem[];
   isLast?: boolean;
@@ -99,7 +95,7 @@ function SettingSection({ title, items, isLast = false }: {
       <span className="text-xs font-semibold text-gray-500 px-2 py-1.5 mt-4 mb-1.5 block">
         {title}
       </span>
-      
+
       {items.map((item) => (
         <SettingItem
           key={item.href}

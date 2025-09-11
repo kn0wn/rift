@@ -68,20 +68,25 @@ export const POST = async (req: NextRequest) => {
 
     // Sync Stripe customer ID into Convex organizations table (protected endpoint)
     if (!process.env.CONVEX_HTTP || !process.env.CONVEX_SYNC_SECRET) {
-      console.warn("Missing CONVEX_HTTP or CONVEX_SYNC_SECRET; skipping Convex sync");
+      console.warn(
+        "Missing CONVEX_HTTP or CONVEX_SYNC_SECRET; skipping Convex sync",
+      );
     } else {
       try {
-        const res = await fetch(`${process.env.CONVEX_HTTP}/sync-stripe-customer`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            authorization: `Bearer ${process.env.CONVEX_SYNC_SECRET}`,
+        const res = await fetch(
+          `${process.env.CONVEX_HTTP}/sync-stripe-customer`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              authorization: `Bearer ${process.env.CONVEX_SYNC_SECRET}`,
+            },
+            body: JSON.stringify({
+              workos_id: organization.id,
+              stripeCustomerId: customer.id,
+            }),
           },
-          body: JSON.stringify({
-            workos_id: organization.id,
-            stripeCustomerId: customer.id,
-          }),
-        });
+        );
         if (!res.ok) {
           const text = await res.text();
           console.error("Convex sync failed", res.status, text);
@@ -101,7 +106,7 @@ export const POST = async (req: NextRequest) => {
         },
       ],
       mode: "subscription",
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/settings`,
+      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment-success`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/`,
     });
 

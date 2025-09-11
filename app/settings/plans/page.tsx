@@ -1,5 +1,9 @@
-import { SettingsSection, SettingRow, StatusBadge } from '@/components/settings';
-import Pricing from '@/components/landing/subcomponents/pricing';
+import {
+  SettingsSection,
+  SettingRow,
+  StatusBadge,
+} from "@/components/settings";
+import Pricing from "@/components/landing/subcomponents/pricing";
 
 export default function PlansPage() {
   return (
@@ -17,7 +21,7 @@ export default function PlansPage() {
           <Pricing />
         </SettingsSection>
       </div>
-      
+
       {/* Billing Information */}
       <div className="mt-8">
         <SettingsSection
@@ -27,22 +31,26 @@ export default function PlansPage() {
           <div className="space-y-4">
             <SettingRow label="Next Payment">
               <div className="text-right">
-                <span className="text-sm font-semibold text-gray-900">$50.00</span>
+                <span className="text-sm font-semibold text-gray-900">
+                  $50.00
+                </span>
                 <div className="text-xs text-gray-500">Due Sep 10, 2025</div>
               </div>
             </SettingRow>
-            
+
             <SettingRow label="Payment Method">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-700">•••• 4242</span>
                 <StatusBadge status="enabled">Active</StatusBadge>
               </div>
             </SettingRow>
-            
+
             <SettingRow label="Billing Address">
-              <span className="text-sm text-gray-700">123 Main Street, New York, NY 10001</span>
+              <span className="text-sm text-gray-700">
+                123 Main Street, New York, NY 10001
+              </span>
             </SettingRow>
-            
+
             <SettingRow label="Invoice History">
               <button className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 text-gray-700">
                 View Invoices
