@@ -1,9 +1,24 @@
 import { stripe } from "../stripe";
 import { workos } from "../workos";
 import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@workos-inc/authkit-nextjs";
 
 export const POST = async (req: NextRequest) => {
+  // Get authenticated user
+  const { accessToken, user } = await withAuth();
+  if (!accessToken || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { userId, orgName, subscriptionLevel } = await req.json();
+
+  // Verify that the authenticated user matches the userId in the request
+  if (user.id !== userId) {
+    return NextResponse.json(
+      { error: "Unauthorized - user ID mismatch" },
+      { status: 403 },
+    );
+  }
 
   try {
     const organization = await workos.organizations.createOrganization({

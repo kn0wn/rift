@@ -1,11 +1,34 @@
 import {
-  query,
   internalQuery,
   internalMutation,
   internalAction,
 } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+
+// Plan quota configuration
+const PLAN_QUOTAS = {
+  plus: {
+    standardQuotaLimit: 500,
+    premiumQuotaLimit: 100,
+  },
+  pro: {
+    standardQuotaLimit: 1500,
+    premiumQuotaLimit: 300,
+  },
+} as const;
+
+type PlanType = keyof typeof PLAN_QUOTAS;
+
+// Get plan from lookup key
+function getPlanFromLookupKey(lookupKey: string | null): PlanType | null {
+  if (!lookupKey) return null;
+
+  if (lookupKey === "plus") return "plus";
+  if (lookupKey === "pro") return "pro";
+
+  return null;
+}
 
 export const createOrganization = internalMutation({
   args: { workos_id: v.string(), name: v.string() },
@@ -23,6 +46,9 @@ export const updateOrganization = internalMutation({
       stripeCustomerId: v.optional(v.string()),
       billingCycleStart: v.optional(v.number()),
       billingCycleEnd: v.optional(v.number()),
+      plan: v.optional(v.union(v.literal("plus"), v.literal("pro"))),
+      standardQuotaLimit: v.optional(v.number()),
+      premiumQuotaLimit: v.optional(v.number()),
     }),
   },
   handler: async (ctx, args) => {
@@ -48,7 +74,7 @@ export const getByWorkOSId = internalQuery({
   },
 });
 
-export const getByWorkOSIdPublic = query({
+export const getByWorkOSIdPublic = internalQuery({
   args: { workos_id: v.string() },
   handler: async (ctx, args) => {
     const organization = await ctx.db
@@ -75,6 +101,9 @@ export const getOrganizationInfo = internalQuery({
       id: organization._id,
       workos_id: organization.workos_id,
       name: organization.name,
+      plan: organization.plan,
+      standardQuotaLimit: organization.standardQuotaLimit,
+      premiumQuotaLimit: organization.premiumQuotaLimit,
       billingCycleStart: organization.billingCycleStart,
       billingCycleEnd: organization.billingCycleEnd,
       hasBillingCycle: !!(
@@ -127,6 +156,7 @@ export const syncStripeSubscriptionData = internalMutation({
       subscriptionId: v.optional(v.string()),
       status: v.string(),
       priceId: v.optional(v.union(v.string(), v.null())),
+      lookupKey: v.optional(v.union(v.string(), v.null())),
       billingCycleStart: v.optional(v.union(v.number(), v.null())),
       billingCycleEnd: v.optional(v.union(v.number(), v.null())),
       cancelAtPeriodEnd: v.optional(v.boolean()),
@@ -148,9 +178,46 @@ export const syncStripeSubscriptionData = internalMutation({
       );
     }
 
-    await ctx.db.patch(organization._id, {
+    // Determine plan from lookup key
+    const newPlan = getPlanFromLookupKey(
+      args.subscriptionData.lookupKey || null,
+    );
+
+    // Check if plan changed or quotas need to be set for the first time
+    const shouldUpdateQuotas =
+      !organization.plan || organization.plan !== newPlan;
+
+    const updateData: {
+      subscriptionId?: string;
+      subscriptionStatus?:
+        | "active"
+        | "canceled"
+        | "incomplete"
+        | "incomplete_expired"
+        | "past_due"
+        | "trialing"
+        | "unpaid"
+        | "none";
+      priceId?: string;
+      cancelAtPeriodEnd?: boolean;
+      paymentMethodBrand?: string;
+      paymentMethodLast4?: string;
+      billingCycleStart?: number;
+      billingCycleEnd?: number;
+      plan?: "plus" | "pro";
+      standardQuotaLimit?: number;
+      premiumQuotaLimit?: number;
+    } = {
       subscriptionId: args.subscriptionData.subscriptionId,
-      subscriptionStatus: args.subscriptionData.status as any,
+      subscriptionStatus: args.subscriptionData.status as
+        | "active"
+        | "canceled"
+        | "incomplete"
+        | "incomplete_expired"
+        | "past_due"
+        | "trialing"
+        | "unpaid"
+        | "none",
       priceId: args.subscriptionData.priceId || undefined,
       cancelAtPeriodEnd: args.subscriptionData.cancelAtPeriodEnd,
       paymentMethodBrand: args.subscriptionData.paymentMethodBrand || undefined,
@@ -158,7 +225,16 @@ export const syncStripeSubscriptionData = internalMutation({
       // Update billing cycle fields (used by quota system)
       billingCycleStart: args.subscriptionData.billingCycleStart || undefined,
       billingCycleEnd: args.subscriptionData.billingCycleEnd || undefined,
-    });
+    };
+
+    // Update plan and quotas only if plan changed
+    if (shouldUpdateQuotas && newPlan) {
+      updateData.plan = newPlan;
+      updateData.standardQuotaLimit = PLAN_QUOTAS[newPlan].standardQuotaLimit;
+      updateData.premiumQuotaLimit = PLAN_QUOTAS[newPlan].premiumQuotaLimit;
+    }
+
+    await ctx.db.patch(organization._id, updateData);
     return organization._id;
   },
 });
@@ -195,7 +271,7 @@ export const syncStripeDataWithPeriod = internalAction({
         customer: args.stripeCustomerId,
         limit: 1,
         status: "all",
-        expand: ["data.default_payment_method"],
+        expand: ["data.default_payment_method", "data.items.data.price"],
       });
 
       let subscriptionData;
@@ -208,23 +284,34 @@ export const syncStripeDataWithPeriod = internalAction({
         };
       } else {
         const subscription = subscriptions.data[0];
+        const price = subscription.items.data[0]?.price;
+        const lookupKey = price?.lookup_key || null;
 
         subscriptionData = {
           subscriptionId: subscription.id,
           status: subscription.status,
-          priceId: subscription.items.data[0]?.price?.id || null,
+          priceId: price?.id || null,
+          lookupKey,
           billingCycleStart: args.billingPeriod?.start,
           billingCycleEnd: args.billingPeriod?.end,
           cancelAtPeriodEnd: subscription.cancel_at_period_end,
           paymentMethodBrand:
             subscription.default_payment_method &&
             typeof subscription.default_payment_method !== "string"
-              ? (subscription.default_payment_method as any).card?.brand || null
+              ? (
+                  subscription.default_payment_method as {
+                    card?: { brand?: string };
+                  }
+                ).card?.brand || null
               : null,
           paymentMethodLast4:
             subscription.default_payment_method &&
             typeof subscription.default_payment_method !== "string"
-              ? (subscription.default_payment_method as any).card?.last4 || null
+              ? (
+                  subscription.default_payment_method as {
+                    card?: { last4?: string };
+                  }
+                ).card?.last4 || null
               : null,
         };
       }
@@ -248,8 +335,8 @@ export const syncStripeDataWithPeriod = internalAction({
       console.error(
         "Failed to sync Stripe data for customer:",
         args.stripeCustomerId,
-        error,
       );
+      console.error("Error details:", error);
       throw error;
     }
   },
@@ -271,6 +358,9 @@ export const getSubscriptionData = internalQuery({
       subscriptionId: organization.subscriptionId,
       subscriptionStatus: organization.subscriptionStatus || "none",
       priceId: organization.priceId,
+      plan: organization.plan,
+      standardQuotaLimit: organization.standardQuotaLimit,
+      premiumQuotaLimit: organization.premiumQuotaLimit,
       billingCycleStart: organization.billingCycleStart,
       billingCycleEnd: organization.billingCycleEnd,
       cancelAtPeriodEnd: organization.cancelAtPeriodEnd,

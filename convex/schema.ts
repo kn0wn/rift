@@ -32,6 +32,8 @@ export default defineSchema({
     billingCycleEnd: v.optional(v.number()),
     standardQuotaLimit: v.optional(v.number()),
     premiumQuotaLimit: v.optional(v.number()),
+    // Plan field based on Stripe price lookup key
+    plan: v.optional(v.union(v.literal("plus"), v.literal("pro"))),
     // Stripe subscription data
     subscriptionId: v.optional(v.string()),
     subscriptionStatus: v.optional(
