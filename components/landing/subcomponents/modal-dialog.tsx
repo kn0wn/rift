@@ -1,15 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { Button, Callout, Dialog, Flex, Text } from "@radix-ui/themes";
+import { Dialog } from "@radix-ui/themes";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { useRouter } from "next/navigation";
-import {
-  SettingsSection,
-  SettingRow,
-  SettingsInput,
-  SettingsDivider,
-} from "@/components/settings";
+import { SettingsInput } from "@/components/settings";
 
 /**
  * The 'subscriptionLevel' prop is the name of the subscription plan and is directly tied to the Stripe price lookup key.
@@ -123,53 +118,5 @@ export function ModalDialog({
         </div>
       </Dialog.Content>
     </Dialog.Root>
-  );
-}
-
-// New component for handling existing organizations - direct subscription without modal
-export function DirectSubscribeButton({
-  subscriptionLevel,
-  userId,
-  buttonText = "Suscribir",
-}: {
-  subscriptionLevel: string;
-  userId: string;
-  buttonText?: string;
-}) {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-
-  const handleDirectSubscribe = async () => {
-    setLoading(true);
-
-    const res = await fetch("/api/subscribe", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        userId,
-        subscriptionLevel: subscriptionLevel.toLowerCase(),
-      }),
-    });
-
-    const { error, url } = await res.json();
-
-    if (!error) {
-      return router.push(url);
-    }
-
-    setLoading(false);
-    console.error(`Error al suscribirse al plan: ${error}`);
-  };
-
-  return (
-    <button
-      onClick={handleDirectSubscribe}
-      disabled={loading}
-      className="w-full mt-6 px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent/90 transition-colors duration-200 disabled:opacity-50"
-    >
-      {loading ? "Procesando..." : buttonText}
-    </button>
   );
 }

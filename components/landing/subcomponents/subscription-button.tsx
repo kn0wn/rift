@@ -3,7 +3,8 @@
 import React from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { ModalDialog, DirectSubscribeButton } from "./modal-dialog";
+import { ModalDialog } from "./modal-dialog";
+import { EnhancedSubscriptionButton } from "./enhanced-subscription-button";
 
 interface SubscriptionButtonProps {
   subscriptionLevel: string;
@@ -30,10 +31,10 @@ export function SubscriptionButton({
     );
   }
 
-  // If user has an organization (currentOrgPlan is not null), show direct subscribe button
+  // If user has an organization (currentOrgPlan is not null), show enhanced subscribe button
   if (currentOrgPlan !== null) {
     return (
-      <DirectSubscribeButton
+      <EnhancedSubscriptionButton
         subscriptionLevel={subscriptionLevel}
         userId={userId}
         buttonText={buttonText}

@@ -285,11 +285,22 @@ http.route({
 });
 
 // Stripe success endpoint
+// Eagerly sync Stripe subscription data to minimize race with webhooks
 http.route({
   path: "/stripe-success",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     try {
+      // Protect with shared secret
+      const authHeader = request.headers.get("authorization") || "";
+      const expected = `Bearer ${process.env.CONVEX_SYNC_SECRET ?? ""}`;
+      if (!process.env.CONVEX_SYNC_SECRET || authHeader !== expected) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
       const body = await request.json();
       const { workosOrganizationId } = body;
 
@@ -303,7 +314,7 @@ http.route({
         );
       }
 
-      // Just confirm the organization exists
+      // Confirm the organization exists
       const organization = await ctx.runQuery(
         internal.organizations.getByWorkOSId,
         {
@@ -321,11 +332,31 @@ http.route({
         );
       }
 
+      if (!organization.stripeCustomerId) {
+        return new Response(
+          JSON.stringify({
+            error: "Organization missing Stripe customer ID",
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      // Eagerly sync latest subscription snapshot from Stripe
+      const synced = await ctx.runAction(
+        internal.organizations.syncStripeDataWithPeriod,
+        {
+          stripeCustomerId: organization.stripeCustomerId,
+          // billingPeriod can be omitted; current period derived from Stripe
+        },
+      );
+
       return new Response(
         JSON.stringify({
           status: "success",
-          message:
-            "Payment completed - subscription data will be updated via webhooks",
+          synced,
         }),
         {
           status: 200,

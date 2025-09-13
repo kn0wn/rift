@@ -2,52 +2,76 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@workos-inc/authkit-nextjs/components";
+// removed useAuth import
 
 export default function PaymentSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signOut } = useAuth();
+  // removed signOut extraction
 
   useEffect(() => {
     const handleSyncAndRedirect = async () => {
       try {
         const workosOrgId = searchParams.get("workos_org");
 
-        if (workosOrgId) {
-          // Sync Stripe data via Convex HTTP endpoint
-          const convexUrl =
-            process.env.NEXT_PUBLIC_CONVEX_URL?.replace("/api/query", "") || "";
-          await fetch(`${convexUrl}/stripe-success`, {
+        // Build endpoints
+        const convexUrl =
+          process.env.NEXT_PUBLIC_CONVEX_URL?.replace("/api/query", "") || "";
+        const refreshUrl = workosOrgId
+          ? `/api/auth/refresh?organization_id=${encodeURIComponent(workosOrgId)}`
+          : `/api/auth/refresh`;
+
+        // Run sync and refresh in parallel
+        const tasks: Promise<unknown>[] = [
+          fetch(refreshUrl, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              workosOrganizationId: workosOrgId,
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+          }),
+        ];
+
+        if (workosOrgId) {
+          tasks.push(
+            fetch(`/api/convex/stripe-success`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                workosOrganizationId: workosOrgId,
+              }),
             }),
-          });
+          );
         }
 
-        // Sign out the user to force entitlements and roles to reload
-        await signOut();
-        // Redirect to sign-in page
-        router.push("/sign-in");
+        await Promise.allSettled(tasks);
+        // Redirect to router so middleware/session reflect changes immediately
+        router.push("/router");
       } catch (error) {
-        console.error("Error during sync or logout:", error);
-        // Still redirect to sign-in even if sync fails
-        try {
-          await signOut();
-        } catch {
-          // Ignore signOut errors
-        }
-        router.push("/sign-in");
+        console.error("Error during sync or refresh:", error);
+        // Redirect to router; middleware will handle session state
+        router.push("/router");
       }
     };
 
     handleSyncAndRedirect();
-  }, [router, searchParams, signOut]);
+  }, [router, searchParams]);
 
-  // Return minimal loading state while sync and logout happen
-  return null;
+  // Estado de carga mientras sincronizamos y actualizamos la sesión
+  return (
+    <div className="min-h-screen w-full flex items-center justify-center bg-white">
+      <div className="flex flex-col items-center text-center gap-4 p-8 rounded-lg border border-gray-200 bg-gray-50">
+        <div
+          className="h-8 w-8 border-4 border-gray-300 border-t-gray-900 rounded-full animate-spin"
+          aria-label="Cargando"
+        />
+        <h1 className="text-lg font-semibold text-gray-900">
+          Actualizando tu suscripción…
+        </h1>
+        <p className="text-sm text-gray-600">
+          Esto puede tardar unos segundos.
+        </p>
+      </div>
+    </div>
+  );
 }
