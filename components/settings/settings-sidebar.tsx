@@ -17,6 +17,7 @@ import {
   Mail,
   LogOut,
   Shield,
+  Building2,
 } from "lucide-react";
 interface SettingsNavItem {
   title: string;
@@ -126,6 +127,11 @@ const settingsSections: SettingsSection[] = [
         title: "Members",
         href: "/settings/members",
         icon: Users,
+      },
+      {
+        title: "Domain & SSO",
+        href: "/settings/domain-sso",
+        icon: Building2,
       },
       {
         title: "Plans",
