@@ -1,6 +1,11 @@
 import { internalQuery, internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId } from "./helpers/getUser";
+import { getAuthUserId, getAuthUserIdentity } from "./helpers/getUser";
+import {
+  extractOrganizationIdFromJWT,
+  checkQuotaLimit,
+  getOrganizationBillingCycle,
+} from "./helpers/quota";
 
 // Internal CRUD operations - not exposed to client
 export const createUser = internalMutation({
@@ -115,6 +120,110 @@ export const getUserQuotaInfo = query({
       standardQuotaUsage: user.standardQuotaUsage || 0,
       premiumQuotaUsage: user.premiumQuotaUsage || 0,
       lastQuotaResetAt: user.lastQuotaResetAt,
+    };
+  },
+});
+
+/**
+ * Check if the authenticated user is within their quota limits
+ */
+export const checkUserQuota = query({
+  args: {
+    quotaType: v.union(v.literal("standard"), v.literal("premium")),
+  },
+  returns: v.object({
+    allowed: v.boolean(),
+    currentUsage: v.number(),
+    limit: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    // Get the authenticated user identity (full JWT token)
+    const identity = await getAuthUserIdentity(ctx);
+    if (!identity) {
+      throw new Error("Unauthenticated call - user must be logged in");
+    }
+
+    // Get the authenticated user ID
+    const userId = identity.subject;
+
+    // Extract organization ID from JWT token
+    const orgId = extractOrganizationIdFromJWT(identity);
+    if (!orgId) {
+      throw new Error("No organization ID found in user token");
+    }
+
+    // Get organization's billing cycle information
+    const billingCycle = await getOrganizationBillingCycle(ctx, orgId);
+
+    // Check quota limits using organization's quota by type
+    const quotaCheck = await checkQuotaLimit(
+      ctx,
+      userId,
+      orgId,
+      args.quotaType,
+      billingCycle?.billingCycleStart,
+    );
+
+    return quotaCheck;
+  },
+});
+
+/**
+ * Get both standard and premium quota info for the authenticated user
+ */
+export const getUserBothQuotas = query({
+  args: {},
+  returns: v.object({
+    standard: v.object({
+      allowed: v.boolean(),
+      currentUsage: v.number(),
+      limit: v.number(),
+    }),
+    premium: v.object({
+      allowed: v.boolean(),
+      currentUsage: v.number(),
+      limit: v.number(),
+    }),
+  }),
+  handler: async (ctx) => {
+    // Get the authenticated user identity (full JWT token)
+    const identity = await getAuthUserIdentity(ctx);
+    if (!identity) {
+      throw new Error("Unauthenticated call - user must be logged in");
+    }
+
+    // Get the authenticated user ID
+    const userId = identity.subject;
+
+    // Extract organization ID from JWT token
+    const orgId = extractOrganizationIdFromJWT(identity);
+    if (!orgId) {
+      throw new Error("No organization ID found in user token");
+    }
+
+    // Get organization's billing cycle information
+    const billingCycle = await getOrganizationBillingCycle(ctx, orgId);
+
+    // Check both quota types
+    const standardQuota = await checkQuotaLimit(
+      ctx,
+      userId,
+      orgId,
+      "standard",
+      billingCycle?.billingCycleStart,
+    );
+
+    const premiumQuota = await checkQuotaLimit(
+      ctx,
+      userId,
+      orgId,
+      "premium",
+      billingCycle?.billingCycleStart,
+    );
+
+    return {
+      standard: standardQuota,
+      premium: premiumQuota,
     };
   },
 });

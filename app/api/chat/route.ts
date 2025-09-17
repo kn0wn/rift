@@ -12,7 +12,7 @@ import {
 } from "@/lib/ai/ai-providers";
 import { createToolsForModel, ToolType } from "@/lib/ai/model-tools";
 import { api } from "@/convex/_generated/api";
-import { fetchMutation } from "convex/nextjs";
+import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { Id } from "@/convex/_generated/dataModel";
 import { PostHog } from "posthog-node";
@@ -47,6 +47,53 @@ export async function POST(req: Request) {
   // Return early if request is already aborted
   if (abortSignal?.aborted) {
     return new Response("Request aborted", { status: 499 });
+  }
+
+  // Check quota limits BEFORE making any AI calls
+  try {
+    const authResult = await withAuth();
+    if (!authResult.accessToken || !authResult.user) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    // Check both quota types to provide complete information
+    const bothQuotas = await fetchQuery(
+      api.users.getUserBothQuotas,
+      {},
+      { token: authResult.accessToken },
+    );
+
+    const currentQuota = bothQuotas[quotaType];
+    const otherQuota =
+      bothQuotas[quotaType === "premium" ? "standard" : "premium"];
+
+    if (!currentQuota.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: "Quota exceeded",
+          message: `Message quota exceeded. Usage: ${currentQuota.currentUsage}/${currentQuota.limit} messages`,
+          quotaInfo: currentQuota,
+          otherQuotaInfo: otherQuota,
+          quotaType: quotaType,
+        }),
+        {
+          status: 429,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+  } catch (error) {
+    console.error("Quota check failed:", error);
+    return new Response(
+      JSON.stringify({
+        error: "Quota check failed",
+        message: "Unable to verify quota limits",
+      }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 
   const stream = createUIMessageStream({

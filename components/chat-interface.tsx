@@ -9,6 +9,7 @@ import { useInitialMessage } from "@/contexts/initial-message-context";
 import { toast } from "sonner";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
+
 import { ToolType, getDefaultTools } from "@/lib/ai/model-tools";
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
 import {
@@ -92,6 +93,14 @@ export default function ChatInterface({
   const sendMessageRef = useRef<((message: UIMessage) => Promise<void>) | null>(
     null,
   );
+  const [quotaError, setQuotaError] = useState<{
+    type: "standard" | "premium";
+    message: string;
+    currentUsage: number;
+    limit: number;
+    otherTypeUsage: number;
+    otherTypeLimit: number;
+  } | null>(null);
   const { isAuthenticated } = useConvexAuth();
   const { user } = useAuth();
 
@@ -142,6 +151,8 @@ export default function ChatInterface({
     if (prevModelRef.current !== selectedModel) {
       prevModelRef.current = selectedModel;
       setChatKey((prev) => prev + 1);
+      // Clear quota error when switching models
+      setQuotaError(null);
     }
   }, [selectedModel]);
 
@@ -157,12 +168,54 @@ export default function ChatInterface({
       },
       onError(error: Error) {
         console.error("Chat error:", error);
-        // Don't show error toast for aborted requests (user stopped generation)
+
+        // Check if this is a quota error and parse JSON response
         if (
-          !error.message.includes("aborted") &&
-          !error.message.includes("cancelled")
+          error.message.includes("quota exceeded") ||
+          error.message.includes("Message quota exceeded")
         ) {
-          toast.error("An error occurred. Please try again.");
+          try {
+            // Parse JSON error response
+            const jsonMatch = error.message.match(/\{.*\}/);
+            if (jsonMatch) {
+              const errorResponse = JSON.parse(jsonMatch[0]);
+              if (
+                errorResponse.error === "Quota exceeded" &&
+                errorResponse.quotaInfo &&
+                errorResponse.otherQuotaInfo
+              ) {
+                setQuotaError({
+                  type: errorResponse.quotaType || "standard",
+                  message: errorResponse.message,
+                  currentUsage: errorResponse.quotaInfo.currentUsage,
+                  limit: errorResponse.quotaInfo.limit,
+                  otherTypeUsage: errorResponse.otherQuotaInfo.currentUsage,
+                  otherTypeLimit: errorResponse.otherQuotaInfo.limit,
+                });
+              }
+            }
+          } catch {
+            // If parsing fails, show generic quota error
+            setQuotaError({
+              type: "standard",
+              message: "Message quota exceeded",
+              currentUsage: 0,
+              limit: 0,
+              otherTypeUsage: 0,
+              otherTypeLimit: 0,
+            });
+          }
+        } else {
+          // Clear quota error for non-quota errors
+          setQuotaError(null);
+
+          // Don't show error toast for aborted requests (user stopped generation)
+          if (
+            !error.message.includes("aborted") &&
+            !error.message.includes("cancelled")
+          ) {
+            toast.error("An error occurred. Please try again.");
+          }
         }
       },
       transport: new DefaultChatTransport({
@@ -314,6 +367,8 @@ export default function ChatInterface({
       const messageContent = input.trim();
       const messageId = generateUUID();
 
+      // Clear any existing quota error when user tries to send a new message
+      setQuotaError(null);
       setInput("");
 
       try {
@@ -780,6 +835,59 @@ export default function ChatInterface({
       {/* Prompt input overlayed at bottom of the main area (not part of scroll flow) */}
       <div className="absolute bottom-0 left-0 right-0">
         <div className="mx-auto w-full max-w-3xl px-2">
+          {/* Quota Error Message */}
+          {quotaError && (
+            <div className="mb-2 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 rounded-lg text-red-800 dark:text-red-200 text-sm shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center">
+                  <svg
+                    className="w-4 h-4 mr-2 text-red-600 dark:text-red-400"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <div className="font-semibold">
+                    {quotaError.type === "premium" ? "Premium" : "Standard"}{" "}
+                    quota exceeded
+                  </div>
+                </div>
+                <button
+                  onClick={() => setQuotaError(null)}
+                  className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200"
+                  aria-label="Close"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="text-red-700 dark:text-red-300">
+                {quotaError.type === "premium" ? "Premium" : "Standard"}:{" "}
+                {quotaError.limit > 0
+                  ? `${quotaError.currentUsage}/${quotaError.limit} mensajes`
+                  : "Límite alcanzado"}
+                <br />
+                {quotaError.type === "premium" ? "Standard" : "Premium"}:{" "}
+                {quotaError.otherTypeLimit > 0
+                  ? `${quotaError.otherTypeUsage}/${quotaError.otherTypeLimit} mensajes`
+                  : "Cambiar a otros modelos"}
+              </div>
+            </div>
+          )}
           <PromptInput onSubmit={handleSubmit}>
             <PromptInputTextarea
               onChange={handleInputChange}
