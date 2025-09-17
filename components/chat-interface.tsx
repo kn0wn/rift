@@ -513,7 +513,7 @@ export default function ChatInterface({
                           {item.icon} {item.title}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          "{item.prompt}"
+                          {item.prompt}
                         </p>
                       </div>
                     ))}
