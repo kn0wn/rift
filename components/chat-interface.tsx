@@ -7,6 +7,7 @@ import { generateUUID, copyToClipboard } from "../lib/utils";
 import { useModel } from "@/contexts/model-context";
 import { useInitialMessage } from "@/contexts/initial-message-context";
 import { useMessageRegeneration } from "@/hooks/use-message-regeneration";
+import { useMessageEdit } from "@/hooks/use-message-edit";
 import { toast } from "sonner";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
@@ -24,6 +25,9 @@ import {
   BrainPersonIcon,
   GrowthIcon,
   LampIcon,
+  XIcon,
+  CheckIcon,
+  LoadingIcon,
   DeskIcon,
   StudentIcon,
   DoddleLine,
@@ -91,6 +95,7 @@ export default function ChatInterface({
   const [input, setInput] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const autoStartTriggeredRef = useRef(false);
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const sendMessageRef = useRef<((message: UIMessage) => Promise<void>) | null>(
     null,
   );
@@ -259,6 +264,29 @@ export default function ChatInterface({
       setMessages,
       regenerate,
     });
+
+  // Initialize edit hook
+  const {
+    editText,
+    startEditing,
+    cancelEditing,
+    saveEdit,
+    updateEditText,
+    isEditing,
+    isLoading,
+  } = useMessageEdit({
+    messages,
+    setMessages,
+  });
+
+  useEffect(() => {
+    const textarea = editTextareaRef.current;
+    if (textarea) {
+      textarea.style.height = "auto";
+      const maxHeight = 200;
+      textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
+    }
+  }, [editText]);
 
   // Store sendMessage in ref to prevent useEffect from re-running
   sendMessageRef.current = sendMessage;
@@ -638,6 +666,70 @@ export default function ChatInterface({
                           {/* Render non-reasoning parts */}
                           {nonReasoningParts.map((part, i: number) => {
                             if (part.type === "text" && "text" in part) {
+                              // Check if this message is being edited
+                              if (
+                                message.role === "user" &&
+                                isEditing(message.id)
+                              ) {
+                                return (
+                                  <div
+                                    key={`${message.id}-${i}`}
+                                    className="space-y-3"
+                                  >
+                                    <PromptInputTextarea
+                                      ref={editTextareaRef}
+                                      value={editText}
+                                      onChange={(e) =>
+                                        updateEditText(e.target.value)
+                                      }
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Escape") {
+                                          cancelEditing();
+                                        } else if (
+                                          e.key === "Enter" &&
+                                          (e.ctrlKey || e.metaKey)
+                                        ) {
+                                          e.preventDefault();
+                                          saveEdit(message.id);
+                                        }
+                                      }}
+                                      className="w-full min-h-0 max-h-[200px] resize-none px-1"
+                                      placeholder="Edit your message..."
+                                      autoFocus
+                                    />
+                                    <PromptInputToolbar>
+                                      <div className="flex items-center gap-2 w-[60dvw] justify-end">
+                                        <PromptInputButton
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={cancelEditing}
+                                          title="Cancel (Escape)"
+                                        >
+                                          <XIcon className="size-4" />
+                                        </PromptInputButton>
+                                        <PromptInputSubmit
+                                          type="button"
+                                          variant="default"
+                                          size="icon"
+                                          onClick={() => saveEdit(message.id)}
+                                          disabled={
+                                            !editText.trim() || isLoading
+                                          }
+                                          title="Save (Ctrl+Enter)"
+                                        >
+                                          {isLoading ? (
+                                            <LoadingIcon className="size-4 animate-spin" />
+                                          ) : (
+                                            <CheckIcon className="size-4" />
+                                          )}
+                                        </PromptInputSubmit>
+                                      </div>
+                                    </PromptInputToolbar>
+                                  </div>
+                                );
+                              }
+
                               return (
                                 <Response key={`${message.id}-${i}`}>
                                   {part.text}
@@ -791,12 +883,16 @@ export default function ChatInterface({
                         <RedoIcon className="size-4" />
                       </Action>
                       <Action
-                        onClick={() => {
-                          // TODO: Implement edit functionality
-                          toast.info("Edit message feature coming soon");
-                        }}
+                        onClick={() => startEditing(message.id)}
+                        disabled={
+                          status === "streaming" || status === "submitted"
+                        }
                         label="Edit"
-                        tooltip="Edit message"
+                        tooltip={
+                          status === "streaming" || status === "submitted"
+                            ? "Cannot edit while AI is responding"
+                            : "Edit message"
+                        }
                       >
                         <EditIcon className="size-4" />
                       </Action>
