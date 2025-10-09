@@ -3,6 +3,7 @@ import {
   convertToModelMessages,
   UIMessage,
   smoothStream,
+  stepCountIs,
 } from "ai";
 import {
   getLanguageModel,
@@ -15,6 +16,7 @@ import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { withAuth } from "@workos-inc/authkit-nextjs";
+import { exaWebSearch } from "@/lib/ai/tools/exa-search";
 
 export const runtime = "edge";
 export const maxDuration = 300;
@@ -143,10 +145,15 @@ export async function POST(req: Request) {
     const model = getLanguageModel(modelId);
 
     // Tools setup
-    const tools =
-      enabledTools.length > 0
-        ? createToolsForModel(modelId, enabledTools)
-        : undefined;
+    const providerTools = enabledTools.length > 0
+      ? createToolsForModel(modelId, enabledTools)
+      : {};
+    
+    // Add EXA web search tool if web search is requested
+    const tools = {
+      ...providerTools,
+      ...(enabledTools.includes("web_search") ? { webSearch: exaWebSearch } : {}),
+    };
     const providerOptions = getProviderOptions(modelId);
 
     console.log(`Time after model/tools setup: ${Date.now() - start}ms`);
@@ -309,6 +316,7 @@ export async function POST(req: Request) {
             model,
             messages: convertToModelMessages(messages as UIMessage[]), // Type assertion for AI SDK
             tools,
+            stopWhen: stepCountIs(5), // Allow multi-step tool usage for web search
             experimental_transform: smoothStream({
               delayInMs: 20,
               chunking: "word",

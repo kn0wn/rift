@@ -53,60 +53,7 @@ export const DEFAULT_OPENAI_SETTINGS: OpenAISettings = {
   maxRetries: 3,
 };
 
-// OpenAI tool implementations
-export const OPENAI_TOOLS = {
-  web_search: (config?: any) => ({
-    type: "function" as const,
-    function: {
-      name: "web_search",
-      description: "Search the web for real-time information",
-      parameters: {
-        type: "object",
-        properties: {
-          query: {
-            type: "string",
-            description: "The search query",
-          },
-        },
-        required: ["query"],
-      },
-    },
-    ...config,
-  }),
-  file_search: (config?: {
-    vectorStoreIds?: string[];
-    maxNumResults?: number;
-    filters?: any;
-    ranking?: any;
-  }) => ({
-    type: "function" as const,
-    function: {
-      name: "file_search",
-      description: "Search through uploaded documents and files",
-      parameters: {
-        type: "object",
-        properties: {
-          query: {
-            type: "string",
-            description: "The search query for file contents",
-          },
-          vectorStoreIds: {
-            type: "array",
-            items: { type: "string" },
-            description: "Vector store IDs to search in",
-          },
-        },
-        required: ["query"],
-      },
-    },
-    vectorStoreIds: config?.vectorStoreIds || [],
-    maxNumResults: config?.maxNumResults || 5,
-    filters: config?.filters,
-    ranking: config?.ranking,
-  }),
-};
-
-// OpenAI model configurations with tool support
+// OpenAI model configurations
 export const OPENAI_MODELS: BaseModelConfig[] = [
   {
     id: "openai/gpt-5",
@@ -118,7 +65,6 @@ export const OPENAI_MODELS: BaseModelConfig[] = [
     isPremium: true,
     capabilities: mergeCapabilities({
       supportsTools: true,
-      supportsSearch: true,
       supportsStreaming: true,
       supportsReasoning: true,
       supportsImageInput: true,
@@ -127,8 +73,6 @@ export const OPENAI_MODELS: BaseModelConfig[] = [
       supportsObjectGeneration: true,
       maxTokens: 16384,
     }),
-    supportedTools: ["web_search", "file_search"],
-    defaultTools: [],
   },
   {
     id: "openai/gpt-5-mini",
@@ -139,15 +83,12 @@ export const OPENAI_MODELS: BaseModelConfig[] = [
     isPremium: false,
     capabilities: mergeCapabilities({
       supportsTools: true,
-      supportsSearch: true,
       supportsStreaming: true,
       supportsReasoning: true,
       supportsImageInput: true,
       supportsObjectGeneration: true,
       maxTokens: 16384,
     }),
-    supportedTools: ["web_search", "file_search"],
-    defaultTools: ["web_search"],
   },
   {
     id: "openai/gpt-5-nano",
@@ -164,8 +105,6 @@ export const OPENAI_MODELS: BaseModelConfig[] = [
       supportsObjectGeneration: true,
       maxTokens: 16384,
     }),
-    supportedTools: ["web_search"],
-    defaultTools: [],
   },
   {
     id: "openai/o3",
@@ -183,8 +122,6 @@ export const OPENAI_MODELS: BaseModelConfig[] = [
       supportsObjectGeneration: true,
       maxTokens: 16384,
     }),
-    supportedTools: ["web_search"],
-    defaultTools: [],
   },
   {
     id: "openai/o4-mini",
@@ -202,8 +139,6 @@ export const OPENAI_MODELS: BaseModelConfig[] = [
       supportsObjectGeneration: true,
       maxTokens: 16384,
     }),
-    supportedTools: ["web_search"],
-    defaultTools: [],
   },
   {
     id: "openai/gpt-4.1",
@@ -219,8 +154,6 @@ export const OPENAI_MODELS: BaseModelConfig[] = [
       supportsObjectGeneration: true,
       maxTokens: 8192,
     }),
-    supportedTools: ["web_search"],
-    defaultTools: [],
   },
   {
     id: "openai/gpt-4.1-mini",
@@ -236,8 +169,6 @@ export const OPENAI_MODELS: BaseModelConfig[] = [
       supportsObjectGeneration: true,
       maxTokens: 8192,
     }),
-    supportedTools: ["web_search"],
-    defaultTools: [],
   },
   {
     id: "openai/gpt-4.1-nano",
@@ -253,8 +184,6 @@ export const OPENAI_MODELS: BaseModelConfig[] = [
       supportsObjectGeneration: true,
       maxTokens: 8192,
     }),
-    supportedTools: ["web_search"],
-    defaultTools: [],
   },
   {
     id: "openai/gpt-4o",
@@ -270,8 +199,6 @@ export const OPENAI_MODELS: BaseModelConfig[] = [
       supportsObjectGeneration: true,
       maxTokens: 16384,
     }),
-    supportedTools: ["web_search"],
-    defaultTools: [],
   },
   {
     id: "openai/gpt-4o-mini",
@@ -287,8 +214,6 @@ export const OPENAI_MODELS: BaseModelConfig[] = [
       supportsObjectGeneration: true,
       maxTokens: 16384,
     }),
-    supportedTools: ["web_search"],
-    defaultTools: [],
   },
   {
     id: "openai/gpt-4-turbo",
@@ -305,8 +230,6 @@ export const OPENAI_MODELS: BaseModelConfig[] = [
       supportsObjectGeneration: true,
       maxTokens: 4096,
     }),
-    supportedTools: ["web_search"],
-    defaultTools: [],
   },
   {
     id: "openai/gpt-4",
@@ -321,8 +244,6 @@ export const OPENAI_MODELS: BaseModelConfig[] = [
       supportsObjectGeneration: true,
       maxTokens: 8192,
     }),
-    supportedTools: ["web_search"],
-    defaultTools: [],
   },
   {
     id: "openai/gpt-3.5-turbo",
@@ -337,74 +258,10 @@ export const OPENAI_MODELS: BaseModelConfig[] = [
       supportsObjectGeneration: true,
       maxTokens: 4096,
     }),
-    supportedTools: ["web_search"],
-    defaultTools: [],
   },
 ];
-
-// Supported tool types for OpenAI models
-export const OPENAI_SUPPORTED_TOOLS: ToolType[] = ["web_search", "file_search"];
-
-// Default tools for OpenAI models (can be overridden per model)
-export const OPENAI_DEFAULT_TOOLS: ToolType[] = [];
 
 // Helper functions
 export function getOpenAIModel(modelId: string): BaseModelConfig | undefined {
   return OPENAI_MODELS.find((model) => model.id === modelId);
-}
-
-export function getOpenAISupportedTools(): ToolType[] {
-  return OPENAI_SUPPORTED_TOOLS;
-}
-
-export function getOpenAIDefaultTools(): ToolType[] {
-  return OPENAI_DEFAULT_TOOLS;
-}
-
-export function createOpenAITools(
-  toolTypes: ToolType[] = OPENAI_DEFAULT_TOOLS,
-  toolConfigs?: Record<string, any>,
-) {
-  const tools: Record<string, any> = {};
-
-  for (const toolType of toolTypes) {
-    if (toolType !== "none" && toolType in OPENAI_TOOLS) {
-      const toolImplementation =
-        OPENAI_TOOLS[toolType as keyof typeof OPENAI_TOOLS];
-      if (toolImplementation) {
-        tools[toolType] = toolImplementation();
-      }
-    }
-  }
-
-  return tools;
-}
-
-// Provider-specific tool utility functions
-export function getOpenAIModelSupportedTools(modelId: string): ToolType[] {
-  const model = OPENAI_MODELS.find((m) => m.id === modelId);
-  return model?.supportedTools || [];
-}
-
-export function getOpenAIModelDefaultTools(modelId: string): ToolType[] {
-  const model = OPENAI_MODELS.find((m) => m.id === modelId);
-  return model?.defaultTools || [];
-}
-
-export function createOpenAIToolsForModel(
-  modelId: string,
-  enabledTools?: ToolType[],
-): Record<string, any> {
-  const supportedTools = getOpenAIModelSupportedTools(modelId);
-  const defaultTools = getOpenAIModelDefaultTools(modelId);
-
-  // Use provided tools, fallback to default tools, or empty array
-  const toolsToCreate = enabledTools || defaultTools;
-
-  // Filter to only include supported tools
-  const validTools = toolsToCreate.filter(
-    (tool) => supportedTools.includes(tool) && tool !== "none",
-  );
-
-  return createOpenAITools(validTools);
 }

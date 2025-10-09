@@ -28,10 +28,6 @@ export interface XAISettings {
   maxCompletionTokens?: number;
   logitBias?: Record<number, number>;
   logprobs?: boolean | number;
-  searchParameters?: {
-    enabled?: boolean;
-    maxSources?: number;
-  };
   stop?: string | string[];
 }
 
@@ -46,60 +42,9 @@ export const DEFAULT_XAI_SETTINGS: XAISettings = {
   reasoning: {
     enabled: false,
   },
-  searchParameters: {
-    enabled: false,
-    maxSources: 5,
-  },
 };
 
-// xAI tool implementations
-export const XAI_TOOLS = {
-  web_search: (config?: any) => ({
-    type: "function" as const,
-    function: {
-      name: "web_search",
-      description:
-        "Search the web for real-time information using Grok's live search",
-      parameters: {
-        type: "object",
-        properties: {
-          query: {
-            type: "string",
-            description: "The search query",
-          },
-          maxSources: {
-            type: "number",
-            description: "Maximum number of sources to use (default: 5)",
-            default: 5,
-          },
-        },
-        required: ["query"],
-      },
-    },
-    ...config,
-  }),
-  file_search: (config?: { maxNumResults?: number; filters?: any }) => ({
-    type: "function" as const,
-    function: {
-      name: "file_search",
-      description: "Search through uploaded documents and files",
-      parameters: {
-        type: "object",
-        properties: {
-          query: {
-            type: "string",
-            description: "The search query for file contents",
-          },
-        },
-        required: ["query"],
-      },
-    },
-    maxNumResults: config?.maxNumResults || 5,
-    filters: config?.filters,
-  }),
-};
-
-// xAI model configurations with tool support
+// xAI model configurations
 export const XAI_MODELS: BaseModelConfig[] = [
   {
     id: "xai/grok-4",
@@ -111,14 +56,11 @@ export const XAI_MODELS: BaseModelConfig[] = [
     isPremium: true,
     capabilities: mergeCapabilities({
       supportsTools: true,
-      supportsSearch: true,
       supportsStreaming: true,
       supportsReasoning: true,
       supportsObjectGeneration: true,
       maxTokens: 16384,
     }),
-    supportedTools: ["web_search", "file_search"],
-    defaultTools: ["web_search"],
   },
   {
     id: "xai/grok-code-fast-1",
@@ -135,8 +77,6 @@ export const XAI_MODELS: BaseModelConfig[] = [
       supportsObjectGeneration: true,
       maxTokens: 16384,
     }),
-    supportedTools: ["web_search", "file_search"],
-    defaultTools: [],
   },
   {
     id: "xai/grok-4-fast-non-reasoning",
@@ -148,15 +88,12 @@ export const XAI_MODELS: BaseModelConfig[] = [
     isPremium: false,
     capabilities: mergeCapabilities({
       supportsTools: true,
-      supportsSearch: true,
       supportsStreaming: true,
       supportsReasoning: true,
       supportsImageInput: true,
       supportsObjectGeneration: true,
       maxTokens: 32768,
     }),
-    supportedTools: ["web_search", "file_search"],
-    defaultTools: ["web_search"],
   },
   {
     id: "xai/grok-4-fast-reasoning",
@@ -168,15 +105,12 @@ export const XAI_MODELS: BaseModelConfig[] = [
     isPremium: false,
     capabilities: mergeCapabilities({
       supportsTools: true,
-      supportsSearch: true,
       supportsStreaming: true,
       supportsReasoning: true,
       supportsImageInput: true,
       supportsObjectGeneration: true,
       maxTokens: 100,
     }),
-    supportedTools: ["web_search", "file_search"],
-    defaultTools: ["web_search"],
   },
   {
     id: "xai/grok-3",
@@ -188,14 +122,11 @@ export const XAI_MODELS: BaseModelConfig[] = [
     isPremium: true,
     capabilities: mergeCapabilities({
       supportsTools: true,
-      supportsSearch: true,
       supportsStreaming: true,
       supportsReasoning: false,
       supportsObjectGeneration: true,
       maxTokens: 8192,
     }),
-    supportedTools: ["web_search", "file_search"],
-    defaultTools: ["web_search"],
   },
   {
     id: "xai/grok-3-mini",
@@ -207,71 +138,17 @@ export const XAI_MODELS: BaseModelConfig[] = [
     isPremium: false,
     capabilities: mergeCapabilities({
       supportsTools: true,
-      supportsSearch: true,
       supportsStreaming: true,
       supportsReasoning: true,
       supportsObjectGeneration: true,
       maxTokens: 8192,
     }),
-    supportedTools: ["web_search", "file_search"],
-    defaultTools: [],
   },
 ];
-
-// Supported tool types for xAI models
-export const XAI_SUPPORTED_TOOLS: ToolType[] = ["web_search", "file_search"];
-
-// Default tools for xAI models (can be overridden per model)
-export const XAI_DEFAULT_TOOLS: ToolType[] = ["web_search"];
 
 // Helper functions
 export function getXAIModel(modelId: string): BaseModelConfig | undefined {
   return XAI_MODELS.find((model) => model.id === modelId);
-}
-
-export function getXAIDefaultTools(): ToolType[] {
-  return XAI_DEFAULT_TOOLS;
-}
-
-export function createXAITools(toolTypes: ToolType[] = XAI_DEFAULT_TOOLS) {
-  const tools: Record<string, any> = {};
-
-  for (const toolType of toolTypes) {
-    if (toolType !== "none" && toolType in XAI_TOOLS) {
-      const toolImplementation = XAI_TOOLS[toolType as keyof typeof XAI_TOOLS];
-      if (toolImplementation) {
-        tools[toolType] = toolImplementation();
-      }
-    }
-  }
-
-  return tools;
-}
-
-// Provider-specific tool utility functions
-export function getXAIModelSupportedTools(): ToolType[] {
-  return XAI_SUPPORTED_TOOLS;
-}
-
-export function getXAIModelDefaultTools(): ToolType[] {
-  return XAI_DEFAULT_TOOLS;
-}
-
-export function createXAIToolsForModel(
-  enabledTools?: ToolType[],
-): Record<string, any> {
-  const supportedTools = getXAIModelSupportedTools();
-  const defaultTools = getXAIModelDefaultTools();
-
-  // Use provided tools, fallback to default tools, or empty array
-  const toolsToCreate = enabledTools || defaultTools;
-
-  // Filter to only include supported tools
-  const validTools = toolsToCreate.filter(
-    (tool) => supportedTools.includes(tool) && tool !== "none",
-  );
-
-  return createXAITools(validTools);
 }
 
 // Reasoning helper functions
@@ -297,25 +174,3 @@ export function getReasoningSettings(
   };
 }
 
-// Search helper functions
-export function supportsLiveSearch(modelId: string): boolean {
-  const model = getXAIModel(modelId);
-  return model?.capabilities.supportsSearch || false;
-}
-
-export function getLiveSearchSettings(
-  modelId: string,
-  enabled: boolean = true,
-  maxSources: number = 5,
-): Partial<XAISettings> {
-  if (!supportsLiveSearch(modelId)) {
-    return {};
-  }
-
-  return {
-    searchParameters: {
-      enabled,
-      maxSources,
-    },
-  };
-}

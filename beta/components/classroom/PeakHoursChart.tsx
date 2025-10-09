@@ -106,7 +106,11 @@ type TimePeriod = "week" | "month" | "year";
 
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: unknown[];
+  payload?: Array<{
+    color: string;
+    name: string;
+    value: number;
+  }>;
   label?: string;
   period: TimePeriod;
 }
@@ -117,7 +121,7 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
       <div className="bg-background border rounded-lg shadow-lg p-3">
         <p className="text-sm font-medium mb-2">{label}</p>
         <div className="space-y-1">
-          {payload.map((entry: unknown, index: number) => (
+          {payload.map((entry, index: number) => (
             <div key={index} className="flex items-center gap-2 text-xs">
               <div
                 className="w-2 h-2 rounded-full"
@@ -233,7 +237,7 @@ export function PeakHoursChart() {
       <ResponsiveContainer width="100%" height={200}>
         <LineChart
           data={data}
-          margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
         >
           <defs>
             {periodKeys.map((key) => (
@@ -257,6 +261,7 @@ export function PeakHoursChart() {
             axisLine={false}
             tickLine={false}
             tickFormatter={(value) => value.toLocaleString()}
+            width={40}
           />
           <Tooltip content={<CustomTooltip period={timePeriod} />} />
           <Legend

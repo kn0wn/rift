@@ -158,8 +158,8 @@ const insights: InsightItem[] = [
     description: "Ciudad de México lidera con 1,247 estudiantes activos y 94.3% de interacción. Picos de actividad entre 14:00-16:00 hrs.",
     timestamp: "5/5/2025, 12:00:00 PM",
     metrics: [
-      { label: "estudiantes activos", value: "1,247" },
-      { label: "interacción", value: "94.3%" }
+      { label: "Estudiantes Activos", value: "1,247" },
+      { label: "Interacción", value: "94.3%" }
     ],
     category: "Actividad Regional"
   },
@@ -170,8 +170,8 @@ const insights: InsightItem[] = [
     description: "Promedio de satisfacción de 4.6/5 con 67.3% de estudiantes que hacen preguntas de seguimiento.",
     timestamp: "5/5/2025, 12:00:00 PM",
     metrics: [
-      { label: "satisfacción", value: "4.6/5" },
-      { label: "follow_up_rate", value: "67.3%" }
+      { label: "Satisfacción", value: "4.6/5" },
+      { label: "Tasa de Seguimiento", value: "67.3%" }
     ],
     category: "Experiencia del Usuario"
   },
@@ -182,8 +182,8 @@ const insights: InsightItem[] = [
     description: "Matemáticas y Física son las materias más consultadas (67% de preguntas). Química muestra mayor crecimiento (+23%).",
     timestamp: "5/5/2025, 12:00:00 PM",
     metrics: [
-      { label: "materia_top", value: "Matemáticas" },
-      { label: "crecimiento", value: "+23%" }
+      { label: "Materia Top", value: "Matemáticas" },
+      { label: "Crecimiento", value: "+23%" }
     ],
     category: "Preferencias Académicas"
   },
@@ -194,8 +194,8 @@ const insights: InsightItem[] = [
     description: "Tijuana y Cancún muestran mayor diversidad en consultas (8.4 temas promedio), especialmente en idiomas y tecnología.",
     timestamp: "5/5/2025, 12:00:00 PM",
     metrics: [
-      { label: "temas_diversos", value: "8.4" },
-      { label: "regiones", value: "2" }
+      { label: "Temas Diversos", value: "8.4" },
+      { label: "Regiones", value: "2" }
     ],
     category: "Diversidad Académica"
   },
@@ -503,7 +503,7 @@ export function GeographyInsights() {
                             </span>
                           ))}
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-muted rounded text-xs">
-                            <span className="text-muted-foreground">categoría</span>
+                            <span className="text-muted-foreground">Categoría</span>
                             <span className="font-medium">{insight.category}</span>
                           </span>
                         </div>

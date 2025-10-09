@@ -8,7 +8,6 @@ import {
   ChevronDownIcon,
   SparklesIcon,
   ZapIcon,
-  GlobeIcon,
   BrainIcon,
   WrenchIcon,
   HelpCircleIcon,
@@ -45,7 +44,6 @@ const providerIcons = {
 // Capability icon mapping
 const capabilityIcons = {
   supportsTools: WrenchIcon,
-  supportsSearch: GlobeIcon,
   supportsReasoning: BrainIcon,
   supportsStreaming: ZapIcon,
 } as const;

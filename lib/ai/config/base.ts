@@ -3,8 +3,6 @@
 // Base configuration types for AI providers
 export interface ModelCapabilities {
   supportsTools: boolean;
-  supportsSearch: boolean;
-  supportsUrlContext: boolean;
   supportsStreaming: boolean;
   supportsReasoning: boolean;
   supportsImageInput: boolean;
@@ -25,8 +23,6 @@ export interface BaseModelConfig {
 
   isPremium: boolean;
   capabilities: ModelCapabilities;
-  supportedTools: ToolType[];
-  defaultTools: ToolType[];
   settings?: Record<string, any>;
 }
 
@@ -72,7 +68,7 @@ export const GATEWAY_CONFIG = {
 };
 
 // Tool types that can be used across providers
-export type ToolType = "none" | "web_search" | "file_search";
+export type ToolType = "none" | "web_search";
 
 // Base tool configuration interface
 export interface BaseToolConfig {
@@ -104,16 +100,8 @@ export const BASE_TOOL_CONFIGS: Record<ToolType, BaseToolConfig> = {
   web_search: {
     type: "web_search",
     name: "Web Search",
-    description: "Search the web for real-time information and current events",
+    description: "Search the web for real-time information",
     icon: "Search",
-    category: "search",
-    requiresAuth: false,
-  },
-  file_search: {
-    type: "file_search",
-    name: "File Search",
-    description: "Search through uploaded documents and files",
-    icon: "FileSearch",
     category: "search",
     requiresAuth: false,
   },
@@ -126,8 +114,6 @@ export function mergeCapabilities(
 ): ModelCapabilities {
   const defaultCapabilities: ModelCapabilities = {
     supportsTools: false,
-    supportsSearch: false,
-    supportsUrlContext: false,
     supportsStreaming: true,
     supportsReasoning: false,
     supportsImageInput: false,

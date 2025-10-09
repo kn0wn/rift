@@ -234,7 +234,7 @@ export default function ChatInterface({
               ? localStorage.getItem("webSearchEnabled") === "true"
               : false;
           const currentEnabledTools = currentSearchState
-            ? [...currentDefaultTools, "google_search" as ToolType]
+            ? [...currentDefaultTools, "web_search" as ToolType]
             : currentDefaultTools;
 
           // For regeneration, we need to handle the messageId and trigger

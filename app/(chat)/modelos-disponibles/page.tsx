@@ -4,7 +4,6 @@ import {
   ArrowLeftIcon,
   SparklesIcon,
   ZapIcon,
-  GlobeIcon,
   BrainIcon,
   WrenchIcon,
   ExternalLinkIcon,
@@ -161,7 +160,6 @@ const providerInfo = {
 // Capability icon mapping
 const capabilityIcons = {
   supportsTools: WrenchIcon,
-  supportsSearch: GlobeIcon,
   supportsReasoning: BrainIcon,
   supportsStreaming: ZapIcon,
 } as const;
@@ -620,17 +618,11 @@ export default function ModelosDisponiblesPage() {
           <h3 className="text-lg font-semibold text-foreground mb-4">
             Leyenda de Capacidades
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="flex items-center gap-2">
               <WrenchIcon className="size-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
                 Herramientas
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <GlobeIcon className="size-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">
-                Búsqueda Web
               </span>
             </div>
             <div className="flex items-center gap-2">
