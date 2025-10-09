@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId, getAuthUserIdentity } from "./helpers/getUser";
 import { paginationOptsValidator } from "convex/server";
@@ -6,6 +6,7 @@ import {
   extractOrganizationIdFromJWT,
   checkQuotaLimit,
   incrementQuotaUsage,
+  incrementToolCallQuota,
   getOrganizationBillingCycle,
 } from "./helpers/quota";
 
@@ -840,5 +841,35 @@ export const editMessage = mutation({
     await Promise.all(subsequentMessages.map((msg) => ctx.db.delete(msg._id)));
 
     return null;
+  },
+});
+
+/**
+ * Increment tool call quota for a user (server-side only)
+ * This mutation is secured with a secret token to prevent client-side abuse
+ */
+export const incrementToolCallQuotaMutation = internalMutation({
+  args: {
+    secretToken: v.string(),
+    userId: v.string(),
+    toolCallCount: v.number(),
+  },
+  returns: v.object({
+    newUsage: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    // Validate secret token first
+    const expectedToken = process.env.CONVEX_SECRET_TOKEN;
+    
+    if (args.secretToken !== expectedToken) {
+      throw new Error("Unauthorized - just stop here");
+    }
+
+    // Increment tool call quota using the provided userId
+    const newUsage = await incrementToolCallQuota(ctx, args.userId, args.toolCallCount);
+
+    return {
+      newUsage,
+    };
   },
 });

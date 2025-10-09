@@ -258,6 +258,7 @@ export async function POST(req: Request) {
         let content = "";
         let reasoning = "";
         let isComplete = false;
+        let toolCallCount = 0;
 
         // Background: Start assistant message
         DatabaseQueue.add(async () => {
@@ -332,6 +333,8 @@ export async function POST(req: Request) {
               } else if (chunk.type === "reasoning-delta" && chunk.text) {
                 reasoning += chunk.text;
                 pendingUpdate.reasoning += chunk.text;
+              } else if (chunk.type === "tool-call") {
+                toolCallCount++;
               }
             },
             onFinish: async () => {
@@ -361,6 +364,29 @@ export async function POST(req: Request) {
                   { token: auth.token },
                 );
               });
+
+              // Increment tool call quota if any tools were used when the assistant message is finalized
+              if (toolCallCount > 0) {
+                DatabaseQueue.add(async () => {
+                  try {
+                    await fetch(`${process.env.CONVEX_SITE_URL}/increment-tool-call-quota`, {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${process.env.CONVEX_SECRET_TOKEN}`,
+                      },
+                      body: JSON.stringify({
+                        userId: auth.userId,
+                        toolCallCount,
+                      }),
+                    });
+                    console.log(`Incremented tool call quota by ${toolCallCount} for user`);
+                  } catch (error) {
+                    console.error("Failed to increment tool call quota:", error);
+                    // Don't fail the request if quota increment fails
+                  }
+                });
+              }
             },
             onError: async (error) => {
               if (isComplete) return;
@@ -386,6 +412,29 @@ export async function POST(req: Request) {
                       },
                       { token: auth.token },
                     );
+                  });
+                }
+
+                // Increment tool call quota when abort
+                if (toolCallCount > 0) {
+                  DatabaseQueue.add(async () => {
+                    try {
+                      await fetch(`${process.env.CONVEX_SITE_URL}/increment-tool-call-quota`, {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                          "Authorization": `Bearer ${process.env.CONVEX_SECRET_TOKEN}`,
+                        },
+                        body: JSON.stringify({
+                          userId: auth.userId,
+                          toolCallCount,
+                        }),
+                      });
+                      console.log(`Incremented tool call quota by ${toolCallCount} for user (abort)`);
+                    } catch (error) {
+                      console.error("Failed to increment tool call quota (abort):", error);
+                      // Don't fail the request if quota increment fails
+                    }
                   });
                 }
                 return;

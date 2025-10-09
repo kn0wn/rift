@@ -226,6 +226,41 @@ export async function incrementQuotaUsage(
 }
 
 /**
+ * Increment user's tool call quota usage (standard quota only)
+ * This is a simplified version that doesn't handle billing cycle resets
+ * as that's already handled by the sendMessage mutation
+ */
+export async function incrementToolCallQuota(
+  ctx: MutationCtx,
+  userId: string,
+  toolCallCount: number,
+): Promise<number> {
+  try {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_workos_id", (q) => q.eq("workos_id", userId))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const currentUsage = user.standardQuotaUsage || 0;
+    const newUsage = currentUsage + toolCallCount;
+
+    // Update only the standard quota usage
+    await ctx.db.patch(user._id, {
+      standardQuotaUsage: newUsage,
+    });
+
+    return newUsage;
+  } catch (error) {
+    console.error("Error incrementing tool call quota usage:", error);
+    throw error;
+  }
+}
+
+/**
  * Get organization billing cycle info by WorkOS organization ID
  */
 export async function getOrganizationBillingCycle(
