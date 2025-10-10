@@ -15,6 +15,7 @@ import { ToolType } from "@/lib/ai/config/base";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { exaWebSearch } from "@/lib/ai/tools/exa-search";
 
@@ -25,7 +26,13 @@ interface RequestBody {
   messages: Array<{
     id: string;
     role: "user" | "assistant" | "system";
-    parts?: Array<{ type: string; text?: string }>;
+    parts?: Array<{ 
+      type: string; 
+      text?: string;
+      mediaType?: string;
+      url?: string;
+      attachmentId?: string;
+    }>;
   }>;
   modelId: string;
   threadId: string;
@@ -184,8 +191,10 @@ export async function POST(req: Request) {
 
     // Check quota limits BEFORE making AI request - for both new messages and regenerations
     const lastUser = messages.filter((m) => m.role === "user").pop();
-    const userText = lastUser?.parts?.[0]?.text;
-    if (lastUser && userText) {
+    const userText = lastUser?.parts?.find(part => part.type === "text")?.text;
+    const userFiles = lastUser?.parts?.filter(part => part.type === "file") || [];
+    
+    if (lastUser && (userText || userFiles.length > 0)) {
       // Check quota limits first (blocking)
       const quotaCheck = await fetchQuery(
         api.users.checkUserQuota,
@@ -230,17 +239,23 @@ export async function POST(req: Request) {
 
       // Handle quota increment based on trigger type
       if (trigger !== "regenerate-message") {
+        // Extract attachment IDs from file parts
+        const attachmentIds = userFiles
+          .filter(part => part.attachmentId)
+          .map(part => part.attachmentId! as Id<"attachments">);
+        
         // For new messages: persist user message (which also increments quota)
         DatabaseQueue.add(async () => {
           await fetchMutation(
             api.threads.sendMessage,
             {
               threadId,
-              content: userText,
+              content: userText || "", // Handle case where there's no text but there are files
               model: modelId,
               messageId: lastUser.id,
               quotaType,
               secretToken: process.env.CONVEX_SECRET_TOKEN!,
+              attachmentIds: attachmentIds.length > 0 ? attachmentIds : undefined,
             },
             { token: auth.token },
           );

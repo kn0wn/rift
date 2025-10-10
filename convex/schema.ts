@@ -145,7 +145,7 @@ export default defineSchema({
   attachments: defineTable({
     publicMessageIds: v.array(v.id("messages")),
     userId: v.string(),
-    attachmentType: v.string(),
+    attachmentType: v.union(v.literal("image"), v.literal("pdf"), v.literal("file")),
     attachmentUrl: v.string(),
 
     fileName: v.string(),

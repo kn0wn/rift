@@ -192,6 +192,7 @@ export const sendMessage = mutation({
     messageId: v.string(), // Client-generated message ID
     quotaType: v.union(v.literal("standard"), v.literal("premium")),
     secretToken: v.string(), // Secret token for server-only access
+    attachmentIds: v.optional(v.array(v.id("attachments"))), // File attachments
     modelParams: v.optional(
       v.object({
         temperature: v.optional(v.number()),
@@ -288,10 +289,22 @@ export const sendMessage = mutation({
       role: "user" as const,
       created_at: now,
       model: args.model,
-      attachmentsIds: [], // Empty array for new message
+      attachmentsIds: args.attachmentIds || [], // Include file attachments
       modelParams: args.modelParams,
       backfill: false,
     });
+
+    // Update attachment records to include this message
+    if (args.attachmentIds && args.attachmentIds.length > 0) {
+      for (const attachmentId of args.attachmentIds) {
+        const attachment = await ctx.db.get(attachmentId);
+        if (attachment && attachment.userId === userId) {
+          await ctx.db.patch(attachmentId, {
+            publicMessageIds: [...attachment.publicMessageIds, messageDocId],
+          });
+        }
+      }
+    }
 
     // Update the thread's lastMessageAt timestamp
     await ctx.db.patch(thread._id, {
@@ -387,11 +400,38 @@ export const getThreadMessagesPaginatedSafe = query({
       };
     }
 
-    return await ctx.db
+    const messages = await ctx.db
       .query("messages")
       .withIndex("by_treadId", (q) => q.eq("threadId", args.threadId))
       .order("desc") // Newest first; client can reverse for display
       .paginate(args.paginationOpts);
+
+    // Include attachment data for messages that have attachments
+    const messagesWithAttachments = await Promise.all(
+      messages.page.map(async (message) => {
+        if (message.attachmentsIds && message.attachmentsIds.length > 0) {
+          const attachments = await Promise.all(
+            message.attachmentsIds.map(id => ctx.db.get(id))
+          );
+          return {
+            ...message,
+            attachments: attachments.filter(a => a !== null).map(a => ({
+              attachmentId: a._id,
+              fileName: a.fileName,
+              mimeType: a.mimeType,
+              attachmentUrl: a.attachmentUrl,
+              attachmentType: a.attachmentType,
+            })),
+          };
+        }
+        return { ...message, attachments: [] };
+      })
+    );
+
+    return {
+      ...messages,
+      page: messagesWithAttachments,
+    };
   },
 });
 
@@ -910,5 +950,77 @@ export const incrementToolCallQuotaMutation = internalMutation({
     return {
       newUsage,
     };
+  },
+});
+
+/**
+ * Create an attachment record for an uploaded file with data URL.
+ */
+export const createAttachment = mutation({
+  args: {
+    dataUrl: v.string(),
+    fileName: v.string(),
+    mimeType: v.string(),
+    fileSize: v.string(),
+  },
+  returns: v.id("attachments"),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    
+    // Generate a unique file key
+    const fileKey = `${userId}-${Date.now()}-${args.fileName}`;
+    
+    // Create the attachment record with R2 URL
+    const attachmentId = await ctx.db.insert("attachments", {
+      publicMessageIds: [],
+      userId: userId,
+      attachmentType: args.mimeType.startsWith("image/") ? "image" as const : args.mimeType === "application/pdf" ? "pdf" as const : "file" as const,
+      attachmentUrl: args.dataUrl, // R2 URL
+      fileName: args.fileName,
+      mimeType: args.mimeType,
+      fileSize: args.fileSize,
+      fileKey: fileKey,
+      status: "uploaded",
+      backfill: false,
+    });
+    
+    return attachmentId;
+  },
+});
+
+/**
+ * Get attachment details by ID.
+ */
+export const getAttachment = query({
+  args: {
+    attachmentId: v.id("attachments"),
+  },
+  returns: v.union(
+    v.object({
+      attachmentId: v.id("attachments"),
+      fileName: v.string(),
+      mimeType: v.string(),
+      fileSize: v.string(),
+      attachmentUrl: v.string(),
+      attachmentType: v.union(v.literal("image"), v.literal("pdf"), v.literal("file")),
+    }),
+    v.null()
+  ),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    
+    const attachment = await ctx.db.get(args.attachmentId);
+    if (!attachment || attachment.userId !== userId) {
+      return null;
+    }
+    
+        return {
+          attachmentId: attachment._id,
+          fileName: attachment.fileName,
+          mimeType: attachment.mimeType,
+          fileSize: attachment.fileSize,
+          attachmentUrl: attachment.attachmentUrl,
+          attachmentType: attachment.attachmentType,
+        };
   },
 });

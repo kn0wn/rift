@@ -11,6 +11,11 @@ import { useMessageEdit } from "@/hooks/use-message-edit";
 import { toast } from "sonner";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
+import {
+  uploadFiles,
+  isSupportedFileType,
+  type FileAttachment
+} from "@/lib/file-utils";
 
 import { ToolType, getDefaultTools } from "@/lib/ai/model-tools";
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
@@ -53,6 +58,8 @@ import {
   PromptInputTextarea,
   PromptInputToolbar,
   PromptInputTools,
+  PromptInputFileUpload,
+  PromptInputFilePreview,
 } from "@/components/ai/prompt-input";
 import { ModelSelector } from "@/components/ai/model-selector";
 import { Response } from "@/components/ai/response";
@@ -117,6 +124,9 @@ export default function ChatInterface({
   const { user } = useAuth();
 
   const [isSearchEnabled, setIsSearchEnabled] = useState<boolean>(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadedAttachments, setUploadedAttachments] = useState<FileAttachment[]>([]);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
 
   // Initialize search state from localStorage when model changes
   useEffect(() => {
@@ -319,6 +329,14 @@ export default function ChatInterface({
         role: "user" | "assistant" | "system";
         reasoning?: string;
         content?: string;
+        attachmentsIds?: string[];
+        attachments?: Array<{
+          attachmentId: string;
+          fileName: string;
+          mimeType: string;
+          attachmentUrl: string;
+          attachmentType: "image" | "pdf" | "file";
+        }>;
         sources?: Array<{
           sourceId: string;
           url: string;
@@ -333,6 +351,13 @@ export default function ChatInterface({
           parts: [
             ...(m.reasoning ? [{ type: "reasoning", text: m.reasoning }] : []),
             ...(m.content ? [{ type: "text", text: m.content }] : []),
+            ...(m.attachments ? m.attachments.map(att => ({
+              type: "file" as const,
+              mediaType: att.mimeType,
+              url: att.attachmentUrl,
+              attachmentId: att.attachmentId,
+              attachmentType: att.attachmentType,
+            })) : []),
             ...(m.sources ? m.sources.map(source => ({
               type: "source-url" as const,
               sourceId: source.sourceId,
@@ -372,6 +397,14 @@ export default function ChatInterface({
         role: "user" | "assistant" | "system";
         reasoning?: string;
         content?: string;
+        attachmentsIds?: string[];
+        attachments?: Array<{
+          attachmentId: string;
+          fileName: string;
+          mimeType: string;
+          attachmentUrl: string;
+          attachmentType: "image" | "pdf" | "file";
+        }>;
         sources?: Array<{
           sourceId: string;
           url: string;
@@ -386,6 +419,13 @@ export default function ChatInterface({
           parts: [
             ...(m.reasoning ? [{ type: "reasoning", text: m.reasoning }] : []),
             ...(m.content ? [{ type: "text", text: m.content }] : []),
+            ...(m.attachments ? m.attachments.map(att => ({
+              type: "file" as const,
+              mediaType: att.mimeType,
+              url: att.attachmentUrl,
+              attachmentId: att.attachmentId,
+              attachmentType: att.attachmentType,
+            })) : []),
             ...(m.sources ? m.sources.map(source => ({
               type: "source-url" as const,
               sourceId: source.sourceId,
@@ -435,10 +475,33 @@ export default function ChatInterface({
     [disableInput],
   );
 
+  const handleFileUpload = useCallback(async (files: File[]): Promise<FileAttachment[]> => {
+    if (files.length === 0) return [];
+    
+    setIsUploading(true);
+    try {
+      const fileList = new DataTransfer();
+      files.forEach(file => fileList.items.add(file));
+      
+      const attachments = await uploadFiles(fileList.files);
+      
+      // Add to uploaded attachments (using R2 URLs directly)
+      setUploadedAttachments(prev => [...prev, ...attachments]);
+      
+      return attachments;
+    } catch (error) {
+      console.error("File upload error:", error);
+      toast.error(`Failed to upload files: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return [];
+    } finally {
+      setIsUploading(false);
+    }
+  }, []);
+
   const handleSubmit = useCallback(
     async (e?: React.FormEvent) => {
       e?.preventDefault();
-      if (disableInput || !input.trim()) return;
+      if (disableInput || (!input.trim() && uploadedAttachments.length === 0)) return;
 
       const messageContent = input.trim();
       const messageId = generateUUID();
@@ -448,12 +511,29 @@ export default function ChatInterface({
       setInput("");
 
       try {
+        // Build message parts using already uploaded attachments
+        const parts: any[] = [];
+        
+        if (messageContent) {
+          parts.push({ type: "text", text: messageContent });
+        }
+        
+        // Use already uploaded attachments
+        uploadedAttachments.forEach(attachment => {
+          parts.push({ 
+            type: "file", 
+            mediaType: attachment.mediaType,
+            url: attachment.url,
+            attachmentId: attachment.attachmentId, // Include attachment ID for persistence
+          });
+        });
+
         if (id === "welcome" && onInitialMessage) {
           // Handle initial message on welcome page
           const optimisticMessage: UIMessage = {
             id: messageId,
             role: "user",
-            parts: [{ type: "text", text: messageContent }],
+            parts,
           };
 
           // Show optimistic message immediately
@@ -467,9 +547,13 @@ export default function ChatInterface({
           await sendMessage({
             id: messageId,
             role: "user",
-            parts: [{ type: "text", text: messageContent }],
+            parts,
           });
         }
+
+        // Clear uploaded attachments after sending
+        setUploadedAttachments([]);
+        setSelectedFiles([]);
       } catch (error) {
         console.error("Failed to send message:", error);
         toast.error("Failed to send message. Please try again.");
@@ -478,7 +562,7 @@ export default function ChatInterface({
         setMessages([]);
       }
     },
-    [disableInput, input, id, onInitialMessage, setMessages, sendMessage],
+    [disableInput, input, uploadedAttachments, id, onInitialMessage, setMessages, sendMessage],
   );
 
   const handleAttachClick = useCallback(() => {
@@ -487,16 +571,39 @@ export default function ChatInterface({
   }, [disableInput]);
 
   const handleFilesSelected = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(e.target.files ?? []);
-      if (files.length === 0) return;
-      const names = files.map((f) => `[${f.name}]`).join(" ");
-      setInput((prev) => (prev ? `${prev} ${names}` : names));
-      // reset to allow selecting the same file again
-      e.currentTarget.value = "";
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      
+      const fileArray = Array.from(files);
+      
+      // Validate file types
+      const unsupportedFiles = fileArray.filter(file => !isSupportedFileType(file));
+      if (unsupportedFiles.length > 0) {
+        toast.error(`Unsupported file types: ${unsupportedFiles.map(f => f.name).join(", ")}`);
+        return;
+      }
+      
+      // Validate file sizes (10MB limit)
+      const oversizedFiles = fileArray.filter(file => file.size > 10 * 1024 * 1024);
+      if (oversizedFiles.length > 0) {
+        toast.error(`Files too large: ${oversizedFiles.map(f => f.name).join(", ")}`);
+        return;
+      }
+      
+      // Add to selected files for preview
+      setSelectedFiles(prev => [...prev, ...fileArray]);
+      
+      // Upload immediately
+      await handleFileUpload(fileArray);
     },
-    [],
+    [handleFileUpload],
   );
+
+  const handleRemoveFile = useCallback((index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setUploadedAttachments(prev => prev.filter((_, i) => i !== index));
+  }, []);
 
   return (
     <div className="flex h-screen w-full min-h-0 flex-col relative">
@@ -664,6 +771,9 @@ export default function ChatInterface({
                       const nonReasoningParts = message.parts.filter(
                         (part) => part.type !== "reasoning" && part.type !== "source-url",
                       );
+                      const fileParts = message.parts.filter(
+                        (part) => part.type === "file",
+                      );
 
                       return (
                         <>
@@ -692,6 +802,70 @@ export default function ChatInterface({
                                 </div>
                               </ReasoningContent>
                             </Reasoning>
+                          )}
+
+                          {/* Render file attachments */}
+                          {fileParts.length > 0 && (
+                            <div className="space-y-3 mb-4">
+                          {fileParts.map((part, i) => {
+                            const filePart = part as { 
+                              type: "file";
+                              mediaType: string;
+                              url: string;
+                              attachmentType?: "image" | "pdf" | "file";
+                            };
+                            
+                            const { mediaType, url, attachmentType } = filePart;
+                                
+                                if (attachmentType === "image" || mediaType.startsWith("image/")) {
+                                  return (
+                                    <div key={`${message.id}-file-${i}`} className="rounded-lg overflow-hidden border">
+                                      <img
+                                        src={url}
+                                        alt="Uploaded image"
+                                        className="max-w-full h-auto max-h-96 object-contain"
+                                        loading="lazy"
+                                      />
+                                    </div>
+                                  );
+                                }
+                                
+                                if (attachmentType === "pdf" || mediaType === "application/pdf") {
+                                  return (
+                                    <div key={`${message.id}-file-${i}`} className="rounded-lg overflow-hidden border">
+                                      <iframe
+                                        src={url}
+                                        width="100%"
+                                        height="600"
+                                        className="border-0"
+                                        title="Uploaded PDF"
+                                      />
+                                    </div>
+                                  );
+                                }
+                                
+                                // Fallback for other file types
+                                return (
+                                  <div key={`${message.id}-file-${i}`} className="flex items-center gap-2 p-3 border rounded-lg bg-muted">
+                                    <AttachmentsIcon className="size-4" />
+                                    <div className="flex-1">
+                                      <div className="font-medium">File</div>
+                                      <div className="text-sm text-muted-foreground">
+                                        {mediaType}
+                                      </div>
+                                    </div>
+                                    <a
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 hover:text-blue-800"
+                                    >
+                                      View
+                                    </a>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           )}
 
                           {/* Render non-reasoning, non-source parts */}
@@ -1053,18 +1227,39 @@ export default function ChatInterface({
             </div>
           )}
           <PromptInput onSubmit={handleSubmit}>
+            <PromptInputFilePreview
+              files={uploadedAttachments.map(att => ({
+                name: att.fileName,
+                size: typeof att.fileSize === 'string' ? parseInt(att.fileSize, 10) : att.fileSize || 0,
+                type: att.mediaType,
+                lastModified: Date.now(),
+                webkitRelativePath: "",
+                arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+                bytes: () => Promise.resolve(new Uint8Array(0)),
+                slice: () => new Blob(),
+                stream: () => new ReadableStream(),
+                text: () => Promise.resolve(""),
+              } as File))}
+              onRemoveFile={handleRemoveFile}
+              disabled={disableInput || isUploading}
+            />
             <PromptInputTextarea
               onChange={handleInputChange}
               value={input}
-              disabled={disableInput}
+              disabled={disableInput || isUploading}
               placeholder="Escribe tu mensaje..."
             />
             <PromptInputToolbar>
               <PromptInputTools>
+                <PromptInputFileUpload
+                  ref={fileInputRef}
+                  onFilesSelected={handleFilesSelected}
+                  disabled={disableInput || isUploading}
+                />
                 <PromptInputButton
                   onClick={handleAttachClick}
                   aria-label="Add attachments"
-                  disabled={disableInput}
+                  disabled={disableInput || isUploading}
                 >
                   <AttachmentsIcon className="size-4" />
                 </PromptInputButton>
@@ -1102,8 +1297,8 @@ export default function ChatInterface({
                 />
               </PromptInputTools>
               <PromptInputSubmit
-                disabled={disableInput}
-                status={status}
+                disabled={disableInput || isUploading}
+                status={isUploading ? "submitted" : status}
                 onStop={() => {
                   // Preserve current streaming message content before stopping
                   const lastMessage = messages[messages.length - 1];

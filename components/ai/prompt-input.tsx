@@ -22,7 +22,7 @@ import type {
   HTMLAttributes,
   KeyboardEventHandler,
 } from "react";
-import { Children, useRef, useEffect, useCallback } from "react";
+import { Children, useRef, useEffect, useCallback, useState } from "react";
 
 export type PromptInputProps = HTMLAttributes<HTMLFormElement>;
 
@@ -249,3 +249,79 @@ export const PromptInputModelSelectValue = ({
 }: PromptInputModelSelectValueProps) => (
   <SelectValue className={cn(className)} {...props} />
 );
+
+export type PromptInputFileUploadProps = ComponentProps<"input"> & {
+  onFilesSelected?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  disabled?: boolean;
+};
+
+export const PromptInputFileUpload = ({
+  className,
+  onFilesSelected,
+  disabled,
+  ...props
+}: PromptInputFileUploadProps) => {
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (disabled) return;
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        onFilesSelected?.(e);
+        // Reset input to allow selecting the same file again
+        e.target.value = "";
+      }
+    },
+    [disabled, onFilesSelected]
+  );
+
+  return (
+    <input
+      type="file"
+      accept="image/*,application/pdf"
+      multiple
+      disabled={disabled}
+      onChange={handleFileChange}
+      className={cn("hidden", className)}
+      {...props}
+    />
+  );
+};
+
+export type PromptInputFilePreviewProps = {
+  files: File[];
+  onRemoveFile?: (index: number) => void;
+  disabled?: boolean;
+};
+
+export const PromptInputFilePreview = ({
+  files,
+  onRemoveFile,
+  disabled,
+}: PromptInputFilePreviewProps) => {
+  if (files.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2 p-2 border-t bg-muted/50">
+      {files.map((file, index) => (
+        <div
+          key={`${file.name}-${index}`}
+          className="flex items-center gap-2 px-2 py-1 bg-background border rounded-md text-sm"
+        >
+          <span className="truncate max-w-[200px]">{file.name}</span>
+          <span className="text-muted-foreground">
+            ({(file.size / 1024).toFixed(1)} KB)
+          </span>
+          {!disabled && onRemoveFile && (
+            <button
+              type="button"
+              onClick={() => onRemoveFile(index)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
