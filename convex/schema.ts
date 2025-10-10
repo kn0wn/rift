@@ -115,6 +115,13 @@ export default defineSchema({
     ),
     model: v.string(),
     attachmentsIds: v.array(v.id("attachments")),
+    sources: v.optional(v.array(
+      v.object({
+        sourceId: v.string(),
+        url: v.string(),
+        title: v.optional(v.string()),
+      })
+    )),
     modelParams: v.optional(
       v.object({
         temperature: v.optional(v.number()),

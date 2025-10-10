@@ -63,6 +63,12 @@ import {
   ReasoningContent,
   ReasoningTrigger,
 } from "@/components/ai/reasoning";
+import {
+  Source,
+  Sources,
+  SourcesContent,
+  SourcesTrigger,
+} from "@/components/ai/sources";
 import { Loader } from "@/components/ai/loader";
 import { usePaginatedQuery, usePreloadedQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -313,6 +319,11 @@ export default function ChatInterface({
         role: "user" | "assistant" | "system";
         reasoning?: string;
         content?: string;
+        sources?: Array<{
+          sourceId: string;
+          url: string;
+          title?: string;
+        }>;
       }
       const convexMessages = [...effectiveThreadDocs]
         .reverse()
@@ -322,6 +333,12 @@ export default function ChatInterface({
           parts: [
             ...(m.reasoning ? [{ type: "reasoning", text: m.reasoning }] : []),
             ...(m.content ? [{ type: "text", text: m.content }] : []),
+            ...(m.sources ? m.sources.map(source => ({
+              type: "source-url" as const,
+              sourceId: source.sourceId,
+              url: source.url,
+              title: source.title,
+            })) : []),
           ],
         })) as UIMessage[];
       setMessages(convexMessages);
@@ -355,6 +372,11 @@ export default function ChatInterface({
         role: "user" | "assistant" | "system";
         reasoning?: string;
         content?: string;
+        sources?: Array<{
+          sourceId: string;
+          url: string;
+          title?: string;
+        }>;
       }
       const convexMessages = [...effectiveThreadDocs]
         .reverse()
@@ -364,6 +386,12 @@ export default function ChatInterface({
           parts: [
             ...(m.reasoning ? [{ type: "reasoning", text: m.reasoning }] : []),
             ...(m.content ? [{ type: "text", text: m.content }] : []),
+            ...(m.sources ? m.sources.map(source => ({
+              type: "source-url" as const,
+              sourceId: source.sourceId,
+              url: source.url,
+              title: source.title,
+            })) : []),
           ],
         })) as UIMessage[];
 
@@ -634,7 +662,7 @@ export default function ChatInterface({
                         (part) => part.type === "reasoning" && "text" in part,
                       );
                       const nonReasoningParts = message.parts.filter(
-                        (part) => part.type !== "reasoning",
+                        (part) => part.type !== "reasoning" && part.type !== "source-url",
                       );
 
                       return (
@@ -666,7 +694,7 @@ export default function ChatInterface({
                             </Reasoning>
                           )}
 
-                          {/* Render non-reasoning parts */}
+                          {/* Render non-reasoning, non-source parts */}
                           {nonReasoningParts.map((part, i: number) => {
                             if (part.type === "text" && "text" in part) {
                               {/* Edit mode disabled for now
@@ -837,6 +865,35 @@ export default function ChatInterface({
                     })()}
                   </MessageContent>
                 </Message>
+                
+                {/* Sources section for assistant messages - only show when sources exist and response is completed */}
+                {message.role === "assistant" && 
+                 message.parts.filter((part) => part.type === "source-url").length > 0 &&
+                 !(status === "streaming" && message.id === messages[messages.length - 1]?.id) && (
+                  <Sources className="mt-4 px-4">
+                    <SourcesTrigger
+                      count={
+                        message.parts.filter(
+                          (part) => part.type === "source-url",
+                        ).length
+                      }
+                    />
+                    {message.parts
+                      .filter((part) => part.type === "source-url")
+                      .map((part, i) => {
+                        const sourcePart = part as { url: string; title?: string };
+                        return (
+                          <SourcesContent key={`${message.id}-source-${i}`}>
+                            <Source
+                              href={sourcePart.url}
+                              title={sourcePart.title || sourcePart.url}
+                            />
+                          </SourcesContent>
+                        );
+                      })}
+                  </Sources>
+                )}
+                
                 {/* Actions appear outside the message */}
                 {message.role === "assistant" && (
                   <div className="px-0">

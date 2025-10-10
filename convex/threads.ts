@@ -641,6 +641,45 @@ export const autoUpdateThreadTitle = mutation({
 });
 
 /**
+ * Add sources to assistant message
+ */
+export const addSourcesToMessage = mutation({
+  args: {
+    messageId: v.string(),
+    sources: v.array(
+      v.object({
+        sourceId: v.string(),
+        url: v.string(),
+        title: v.optional(v.string()),
+      })
+    ),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+
+    const message = await ctx.db
+      .query("messages")
+      .withIndex("by_messageId_and_userId", (q) =>
+        q.eq("messageId", args.messageId).eq("userId", userId),
+      )
+      .unique();
+
+    if (!message) {
+      throw new Error("Message not found or access denied");
+    }
+
+    // Update message with sources
+    await ctx.db.patch(message._id, {
+      sources: args.sources,
+      updated_at: Date.now(),
+    });
+
+    return null;
+  },
+});
+
+/**
  * Finalize assistant message
  */
 export const finalizeAssistantMessage = mutation({

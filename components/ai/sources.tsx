@@ -31,7 +31,7 @@ export const SourcesTrigger = ({
   <CollapsibleTrigger className="flex items-center gap-2" {...props}>
     {children ?? (
       <>
-        <p className="font-medium">Used {count} sources</p>
+        <p className="font-medium">{count} Fuentes</p>
         <ChevronDownIcon className="h-4 w-4" />
       </>
     )}
@@ -58,7 +58,7 @@ export type SourceProps = ComponentProps<'a'>;
 
 export const Source = ({ href, title, children, ...props }: SourceProps) => (
   <a
-    className="flex items-center gap-2"
+    className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
     href={href}
     rel="noreferrer"
     target="_blank"

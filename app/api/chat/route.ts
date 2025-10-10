@@ -345,6 +345,46 @@ export async function POST(req: Request) {
                 pendingUpdate.reasoning += chunk.text;
               } else if (chunk.type === "tool-call") {
                 toolCallCount++;
+              } else if (chunk.type === "tool-result" && chunk.toolName === "webSearch") {
+                // Extract sources from web search tool results
+                const toolResult = chunk.output as any[];
+                if (Array.isArray(toolResult)) {
+                  const sources = toolResult
+                    .filter((result: any) => result.url)
+                    .map((result: any, index: number) => ({
+                      sourceId: `source-${Date.now()}-${index}`,
+                      url: result.url,
+                      title: result.title || result.url,
+                    }));
+
+                  // Stream sources to client
+                  sources.forEach((source) => {
+                    writer.write({
+                      type: "source-url",
+                      sourceId: source.sourceId,
+                      url: source.url,
+                      title: source.title,
+                    });
+                  });
+
+                  // Save sources to database
+                  if (sources.length > 0) {
+                    DatabaseQueue.add(async () => {
+                      try {
+                        await fetchMutation(
+                          api.threads.addSourcesToMessage,
+                          {
+                            messageId: newMessageId,
+                            sources: sources,
+                          },
+                          { token: auth.token },
+                        );
+                      } catch (error) {
+                        console.error("Failed to save sources to database:", error);
+                      }
+                    });
+                  }
+                }
               }
             },
             onFinish: async () => {
@@ -474,7 +514,7 @@ export async function POST(req: Request) {
             },
           });
 
-          writer.merge(result.toUIMessageStream({ sendStart: false }));
+          writer.merge(result.toUIMessageStream({ sendStart: false, sendSources: true }));
         } catch (error) {
           cleanup();
           throw error;
