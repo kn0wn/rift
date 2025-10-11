@@ -19,7 +19,6 @@ import { Id } from "@/convex/_generated/dataModel";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { exaWebSearch } from "@/lib/ai/tools/exa-search";
 
-export const runtime = "edge";
 export const maxDuration = 300;
 
 interface RequestBody {

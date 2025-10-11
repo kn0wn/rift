@@ -2,7 +2,6 @@ import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 
-export const runtime = "edge";
 
 const jsonResponse = (data: object, status = 200) =>
   new Response(JSON.stringify(data), {
