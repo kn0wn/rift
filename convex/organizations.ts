@@ -6,6 +6,7 @@ import {
 } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 import { getAuthUserIdentity } from "./helpers/getUser";
 import { extractOrganizationIdFromJWT } from "./helpers/quota";
 
@@ -244,8 +245,8 @@ export const syncStripeSubscriptionData = internalMutation({
 
 export const resetOrganizationBillingCycle = internalMutation({
   args: { organizationId: v.id("organizations") },
-  returns: v.null(),
-  handler: async (ctx, args) => {
+  returns: v.id("_scheduled_functions"),
+  handler: async (ctx, args): Promise<Id<"_scheduled_functions">> => {
     const organization = await ctx.db.get(args.organizationId);
     if (!organization) {
       throw new Error(`Organization not found: ${args.organizationId}`);
@@ -260,11 +261,18 @@ export const resetOrganizationBillingCycle = internalMutation({
     });
     
     // Schedule next reset - creates perpetual cycle
-    await ctx.scheduler.runAt(
+    const jobId: Id<"_scheduled_functions"> = await ctx.scheduler.runAt(
       thirtyDaysFromNow,
       internal.organizations.resetOrganizationBillingCycle,
       { organizationId: args.organizationId }
     );
+    
+    // Store the job ID in the organization document
+    await ctx.db.patch(args.organizationId, {
+      scheduledBillingJobId: jobId,
+    });
+    
+    return jobId;
   },
 });
 

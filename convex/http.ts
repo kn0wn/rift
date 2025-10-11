@@ -503,5 +503,107 @@ http.route({
   }),
 });
 
+http.route({
+  path: "/admin/organizations/cancel-now",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authHeader = request.headers.get("authorization") || "";
+    const expected = `Bearer ${process.env.CONVEX_ADMIN_TOKEN ?? ""}`;
+    if (!process.env.CONVEX_ADMIN_TOKEN || authHeader !== expected) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    try {
+      const body = await request.json();
+      const { organizationId, subscriptionStatus } = body ?? {};
+      
+      if (!organizationId || !subscriptionStatus) {
+        return new Response(JSON.stringify({ error: "Missing organizationId or subscriptionStatus" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const validStatuses = ["active", "canceled", "incomplete", "incomplete_expired", "past_due", "trialing", "unpaid", "none"];
+      if (!validStatuses.includes(subscriptionStatus)) {
+        return new Response(JSON.stringify({ error: "Invalid subscriptionStatus" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      await ctx.runMutation(internal.admin.organizations.cancelOrganizationSubscriptionNow, {
+        organizationId,
+        subscriptionStatus,
+      });
+
+      return new Response(JSON.stringify({ status: "success" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Admin cancel now error:", error);
+      return new Response(JSON.stringify({ error: "Failed to cancel organization subscription" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }),
+});
+
+http.route({
+  path: "/admin/organizations/cancel-at-cycle-end",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authHeader = request.headers.get("authorization") || "";
+    const expected = `Bearer ${process.env.CONVEX_ADMIN_TOKEN ?? ""}`;
+    if (!process.env.CONVEX_ADMIN_TOKEN || authHeader !== expected) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    try {
+      const body = await request.json();
+      const { organizationId, subscriptionStatus } = body ?? {};
+      
+      if (!organizationId || !subscriptionStatus) {
+        return new Response(JSON.stringify({ error: "Missing organizationId or subscriptionStatus" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const validStatuses = ["active", "canceled", "incomplete", "incomplete_expired", "past_due", "trialing", "unpaid", "none"];
+      if (!validStatuses.includes(subscriptionStatus)) {
+        return new Response(JSON.stringify({ error: "Invalid subscriptionStatus" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      await ctx.runMutation(internal.admin.organizations.cancelOrganizationSubscriptionAtCycleEnd, {
+        organizationId,
+        subscriptionStatus,
+      });
+
+      return new Response(JSON.stringify({ status: "success" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Admin cancel at cycle end error:", error);
+      return new Response(JSON.stringify({ error: "Failed to schedule organization subscription cancellation" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }),
+});
+
 
 export default http;

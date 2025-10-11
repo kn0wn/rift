@@ -21,7 +21,13 @@ import {
 import { Badge } from "@/components/ai/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ai/ui/card";
 import { DataTable } from "@/components/ai/ui/data-table";
-import { Loader2, RefreshCw } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ai/ui/dropdown-menu";
+import { Loader2, RefreshCw, MoreHorizontal } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 
 interface Organization {
@@ -36,6 +42,7 @@ interface Organization {
   billingCycleEnd?: number;
   subscriptionStatus?: string;
   stripeCustomerId?: string;
+  cancelAtPeriodEnd?: boolean;
 }
 
 export default function AdminDashboardClient() {
@@ -46,6 +53,10 @@ export default function AdminDashboardClient() {
   const [selectedPlan, setSelectedPlan] = useState<string>("");
   const [isSetPlanDialogOpen, setIsSetPlanDialogOpen] = useState(false);
   const [isSettingPlan, setIsSettingPlan] = useState(false);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
+  const [cancelType, setCancelType] = useState<"now" | "end_of_cycle">("now");
+  const [cancelStatus, setCancelStatus] = useState<string>("canceled");
 
   const fetchOrganizations = async () => {
     try {
@@ -104,6 +115,41 @@ export default function AdminDashboardClient() {
     }
   };
 
+  const handleCancelSubscription = async () => {
+    if (!selectedOrg || !cancelStatus) return;
+
+    try {
+      setIsCanceling(true);
+      const response = await fetch("/api/admin/organizations/cancel-subscription", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          organizationId: selectedOrg._id,
+          cancelType,
+          subscriptionStatus: cancelStatus,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to cancel subscription");
+      }
+
+      // Refresh organizations list
+      await fetchOrganizations();
+      setIsCancelDialogOpen(false);
+      setSelectedOrg(null);
+      setCancelType("now");
+      setCancelStatus("canceled");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to cancel subscription");
+    } finally {
+      setIsCanceling(false);
+    }
+  };
+
 
   const formatDate = (timestamp?: number) => {
     if (!timestamp) return "Not set";
@@ -135,6 +181,10 @@ export default function AdminDashboardClient() {
     }
   };
 
+  const capitalizeFirstLetter = (str: string) => {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  };
+
   const columns: ColumnDef<Organization>[] = [
     {
       accessorKey: "name",
@@ -158,34 +208,56 @@ export default function AdminDashboardClient() {
       cell: ({ row }) => {
         const plan = row.getValue("plan") as string;
         return (
-          <Badge variant={getPlanBadgeVariant(plan)}>
-            {plan || "No Plan"}
+          <Badge variant={getPlanBadgeVariant(plan)} className="px-3 py-1">
+            {plan ? capitalizeFirstLetter(plan) : "No Plan"}
           </Badge>
         );
       },
     },
     {
-      accessorKey: "quotas",
-      header: "Quotas",
+      accessorKey: "standardQuotaLimit",
+      header: "Standard",
       cell: ({ row }) => {
-        const org = row.original;
+        const quota = row.getValue("standardQuotaLimit") as number;
         return (
-          <div className="text-sm">
-            <div>Standard: {org.standardQuotaLimit || 0}</div>
-            <div>Premium: {org.premiumQuotaLimit || 0}</div>
+          <div className="text-sm font-medium">
+            {quota || 0}
           </div>
         );
       },
     },
     {
-      accessorKey: "billingCycle",
-      header: "Billing Cycle",
+      accessorKey: "premiumQuotaLimit",
+      header: "Premium",
       cell: ({ row }) => {
-        const org = row.original;
+        const quota = row.getValue("premiumQuotaLimit") as number;
+        return (
+          <div className="text-sm font-medium">
+            {quota || 0}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "billingCycleStart",
+      header: "Billing Start",
+      cell: ({ row }) => {
+        const start = row.getValue("billingCycleStart") as number;
         return (
           <div className="text-sm">
-            <div>Start: {formatDate(org.billingCycleStart)}</div>
-            <div>End: {formatDate(org.billingCycleEnd)}</div>
+            {formatDate(start)}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "billingCycleEnd",
+      header: "Billing End",
+      cell: ({ row }) => {
+        const end = row.getValue("billingCycleEnd") as number;
+        return (
+          <div className="text-sm">
+            {formatDate(end)}
           </div>
         );
       },
@@ -196,8 +268,23 @@ export default function AdminDashboardClient() {
       cell: ({ row }) => {
         const status = row.getValue("subscriptionStatus") as string;
         return (
-          <Badge variant={getStatusBadgeVariant(status)}>
-            {status || "none"}
+          <Badge variant={getStatusBadgeVariant(status)} className="px-2 py-1">
+            {status ? capitalizeFirstLetter(status) : "None"}
+          </Badge>
+        );
+      },
+    },
+    {
+      accessorKey: "cancelAtPeriodEnd",
+      header: "CPE?",
+      cell: ({ row }) => {
+        const cancelAtPeriodEnd = row.getValue("cancelAtPeriodEnd") as boolean;
+        return (
+          <Badge 
+            variant={cancelAtPeriodEnd ? "destructive" : "secondary"} 
+            className="px-2 py-1"
+          >
+            {cancelAtPeriodEnd ? "Yes" : "No"}
           </Badge>
         );
       },
@@ -207,59 +294,40 @@ export default function AdminDashboardClient() {
       header: "Actions",
       cell: ({ row }) => {
         const org = row.original;
+        const hasActiveSubscription = org.plan && org.subscriptionStatus === "active";
         return (
-          <div className="flex gap-2">
-            <Dialog open={isSetPlanDialogOpen && selectedOrg?._id === org._id} onOpenChange={(open) => {
-              setIsSetPlanDialogOpen(open);
-              if (open) {
-                setSelectedOrg(org);
-                setSelectedPlan(org.plan || "");
-              } else {
-                setSelectedOrg(null);
-                setSelectedPlan("");
-              }
-            }}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  Set Plan
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Set Plan for {org.name}</DialogTitle>
-                  <DialogDescription>
-                    Assign a subscription plan to this organization.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="py-4">
-                  <Select value={selectedPlan} onValueChange={setSelectedPlan}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a plan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="plus">Plus (1000 standard, 100 premium)</SelectItem>
-                      <SelectItem value="pro">Pro (1500 standard, 300 premium)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsSetPlanDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleSetPlan}
-                    disabled={!selectedPlan || isSettingPlan}
-                  >
-                    {isSettingPlan && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    Set Plan
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => {
+                  setSelectedOrg(org);
+                  setSelectedPlan(org.plan || "");
+                  setIsSetPlanDialogOpen(true);
+                }}
+              >
+                Set Plan
+              </DropdownMenuItem>
+              {hasActiveSubscription && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedOrg(org);
+                    setCancelType("now");
+                    setCancelStatus("canceled");
+                    setIsCancelDialogOpen(true);
+                  }}
+                  className="text-destructive focus:text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  Cancel Subscription
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         );
       },
     },
@@ -293,26 +361,152 @@ export default function AdminDashboardClient() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Organizations</CardTitle>
-          <Button onClick={fetchOrganizations} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <DataTable
-          columns={columns}
-          data={organizations}
-          searchKey="name"
-          searchPlaceholder="Search organizations..."
-          showPagination={true}
-          showSearch={true}
-        />
-      </CardContent>
-    </Card>
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Organizations</CardTitle>
+            <Button onClick={fetchOrganizations} variant="outline" size="sm">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <DataTable
+            columns={columns}
+            data={organizations}
+            searchKey="name"
+            searchPlaceholder="Search organizations..."
+            showPagination={true}
+            showSearch={true}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Set Plan Dialog */}
+      <Dialog open={isSetPlanDialogOpen} onOpenChange={(open) => {
+        setIsSetPlanDialogOpen(open);
+        if (!open) {
+          setSelectedOrg(null);
+          setSelectedPlan("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set Plan for {selectedOrg?.name}</DialogTitle>
+            <DialogDescription>
+              Assign a subscription plan to this organization.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Select value={selectedPlan} onValueChange={setSelectedPlan}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a plan" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="plus">Plus (1000 standard, 100 premium)</SelectItem>
+                <SelectItem value="pro">Pro (1500 standard, 300 premium)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsSetPlanDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSetPlan}
+              disabled={!selectedPlan || isSettingPlan}
+            >
+              {isSettingPlan && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Set Plan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Subscription Dialog */}
+      <Dialog open={isCancelDialogOpen} onOpenChange={(open) => {
+        setIsCancelDialogOpen(open);
+        if (!open) {
+          setSelectedOrg(null);
+          setCancelType("now");
+          setCancelStatus("canceled");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Subscription for {selectedOrg?.name}</DialogTitle>
+            <DialogDescription>
+              Choose how to cancel this organization's subscription.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div>
+              <label className="text-sm font-medium">Cancellation Type</label>
+              <Select value={cancelType} onValueChange={(value: "now" | "end_of_cycle") => setCancelType(value)}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="now">Cancel Now</SelectItem>
+                  <SelectItem value="end_of_cycle">Cancel at End of Billing Cycle</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Set Status To</label>
+              <Select value={cancelStatus} onValueChange={setCancelStatus}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="canceled">Canceled</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="incomplete">Incomplete</SelectItem>
+                  <SelectItem value="incomplete_expired">Incomplete Expired</SelectItem>
+                  <SelectItem value="past_due">Past Due</SelectItem>
+                  <SelectItem value="trialing">Trialing</SelectItem>
+                  <SelectItem value="unpaid">Unpaid</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {cancelType === "now" && (
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                <p className="text-sm text-destructive">
+                  <strong>Warning:</strong> This will immediately cancel the subscription and remove all quotas and billing information.
+                </p>
+              </div>
+            )}
+            {cancelType === "end_of_cycle" && (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                <p className="text-sm text-yellow-800">
+                  <strong>Note:</strong> The subscription will remain active until the end of the current billing cycle ({selectedOrg?.billingCycleEnd ? new Date(selectedOrg.billingCycleEnd).toLocaleDateString() : "Unknown"}).
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsCancelDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancelSubscription}
+              disabled={!cancelStatus || isCanceling}
+            >
+              {isCanceling && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {cancelType === "now" ? "Cancel Now" : "Schedule Cancellation"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
