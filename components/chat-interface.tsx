@@ -19,6 +19,9 @@ import {
 
 import { ToolType, getDefaultTools } from "@/lib/ai/model-tools";
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
+import { useQuery, useConvexAuth, Preloaded } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { NoSubscriptionDialog } from "@/components/ui/no-subscription-dialog";
 import {
   AttachmentsIcon,
   RedoIcon,
@@ -78,8 +81,6 @@ import {
 } from "@/components/ai/sources";
 import { Loader } from "@/components/ai/loader";
 import { usePaginatedQuery, usePreloadedQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { useConvexAuth, Preloaded } from "convex/react";
 import {
   Conversation,
   ConversationContent,
@@ -120,8 +121,12 @@ export default function ChatInterface({
     otherTypeUsage: number;
     otherTypeLimit: number;
   } | null>(null);
+  const [showNoSubscriptionDialog, setShowNoSubscriptionDialog] = useState(false);
   const { isAuthenticated } = useConvexAuth();
   const { user } = useAuth();
+
+  // Get organization info for the dialog
+  const orgInfo = useQuery(api.organizations.getCurrentOrganizationInfo);
 
   const [isSearchEnabled, setIsSearchEnabled] = useState<boolean>(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -175,8 +180,9 @@ export default function ChatInterface({
     if (prevModelRef.current !== selectedModel) {
       prevModelRef.current = selectedModel;
       setChatKey((prev) => prev + 1);
-      // Clear quota error when switching models
+      // Clear quota error and dialog when switching models
       setQuotaError(null);
+      setShowNoSubscriptionDialog(false);
     }
   }, [selectedModel]);
 
@@ -193,7 +199,28 @@ export default function ChatInterface({
       onError(error: Error) {
         console.error("Chat error:", error);
 
-        // Check if this is a quota error and parse JSON response
+        // Check if this is a no subscription error
+        if (error.message.includes("No subscription")) {
+          try {
+            // Parse JSON error response
+            const jsonMatch = error.message.match(/\{.*\}/);
+            if (jsonMatch) {
+              const errorResponse = JSON.parse(jsonMatch[0]);
+              if (errorResponse.error === "No subscription") {
+                setShowNoSubscriptionDialog(true);
+                setQuotaError(null); // Clear any existing quota error
+                return;
+              }
+            }
+          } catch {
+            // If parsing fails, still show the dialog
+            setShowNoSubscriptionDialog(true);
+            setQuotaError(null);
+            return;
+          }
+        }
+
+        // Check if this is a quota exceeded error and parse JSON response
         if (
           error.message.includes("quota exceeded") ||
           error.message.includes("Message quota exceeded")
@@ -216,6 +243,7 @@ export default function ChatInterface({
                   otherTypeUsage: errorResponse.otherQuotaInfo.currentUsage,
                   otherTypeLimit: errorResponse.otherQuotaInfo.limit,
                 });
+                setShowNoSubscriptionDialog(false); // Clear dialog if showing
               }
             }
           } catch {
@@ -228,10 +256,12 @@ export default function ChatInterface({
               otherTypeUsage: 0,
               otherTypeLimit: 0,
             });
+            setShowNoSubscriptionDialog(false);
           }
         } else {
-          // Clear quota error for non-quota errors
+          // Clear quota error and dialog for non-quota errors
           setQuotaError(null);
+          setShowNoSubscriptionDialog(false);
 
           // Don't show error toast for aborted requests (user stopped generation)
           if (
@@ -1234,6 +1264,13 @@ export default function ChatInterface({
       {/* Prompt input overlayed at bottom of the main area (not part of scroll flow) */}
       <div className="absolute bottom-0 left-0 right-0">
         <div className="mx-auto w-full max-w-3xl px-2">
+          {/* No Subscription Dialog */}
+          <NoSubscriptionDialog
+            isOpen={showNoSubscriptionDialog}
+            onClose={() => setShowNoSubscriptionDialog(false)}
+            orgName={orgInfo?.name}
+          />
+          
           {/* Quota Error Message */}
           {quotaError && (
             <div className="mb-2 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 rounded-lg text-red-800 dark:text-red-200 text-sm shadow-sm">

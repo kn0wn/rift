@@ -136,6 +136,7 @@ export const checkUserQuota = query({
     allowed: v.boolean(),
     currentUsage: v.number(),
     limit: v.number(),
+    quotaConfigured: v.boolean(),
   }),
   handler: async (ctx, args) => {
     // Get the authenticated user identity (full JWT token)
@@ -221,11 +222,13 @@ export const getUserBothQuotas = query({
       allowed: v.boolean(),
       currentUsage: v.number(),
       limit: v.number(),
+      quotaConfigured: v.boolean(),
     }),
     premium: v.object({
       allowed: v.boolean(),
       currentUsage: v.number(),
       limit: v.number(),
+      quotaConfigured: v.boolean(),
     }),
   }),
   handler: async (ctx) => {

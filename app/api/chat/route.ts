@@ -202,7 +202,24 @@ export async function POST(req: Request) {
       );
 
       if (!quotaCheck.allowed) {
-        // Get both quota types for detailed error message
+        // Check if quota is not configured (no subscription)
+        if (!quotaCheck.quotaConfigured) {
+          const errorResponse = {
+            error: "No subscription",
+            message: "Organization has no active subscription configured",
+            quotaType,
+          };
+
+          return new Response(JSON.stringify(errorResponse), {
+            status: 403,
+            headers: {
+              "Content-Type": "application/json",
+              "X-Response-Time": `${Date.now() - start}ms`,
+            },
+          });
+        }
+
+        // Get both quota types for detailed error message (quota exceeded case)
         const bothQuotas = await fetchQuery(
           api.users.getUserBothQuotas,
           {},

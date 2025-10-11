@@ -93,7 +93,7 @@ export async function checkQuotaLimit(
   orgWorkosId: string,
   quotaType: "standard" | "premium",
   billingCycleStart?: number,
-): Promise<{ allowed: boolean; currentUsage: number; limit: number }> {
+): Promise<{ allowed: boolean; currentUsage: number; limit: number; quotaConfigured: boolean }> {
   try {
     // Get organization's quota limit by type
     const messageLimit = await getOrganizationQuotaLimit(
@@ -112,6 +112,7 @@ export async function checkQuotaLimit(
         allowed: false,
         currentUsage: 0,
         limit: 0,
+        quotaConfigured: false,
       };
     }
 
@@ -143,6 +144,7 @@ export async function checkQuotaLimit(
       allowed,
       currentUsage: effectiveUsage,
       limit: messageLimit,
+      quotaConfigured: true,
     };
   } catch (error) {
     console.error("Error checking quota limit:", error);
