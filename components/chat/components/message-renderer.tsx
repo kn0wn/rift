@@ -4,7 +4,6 @@ import {
   AttachmentsIcon,
   RedoIcon,
   CopyIcon,
-  BranchIcon,
 } from "@/components/ui/icons/svg-icons";
 import {
   Tool,
@@ -28,6 +27,94 @@ import {
   SourcesTrigger,
 } from "@/components/ai/sources";
 import type { UIMessage } from "@ai-sdk/react";
+import React, { useCallback } from "react";
+
+// Memoized action buttons component
+const MessageActions = React.memo(function MessageActions({
+  message,
+  onRegenerateAssistantMessage,
+  onRegenerateAfterUserMessage,
+}: {
+  message: UIMessage;
+  onRegenerateAssistantMessage: (messageId: string) => void;
+  onRegenerateAfterUserMessage: (messageId: string) => void;
+}) {
+  const handleRegenerateAssistant = useCallback(() => {
+    onRegenerateAssistantMessage(message.id);
+  }, [onRegenerateAssistantMessage, message.id]);
+
+  const handleRegenerateAfterUser = useCallback(() => {
+    onRegenerateAfterUserMessage(message.id);
+  }, [onRegenerateAfterUserMessage, message.id]);
+
+  const handleCopyAssistant = useCallback(async () => {
+    const textContent = message.parts
+      .filter((part) => part.type === "text")
+      .map((part) => (part as { text: string }).text)
+      .join("\n");
+    await copyToClipboard(textContent);
+    toast.success("Copied to clipboard");
+  }, [message.id]);
+
+  const handleCopyUser = useCallback(async () => {
+    const textContent = message.parts
+      .filter((part) => part.type === "text")
+      .map((part) => (part as { text: string }).text)
+      .join("\n");
+    await copyToClipboard(textContent);
+  }, [message.id]);
+
+  if (message.role === "assistant") {
+    return (
+      <div className="px-0">
+        <Actions className="mt-1 opacity-0 group-hover:opacity-100 transition-opacity justify-start">
+          <Action
+            onClick={handleRegenerateAssistant}
+            label="Retry"
+            tooltip="Regenerate response"
+          >
+            <RedoIcon className="size-4" />
+          </Action>
+          <Action
+            onClick={handleCopyAssistant}
+            label="Copy"
+            tooltip="Copy to clipboard"
+          >
+            <CopyIcon className="size-4" />
+          </Action>
+        </Actions>
+      </div>
+    );
+  }
+
+  if (message.role === "user") {
+    return (
+      <div className="px-0">
+        <Actions className="mt-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+          <Action
+            onClick={handleRegenerateAfterUser}
+            label="Retry"
+            tooltip="Retry message"
+          >
+            <RedoIcon className="size-4" />
+          </Action>
+          <Action
+            onClick={handleCopyUser}
+            label="Copy"
+            tooltip="Copy to clipboard"
+          >
+            <CopyIcon className="size-4" />
+          </Action>
+        </Actions>
+      </div>
+    );
+  }
+
+  return null;
+}, (prevProps, nextProps) => {
+  // Only re-render if the message ID changes, not during streaming
+  return prevProps.message.id === nextProps.message.id;
+});
 
 interface MessageRendererProps {
   message: UIMessage;
@@ -37,14 +124,14 @@ interface MessageRendererProps {
   onRegenerateAfterUserMessage: (messageId: string) => void;
 }
 
-export function MessageRenderer({
+export const MessageRenderer = React.memo(function MessageRenderer({
   message,
   status,
   messages,
   onRegenerateAssistantMessage,
   onRegenerateAfterUserMessage,
 }: MessageRendererProps) {
-  const renderMessageContent = () => {
+  const renderMessageContent = useCallback(() => {
     // Group reasoning parts together
     const reasoningParts = message.parts.filter(
       (part) => part.type === "reasoning" && "text" in part,
@@ -254,7 +341,8 @@ export function MessageRenderer({
         )}
       </>
     );
-  };
+  }, [message, status, messages]);
+
 
   return (
     <div className="group">
@@ -292,81 +380,31 @@ export function MessageRenderer({
         </Sources>
       )}
       
-      {/* Message Actions for AI */}
-      {message.role === "assistant" && (
-        <div className="px-0">
-          <Actions className="mt-1 opacity-0 group-hover:opacity-100 transition-opacity justify-start">
-            <Action
-              onClick={() => onRegenerateAssistantMessage(message.id)}
-              label="Retry"
-              tooltip="Regenerate response"
-            >
-              <RedoIcon className="size-4" />
-            </Action>
-            <Action
-              onClick={async () => {
-                const textContent = message.parts
-                  .filter((part) => part.type === "text")
-                  .map((part) => (part as { text: string }).text)
-                  .join("\n");
-                await copyToClipboard(textContent);
-                toast.success("Copied to clipboard");
-              }}
-              label="Copy"
-              tooltip="Copy to clipboard"
-            >
-              <CopyIcon className="size-4" />
-            </Action>
-
-            {/* <Action
-              onClick={() => {
-                toast.info("Branch feature coming soon");
-              }}
-              label="Branch"
-              tooltip="Create a new branch"
-            >
-              <BranchIcon className="size-4" />
-            </Action> */}
-          </Actions>
-        </div>
-      )}
-      {/* Actions for user messages */}
-      {message.role === "user" && (
-        <div className="px-0">
-          <Actions className="mt-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
-            <Action
-              onClick={() => onRegenerateAfterUserMessage(message.id)}
-              label="Retry"
-              tooltip="Retry message"
-            >
-              <RedoIcon className="size-4" />
-            </Action>
-            <Action
-              onClick={async () => {
-                const textContent = message.parts
-                  .filter((part) => part.type === "text")
-                  .map((part) => (part as { text: string }).text)
-                  .join("\n");
-                await copyToClipboard(textContent);
-              }}
-              label="Copy"
-              tooltip="Copy to clipboard"
-            >
-              <CopyIcon className="size-4" />
-            </Action>
-
-            {/* <Action
-              onClick={() => {
-                toast.info("Branch feature coming soon");
-              }}
-              label="Branch"
-              tooltip="Create a new branch"
-            >
-              <BranchIcon className="size-4" />
-            </Action> */}
-          </Actions>
-        </div>
-      )}
+      {/* Message Actions - memoized to prevent re-renders during streaming */}
+      <MessageActions
+        message={message}
+        onRegenerateAssistantMessage={onRegenerateAssistantMessage}
+        onRegenerateAfterUserMessage={onRegenerateAfterUserMessage}
+      />
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Allow re-renders during streaming 
+  if (nextProps.status === "streaming") {
+    return false;
+  }
+  
+  // For non-streaming messages, use strict comparison
+  // Check most likely-to-change properties first for better performance
+  return (
+    prevProps.message.id === nextProps.message.id &&
+    prevProps.status === nextProps.status &&
+    prevProps.message.role === nextProps.message.role &&
+    prevProps.message.parts.length === nextProps.message.parts.length &&
+    prevProps.message.parts.every((part, index) => {
+      const nextPart = nextProps.message.parts[index];
+      return part.type === nextPart.type && 
+             (part as any).text === (nextPart as any).text;
+    })
+  );
+});

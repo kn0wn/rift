@@ -9,6 +9,7 @@ import {
 } from '@/components/ai/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { ComponentProps } from 'react';
+import React from 'react';
 
 export type ActionsProps = ComponentProps<'div'>;
 
@@ -23,7 +24,7 @@ export type ActionProps = ComponentProps<typeof Button> & {
   label?: string;
 };
 
-export const Action = ({
+export const Action = React.memo(({
   tooltip,
   children,
   label,
@@ -62,4 +63,4 @@ export const Action = ({
   }
 
   return button;
-};
+});

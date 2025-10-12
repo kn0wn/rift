@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { ChatState, ChatStateSetters, UploadingFile } from "../types";
 import type { FileAttachment } from "@/lib/file-utils";
 
@@ -32,7 +32,7 @@ export function useChatState() {
     }
   }, [isSearchEnabled]);
 
-  const state: ChatState = {
+  const state: ChatState = useMemo(() => ({
     input,
     selectedFiles,
     uploadedAttachments,
@@ -43,9 +43,20 @@ export function useChatState() {
     quotaError,
     showNoSubscriptionDialog,
     chatKey,
-  };
+  }), [
+    input,
+    selectedFiles,
+    uploadedAttachments,
+    isUploading,
+    uploadingFiles,
+    isSendingMessage,
+    isSearchEnabled,
+    quotaError,
+    showNoSubscriptionDialog,
+    chatKey,
+  ]);
 
-  const setters: ChatStateSetters = {
+  const setters: ChatStateSetters = useMemo(() => ({
     setInput,
     setSelectedFiles,
     setUploadedAttachments,
@@ -56,7 +67,18 @@ export function useChatState() {
     setQuotaError,
     setShowNoSubscriptionDialog,
     setChatKey,
-  };
+  }), [
+    setInput,
+    setSelectedFiles,
+    setUploadedAttachments,
+    setIsUploading,
+    setUploadingFiles,
+    setIsSendingMessage,
+    setIsSearchEnabled,
+    setQuotaError,
+    setShowNoSubscriptionDialog,
+    setChatKey,
+  ]);
 
   return {
     state,

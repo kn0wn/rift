@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useConvex } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import type { UIMessage } from "@ai-sdk/react";
-import type { ConvexMessage } from "../types";
 
 interface UseMessageDataProps {
   id: string;
@@ -27,27 +25,12 @@ export function useMessageData({
   const isThread = id !== "welcome";
   const convex = useConvex();
   
-  // Use server-fetched messages directly (no conversion needed)
-  const effectiveThreadDocs = initialMessages || [];
-
-  // Initialize messages from initialMessages
+  // Initialize messages from initialMessages when available
   useEffect(() => {
-    if (
-      initialMessages &&
-      initialMessages.length > 0 &&
-      messages.length === 0
-    ) {
+    if (messages.length === 0 && initialMessages && initialMessages.length > 0) {
       setMessages(initialMessages);
     }
-  }, [initialMessages, setMessages, messages.length]);
-
-  // Process messages immediately when available
-  useEffect(() => {
-    // Process messages immediately when available
-    if (messages.length === 0 && effectiveThreadDocs.length > 0) {
-      setMessages(effectiveThreadDocs);
-    }
-  }, [messages.length, effectiveThreadDocs, setMessages]);
+  }, [messages.length, initialMessages, setMessages]);
 
   // Auto-start with initial message from context
   useEffect(() => {
@@ -70,18 +53,13 @@ export function useMessageData({
       return messages;
     }
     
-    // Otherwise use server-fetched messages
-    if (effectiveThreadDocs.length > 0) {
-      return effectiveThreadDocs;
-    }
-    
     // Fallback to initial messages
     if (initialMessages && initialMessages.length > 0) {
       return initialMessages;
     }
 
     return [];
-  }, [messages, effectiveThreadDocs, initialMessages]);
+  }, [messages, initialMessages]);
 
   const hasAssistantMessage = useMemo(
     () => renderedMessages.some((m) => m.role === "assistant"),
@@ -91,6 +69,5 @@ export function useMessageData({
   return {
     renderedMessages,
     hasAssistantMessage,
-    effectiveThreadDocs,
   };
 }

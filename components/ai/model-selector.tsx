@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { useMemo, useCallback } from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import {
   CheckIcon,
@@ -143,8 +144,7 @@ function ModelSelector({
   );
   const isRecommendedSelected = !!selectedRecommended;
 
-  // Create balanced columns by distributing providers based on model count
-  const createBalancedColumns = () => {
+  const { leftColumn, rightColumn } = useMemo(() => {
     const providerData = providers.map((provider) => ({
       provider,
       models: getModelsByProvider(provider),
@@ -171,11 +171,9 @@ function ModelSelector({
     }
 
     return { leftColumn, rightColumn };
-  };
+  }, [providers]);
 
-  const { leftColumn, rightColumn } = createBalancedColumns();
-
-  const renderRecommendedItems = () => (
+  const renderRecommendedItems = useCallback(() => (
     <>
       {RECOMMENDED_OPTIONS.map((option) => {
         const IconComponent = option.icon;
@@ -214,7 +212,7 @@ function ModelSelector({
         );
       })}
     </>
-  );
+  ), []);
 
   return (
     <TooltipProvider>
@@ -325,7 +323,7 @@ function ModelSelector({
                 </div>
                 <div className="grid grid-cols-2 gap-8">
                   <div className="space-y-6">
-                    {leftColumn.map(({ provider, models }) => {
+                    {leftColumn.map(({ provider, models }: { provider: string; models: BaseModelConfig[] }) => {
                       const ProviderIcon =
                         providerIcons[provider as keyof typeof providerIcons];
 
@@ -340,7 +338,7 @@ function ModelSelector({
                             ] || provider}
                           </SelectPrimitive.Label>
 
-                          {models.map((model) => (
+                          {models.map((model: BaseModelConfig) => (
                             <ModelItem key={model.id} model={model} />
                           ))}
                         </SelectPrimitive.Group>
@@ -348,7 +346,7 @@ function ModelSelector({
                     })}
                   </div>
                   <div className="space-y-6">
-                    {rightColumn.map(({ provider, models }) => {
+                    {rightColumn.map(({ provider, models }: { provider: string; models: BaseModelConfig[] }) => {
                       const ProviderIcon =
                         providerIcons[provider as keyof typeof providerIcons];
 
@@ -363,7 +361,7 @@ function ModelSelector({
                             ] || provider}
                           </SelectPrimitive.Label>
 
-                          {models.map((model) => (
+                          {models.map((model: BaseModelConfig) => (
                             <ModelItem key={model.id} model={model} />
                           ))}
                         </SelectPrimitive.Group>
@@ -385,7 +383,7 @@ interface ModelItemProps {
   model: BaseModelConfig;
 }
 
-function ModelItem({ model }: ModelItemProps) {
+const ModelItem = React.memo(function ModelItem({ model }: ModelItemProps) {
   const ProviderIcon =
     providerIcons[model.provider as keyof typeof providerIcons];
 
@@ -499,6 +497,6 @@ function ModelItem({ model }: ModelItemProps) {
       </span>
     </SelectPrimitive.Item>
   );
-}
+});
 
 export { ModelSelector };

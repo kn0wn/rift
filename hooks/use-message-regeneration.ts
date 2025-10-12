@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import type { UIMessage } from "ai";
 
@@ -25,6 +25,12 @@ export function useMessageRegeneration({
   setMessages,
   regenerate,
 }: UseMessageRegenerationProps) {
+  // Use ref to access current messages without causing re-renders
+  const messagesRef = useRef(messages);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
   const regenerateAssistantMessage = useCallback(
     async (messageId: string) => {
       if (!regenerate) {
@@ -33,14 +39,15 @@ export function useMessageRegeneration({
       }
 
       try {
+        const currentMessages = messagesRef.current;
         // Find the message index
-        const messageIndex = messages.findIndex((msg) => msg.id === messageId);
+        const messageIndex = currentMessages.findIndex((msg) => msg.id === messageId);
         if (messageIndex === -1) {
           toast.error("Message not found");
           return;
         }
 
-        const targetMessage = messages[messageIndex];
+        const targetMessage = currentMessages[messageIndex];
         if (targetMessage.role !== "assistant") {
           toast.error("Can only regenerate assistant messages");
           return;
@@ -50,7 +57,7 @@ export function useMessageRegeneration({
         regenerate({ messageId });
 
         // Then optimistically prune the target assistant message and all that follow
-        const prunedMessages = deduplicateMessages(messages.slice(0, messageIndex));
+        const prunedMessages = deduplicateMessages(currentMessages.slice(0, messageIndex));
         setMessages(prunedMessages);
 
         toast.success("Regenerating response...");
@@ -58,17 +65,18 @@ export function useMessageRegeneration({
         console.error("Failed to regenerate message:", error);
         toast.error("Failed to regenerate message");
         // Restore original messages on error
-        setMessages(messages);
+        setMessages(messagesRef.current);
       }
     },
-    [messages, setMessages, regenerate],
+    [setMessages, regenerate],
   );
 
   const regenerateAfterUserMessage = useCallback(
     async (userMessageId: string) => {
       try {
+        const currentMessages = messagesRef.current;
         // Find the user message index
-        const userMessageIndex = messages.findIndex(
+        const userMessageIndex = currentMessages.findIndex(
           (msg) => msg.id === userMessageId,
         );
         if (userMessageIndex === -1) {
@@ -76,7 +84,7 @@ export function useMessageRegeneration({
           return;
         }
 
-        const userMessage = messages[userMessageIndex];
+        const userMessage = currentMessages[userMessageIndex];
         if (userMessage.role !== "user") {
           toast.error("Target message must be a user message");
           return;
@@ -84,7 +92,7 @@ export function useMessageRegeneration({
 
         // Check if there are any messages after the user message to regenerate
         const hasMessagesAfter =
-          messages.slice(userMessageIndex + 1).length > 0;
+          currentMessages.slice(userMessageIndex + 1).length > 0;
 
         if (!hasMessagesAfter) {
           toast.info("No messages to regenerate after this point");
@@ -92,7 +100,7 @@ export function useMessageRegeneration({
         }
 
         // Find the next assistant message after this user message
-        const nextAssistantMessage = messages
+        const nextAssistantMessage = currentMessages
           .slice(userMessageIndex + 1)
           .find((msg) => msg.role === "assistant");
 
@@ -113,7 +121,7 @@ export function useMessageRegeneration({
         toast.error("Failed to regenerate response");
       }
     },
-    [messages, regenerateAssistantMessage],
+    [regenerateAssistantMessage],
   );
 
   return {

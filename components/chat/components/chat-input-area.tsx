@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useMemo } from "react";
 import { NoSubscriptionDialog } from "@/components/ui/no-subscription-dialog";
 import {
   AttachmentsIcon,
@@ -22,6 +22,7 @@ import {
 } from "@/components/ai/prompt-input";
 import { ModelSelector } from "@/components/ai/model-selector";
 import type { FileAttachment } from "@/lib/file-utils";
+import React from "react";
 
 interface ChatInputAreaProps {
   input: string;
@@ -59,7 +60,7 @@ interface ChatInputAreaProps {
   fileInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
-export function ChatInputArea({
+export const ChatInputArea = React.memo(function ChatInputArea({
   input,
   isSearchEnabled,
   quotaError,
@@ -85,6 +86,27 @@ export function ChatInputArea({
   onStop,
   fileInputRef,
 }: ChatInputAreaProps) {
+  // Memoize files array transformation
+  const files = useMemo(() => {
+    if (isSendingMessage) return [];
+    
+    return [
+      // Show uploaded attachments first
+      ...uploadedAttachments.map(att => ({
+        name: att.fileName || 'Unknown file',
+        type: att.mediaType,
+        url: att.url,
+        isUploading: false,
+      })),
+      // Then show uploading files at the end
+      ...uploadingFiles.map(uf => ({
+        name: uf.file.name,
+        type: uf.file.type,
+        isUploading: true,
+      }))
+    ];
+  }, [isSendingMessage, uploadedAttachments, uploadingFiles]);
+
   return (
     <div className="absolute bottom-0 left-0 right-0">
       <div className="mx-auto w-full max-w-3xl px-2">
@@ -150,23 +172,7 @@ export function ChatInputArea({
         )}
         <PromptInput onSubmit={onSubmit}>
           <PromptInputFilePreview
-            files={
-              isSendingMessage ? [] : [
-                // Show uploaded attachments first
-                ...uploadedAttachments.map(att => ({
-                  name: att.fileName || 'Unknown file',
-                  type: att.mediaType,
-                  url: att.url,
-                  isUploading: false,
-                })),
-                // Then show uploading files at the end
-                ...uploadingFiles.map(uf => ({
-                  name: uf.file.name,
-                  type: uf.file.type,
-                  isUploading: true,
-                }))
-              ]
-            }
+            files={files}
             onRemoveFile={onRemoveFile}
             disabled={disableInput}
           />
@@ -245,4 +251,19 @@ export function ChatInputArea({
       </div>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison function to prevent unnecessary re-renders
+  return (
+    prevProps.input === nextProps.input &&
+    prevProps.isSearchEnabled === nextProps.isSearchEnabled &&
+    prevProps.quotaError === nextProps.quotaError &&
+    prevProps.showNoSubscriptionDialog === nextProps.showNoSubscriptionDialog &&
+    prevProps.uploadedAttachments.length === nextProps.uploadedAttachments.length &&
+    prevProps.uploadingFiles.length === nextProps.uploadingFiles.length &&
+    prevProps.isSendingMessage === nextProps.isSendingMessage &&
+    prevProps.disableInput === nextProps.disableInput &&
+    prevProps.isUploading === nextProps.isUploading &&
+    prevProps.selectedModel === nextProps.selectedModel &&
+    prevProps.status === nextProps.status
+  );
+});

@@ -18,15 +18,16 @@ import {
 } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 import { CodeBlock } from './code-block';
+import React from 'react';
 
 export type ToolProps = ComponentProps<typeof Collapsible>;
 
-export const Tool = ({ className, ...props }: ToolProps) => (
+export const Tool = React.memo(({ className, ...props }: ToolProps) => (
   <Collapsible
     className={cn('not-prose mb-4 w-full rounded-md border', className)}
     {...props}
   />
-);
+));
 
 export type ToolHeaderProps = {
   type: ToolUIPart['type'];
@@ -57,7 +58,7 @@ const getStatusBadge = (status: ToolUIPart['state']) => {
   );
 };
 
-export const ToolHeader = ({
+export const ToolHeader = React.memo(({
   className,
   type,
   state,
@@ -77,11 +78,11 @@ export const ToolHeader = ({
     </div>
     <ChevronDownIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
   </CollapsibleTrigger>
-);
+));
 
 export type ToolContentProps = ComponentProps<typeof CollapsibleContent>;
 
-export const ToolContent = ({ className, ...props }: ToolContentProps) => (
+export const ToolContent = React.memo(({ className, ...props }: ToolContentProps) => (
   <CollapsibleContent
     className={cn(
       'data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-popover-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in',
@@ -89,13 +90,13 @@ export const ToolContent = ({ className, ...props }: ToolContentProps) => (
     )}
     {...props}
   />
-);
+));
 
 export type ToolInputProps = ComponentProps<'div'> & {
   input: ToolUIPart['input'];
 };
 
-export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
+export const ToolInput = React.memo(({ className, input, ...props }: ToolInputProps) => (
   <div className={cn('space-y-2 overflow-hidden p-4', className)} {...props}>
     <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
       Parameters
@@ -104,14 +105,14 @@ export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
       <CodeBlock code={JSON.stringify(input, null, 2)} language="json" />
     </div>
   </div>
-);
+));
 
 export type ToolOutputProps = ComponentProps<'div'> & {
   output: ReactNode;
   errorText: ToolUIPart['errorText'];
 };
 
-export const ToolOutput = ({
+export const ToolOutput = React.memo(({
   className,
   output,
   errorText,
@@ -139,4 +140,4 @@ export const ToolOutput = ({
       </div>
     </div>
   );
-};
+});

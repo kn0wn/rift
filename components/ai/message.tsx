@@ -6,12 +6,13 @@ import {
 import { cn } from '@/lib/utils';
 import type { UIMessage } from 'ai';
 import type { ComponentProps, HTMLAttributes } from 'react';
+import React from 'react';
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage['role'];
 };
 
-export const Message = ({ className, from, ...props }: MessageProps) => (
+export const Message = React.memo(({ className, from, ...props }: MessageProps) => (
   <div
     className={cn(
       'group flex w-full items-end justify-end gap-2',
@@ -21,13 +22,13 @@ export const Message = ({ className, from, ...props }: MessageProps) => (
     )}
     {...props}
   />
-);
+));
 
 export type MessageContentProps = HTMLAttributes<HTMLDivElement> & {
   from?: UIMessage['role'];
 };
 
-export const MessageContent = ({
+export const MessageContent = React.memo(({
   children,
   className,
   from,
@@ -46,7 +47,7 @@ export const MessageContent = ({
   >
     {children}
   </div>
-);
+));
 
 export type MessageAvatarProps = ComponentProps<typeof Avatar> & {
   src: string;

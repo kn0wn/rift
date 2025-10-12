@@ -331,20 +331,21 @@ export default function ChatInterface({
 
   const handleStop = useCallback(() => {
     // Preserve current streaming message content before stopping
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage && lastMessage.role === "assistant") {
-      setMessages((currentMessages) => {
+    setMessages((currentMessages) => {
+      const lastMessage = currentMessages[currentMessages.length - 1];
+      if (lastMessage && lastMessage.role === "assistant") {
         const updatedMessages = [...currentMessages];
         updatedMessages[updatedMessages.length - 1] = {
           ...lastMessage,
           parts: lastMessage.parts, // Preserve current content
         };
         return updatedMessages;
-      });
-    }
+      }
+      return currentMessages;
+    });
 
     stop();
-  }, [messages, setMessages, stop]);
+  }, [setMessages, stop]);
 
   return (
     <div className="flex h-screen w-full min-h-0 flex-col relative">
@@ -355,16 +356,19 @@ export default function ChatInterface({
             {!isThread && renderedMessages.length === 0 && (
               <WelcomeScreen user={user} />
             )}
-            {renderedMessages.map((message) => (
-              <MessageRenderer
-                key={message.id}
-                message={message}
-                status={status}
-                messages={messages}
-                onRegenerateAssistantMessage={regenerateAssistantMessage}
-                onRegenerateAfterUserMessage={regenerateAfterUserMessage}
-              />
-            ))}
+            {renderedMessages.map((message, index) => {
+              const isLastMessage = index === renderedMessages.length - 1;
+              return (
+                <MessageRenderer
+                  key={message.id}
+                  message={message}
+                  status={isLastMessage ? status : "ready"}
+                  messages={messages}
+                  onRegenerateAssistantMessage={regenerateAssistantMessage}
+                  onRegenerateAfterUserMessage={regenerateAfterUserMessage}
+                />
+              );
+            })}
             {(status === "submitted" || status === "streaming") &&
               !hasAssistantMessage && <Loader />}
           </ConversationContent>
