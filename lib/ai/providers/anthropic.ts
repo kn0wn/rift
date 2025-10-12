@@ -46,7 +46,7 @@ export const ANTHROPIC_MODELS: BaseModelConfig[] = [
     id: "anthropic/claude-sonnet-4.5",
     name: "Claude Sonnet 4.5",
     provider: "anthropic",
-    description: "Claude Sonnet 4.5 es el modelo más nuevo de la serie Sonnet, que ofrece mejoras y actualizaciones sobre Sonnet 4",
+    description: "Claude Sonnet 4.5 es el modelo más reciente de la serie Sonnet, que ofrece mejoras y actualizaciones sobre Sonnet 4",
     contextWindow: 200000,
     isPremium: true,
     capabilities: mergeCapabilities({
@@ -62,7 +62,7 @@ export const ANTHROPIC_MODELS: BaseModelConfig[] = [
     id: "anthropic/claude-sonnet-4",
     name: "Claude Sonnet 4",
     provider: "anthropic",
-    description: "El modelo equilibra rendimiento y eficiencia con mayor capacidad de dirección",
+    description: "El modelo equilibra rendimiento y eficiencia con mayor capacidad de direccionamiento",
     contextWindow: 200000,
     isPremium: true,
     capabilities: mergeCapabilities({
@@ -78,7 +78,7 @@ export const ANTHROPIC_MODELS: BaseModelConfig[] = [
     id: "anthropic/claude-sonnet-3.7",
     name: "Claude Sonnet 3.7",
     provider: "anthropic",
-    description: "Ofrece un rendimiento de vanguardia para programación, generación de contenido, análisis de datos y tareas de planificación,",
+    description: "Ofrece un rendimiento de vanguardia para programación, generación de contenido, análisis de datos y tareas de planificación",
     contextWindow: 200000,
     isPremium: true,
     capabilities: mergeCapabilities({
@@ -124,7 +124,7 @@ export const ANTHROPIC_MODELS: BaseModelConfig[] = [
     id: "anthropic/claude-3-haiku",
     name: "Claude Haiku 3",
     provider: "anthropic",
-    description: "Haiku 3 analiza rápidamente grandes volúmenes de documentos, como informes trimestrales, contratos o casos legales,",
+    description: "Haiku 3 analiza rápidamente grandes volúmenes de documentos, como informes trimestrales, contratos o casos legales",
     contextWindow: 200000,
     isPremium: true,
     capabilities: mergeCapabilities({

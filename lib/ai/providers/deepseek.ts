@@ -60,7 +60,7 @@ export const DEEPSEEK_MODELS: BaseModelConfig[] = [
     id: "deepseek/deepseek-v3",
     name: "DeepSeek V3",
     provider: "deepseek",
-    description: "Modelo de alto rendimiento con fuertes capacidades en múltiples dominios",
+    description: "Modelo de alto rendimiento con sólidas capacidades en múltiples dominios",
     contextWindow: 164000,
     isPremium: false,
     capabilities: mergeCapabilities({

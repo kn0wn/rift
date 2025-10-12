@@ -81,7 +81,7 @@ export const XAI_MODELS: BaseModelConfig[] = [
     name: "Grok 4 Fast",
     provider: "xai",
     description:
-      "El modelo multimodal más reciente con eficiencia de costos SOTA y ventana de contexto de 2M tokens. ",
+      "El modelo multimodal más reciente con eficiencia de costos de vanguardia y ventana de contexto de 2M tokens",
     contextWindow: 2000000,
     isPremium: false,
     capabilities: mergeCapabilities({
@@ -97,7 +97,7 @@ export const XAI_MODELS: BaseModelConfig[] = [
     name: "Grok 3",
     provider: "xai",
     description:
-      "Modelo avanzado con fuertes capacidades en múltiples dominios",
+      "Modelo avanzado con sólidas capacidades en múltiples dominios",
     contextWindow: 131072,
     isPremium: true,
     capabilities: mergeCapabilities({

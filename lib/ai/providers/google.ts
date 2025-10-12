@@ -103,7 +103,7 @@ export const GOOGLE_MODELS: BaseModelConfig[] = [
     id: "google/gemini-2.5-flash",
     name: "Gemini 2.5 Flash",
     provider: "google",
-    description: "Modelo de pensamiento que ofrece grandes capacidades completas",
+    description: "Modelo de pensamiento que ofrece capacidades completas avanzadas",
     contextWindow: 1000000,
     isPremium: false,
     capabilities: mergeCapabilities({
@@ -118,7 +118,7 @@ export const GOOGLE_MODELS: BaseModelConfig[] = [
     id: "google/gemini-2.0-flash",
     name: "Gemini 2.0 Flash",
     provider: "google",
-    description: "Características de próxima generación y capacidades mejoradas",
+    description: "Características de próxima generación con capacidades mejoradas",
     contextWindow: 1000000,
     isPremium: false,
     capabilities: mergeCapabilities({
@@ -133,7 +133,7 @@ export const GOOGLE_MODELS: BaseModelConfig[] = [
     id: "google/gemini-2.0-flash-lite",
     name: "Gemini 2.0 Flash Lite",
     provider: "google",
-    description: "Modelo ligero con capacidades mejoradas",
+    description: "Modelo ligero con capacidades optimizadas",
     contextWindow: 1000000,
     isPremium: false,
     capabilities: mergeCapabilities({
@@ -167,7 +167,7 @@ export function getReasoningSettings(
 
   return {
     thinkingConfig: {
-      thinkingBudget: 8192,
+      thinkingBudget: 3200,
       includeThoughts: true,
     },
   };

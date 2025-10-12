@@ -46,9 +46,9 @@ export const MISTRAL_MODELS: BaseModelConfig[] = [
     id: "mistral/mistral-medium",
     name: "Mistral Medium",
     provider: "mistral",
-    description: "Modelo de Mistral con rendimiento de frontera",
+    description: "Modelo de Mistral con rendimiento de vanguardia",
     contextWindow: 128000,
-    isPremium: true,
+    isPremium: false,
     capabilities: mergeCapabilities({
       supportsTools: true,
       supportsStreaming: true,
@@ -62,7 +62,7 @@ export const MISTRAL_MODELS: BaseModelConfig[] = [
     provider: "mistral",
     description: "Modelo de programación de vanguardia optimizado para uso de baja latencia y alta frecuencia",
     contextWindow: 256000,
-    isPremium: true,
+    isPremium: false,
     capabilities: mergeCapabilities({
       supportsTools: true,
       supportsStreaming: true,

@@ -11,7 +11,7 @@ import {
   BrainIcon,
   WrenchIcon,
   HelpCircleIcon,
-  CameraIcon,
+  FileIcon,
 } from "lucide-react";
 import {
   Tooltip,
@@ -37,6 +37,8 @@ import { TablerBrandOpenai } from "@/components/ui/icons/openai-icon";
 import { GoogleIcon } from "@/components/ui/icons/google-icon";
 import { XAiIcon } from "@/components/ui/icons/xai-icon";
 import { OpenRouterIcon } from "@/components/ui/icons/openrouter-icon";
+import { DeepSeekIcon } from "@/components/ui/icons/deepseek-icon";
+import { LogosMistralAiIcon } from "@/components/ui/icons/mistral-icon";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ai/ui/tabs";
 
 // Provider icon mapping
@@ -46,6 +48,8 @@ const providerIcons = {
   google: GoogleIcon,
   xai: XAiIcon,
   openrouter: OpenRouterIcon,
+  deepseek: DeepSeekIcon,
+  mistral: LogosMistralAiIcon,
 } as const;
 
 // Capability icon mapping
@@ -53,15 +57,14 @@ const capabilityIcons = {
   supportsTools: WrenchIcon,
   supportsReasoning: BrainIcon,
   supportsStreaming: ZapIcon,
-  supportsImageInput: CameraIcon,
+  supportsImageInput: FileIcon,
 } as const;
 
 // Capability descriptions for tooltips
 const capabilityDescriptions = {
-  supportsTools: "Supports function calling and tools",
-  supportsReasoning: "Advanced reasoning capabilities",
-  supportsStreaming: "Real-time streaming responses",
-  supportsImageInput: "Can process and analyze images",
+  supportsTools: "Puede usar herramientas como buscar en internet",
+  supportsReasoning: "El modelo puede razonar",
+  supportsImageInput: "Puede procesar imágenes y PDFs",
 } as const;
 
 // Provider display names
@@ -71,6 +74,8 @@ const providerNames = {
   google: "Google",
   xai: "xAI",
   openrouter: "OpenRouter",
+  deepseek: "DeepSeek",
+  mistral: "Mistral",
 } as const;
 
 // Recommended options configuration
@@ -315,20 +320,13 @@ function ModelSelector({
 
             {activeTab === "avanzado" && (
               <div className="p-6">
-                <div className="text-center mb-6 relative">
+                <div className="text-center mb-6">
                   <h3 className="text-lg font-semibold text-popover-text mb-2">
                     Selección Avanzada
                   </h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     Elige manualmente entre todos los modelos disponibles
                   </p>
-                  <button
-                    onClick={() => router.push("/info-ia")}
-                    className="absolute top-0 right-0 flex items-center justify-center w-8 h-8 rounded-full bg-popover-secondary hover:bg-popover-secondary/80 text-muted-foreground hover:text-popover-text transition-colors"
-                    title="Información sobre IA"
-                  >
-                    <HelpCircleIcon className="size-4" />
-                  </button>
                 </div>
                 <div className="grid grid-cols-2 gap-8">
                   <div className="space-y-6">
@@ -433,7 +431,7 @@ function ModelItem({ model }: ModelItemProps) {
           {Math.round(model.contextWindow / 1000)}K context
         </span>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-wrap">
           {Object.entries(model.capabilities)
             .filter(([, enabled]) => enabled)
             .filter(([capability]) => {
@@ -446,17 +444,25 @@ function ModelItem({ model }: ModelItemProps) {
               ];
               return !excludedCapabilities.includes(capability);
             })
-            .slice(0, 4) // Show max 4 capability icons in 2-column layout
+            .slice(0, 4) // Show max 4 capability badges
             .map(([capability]) => {
               const IconComponent =
                 capabilityIcons[capability as keyof typeof capabilityIcons];
               if (!IconComponent) return null;
 
               return (
-                <IconComponent
-                  key={capability}
-                  className="size-3 text-muted-foreground"
-                />
+                <Tooltip key={capability}>
+                  <TooltipTrigger asChild>
+                    <div className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-popover-secondary text-popover-text">
+                      <IconComponent className="size-3" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">
+                      {capabilityDescriptions[capability as keyof typeof capabilityDescriptions]}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
               );
             })}
           {Object.entries(model.capabilities)
@@ -470,20 +476,22 @@ function ModelItem({ model }: ModelItemProps) {
               ];
               return !excludedCapabilities.includes(capability);
             }).length > 4 && (
-            <span className="text-xs text-muted-foreground">
-              +
-              {Object.entries(model.capabilities)
-                .filter(([, enabled]) => enabled)
-                .filter(([capability]) => {
-                  const excludedCapabilities = [
-                    'supportsStreaming',
-                    'supportsPDFInput', 
-                    'supportsObjectGeneration',
-                    'supportsImageOutput'
-                  ];
-                  return !excludedCapabilities.includes(capability);
-                }).length - 4}
-            </span>
+            <div className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-popover-secondary text-popover-text">
+              <span className="text-xs">
+                +
+                {Object.entries(model.capabilities)
+                  .filter(([, enabled]) => enabled)
+                  .filter(([capability]) => {
+                    const excludedCapabilities = [
+                      'supportsStreaming',
+                      'supportsPDFInput', 
+                      'supportsObjectGeneration',
+                      'supportsImageOutput'
+                    ];
+                    return !excludedCapabilities.includes(capability);
+                  }).length - 4}
+              </span>
+            </div>
           )}
         </div>
         </div>

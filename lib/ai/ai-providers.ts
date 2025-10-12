@@ -1,8 +1,8 @@
-import { gateway } from "ai";
+import { createGateway } from "@ai-sdk/gateway";
 import { OPENAI_MODELS } from "./providers/openai";
 import { XAI_MODELS } from "./providers/xai";
 import { ANTHROPIC_MODELS } from "./providers/anthropic";
-import { GOOGLE_MODELS } from "./providers/google";
+import { GOOGLE_MODELS, getReasoningSettings } from "./providers/google";
 import { DEEPSEEK_MODELS } from "./providers/deepseek";
 import { MISTRAL_MODELS } from "./providers/mistral";
 import { type BaseModelConfig, type ModelCapabilities } from "./config/base";
@@ -10,14 +10,22 @@ import { type BaseModelConfig, type ModelCapabilities } from "./config/base";
 // All models in one array
 export const MODELS: BaseModelConfig[] = [...OPENAI_MODELS, ...XAI_MODELS, ...ANTHROPIC_MODELS, ...GOOGLE_MODELS, ...DEEPSEEK_MODELS, ...MISTRAL_MODELS];
 
-const gatewayProvider = gateway;
+// Configure gateway provider with app attribution headers
+export const gateway = createGateway({
+  headers: {
+    'http-referer': 'https://rift.mx',
+    'x-title': 'Rift',
+  },
+});
+
+globalThis.AI_SDK_DEFAULT_PROVIDER = gateway;
 
 // Model resolution
 const SHORTCUTS: Record<string, string> = {
-  automatico: "openai/gpt-4o-mini",
-  problemas_dificiles: "openai/o3",
-  escritura: "openai/gpt-4o",
-  sorpresa: "openai/gpt-5",
+  automatico: "openai/gpt-oss-120b",
+  problemas_dificiles: "openai/gpt-5",
+  escritura: "google/gemini-2.5-flash",
+  sorpresa: "mistral/mistral-medium",
 };
 
 // Simple model resolution
@@ -45,12 +53,12 @@ export function getLanguageModel(modelId: string) {
   console.log(`Model via AI Gateway: ${resolved}`);
 
   try {
-    return gatewayProvider(resolved);
+    return (resolved);
   } catch {
     console.warn(
-      `Model ${modelId} not found in registry, using default gpt-4o-mini`,
+      `Model ${modelId} not found in registry, using default default model`,
     );
-    return gatewayProvider("openai/gpt-4o-mini");
+    return (DEFAULT_MODEL);
   }
 }
 
@@ -86,10 +94,7 @@ export const getProviderOptions = (modelId: string) => {
     google: isGoogleModel && supportsReasoning(modelId)
       ? {
           ...baseOptions,
-          thinkingConfig: {
-            thinkingBudget: 3200,
-            includeThoughts: true,
-          },
+          ...getReasoningSettings(modelId),
         }
       : baseOptions,
   };
@@ -103,7 +108,7 @@ export const getAllProviders = (): string[] =>
   Array.from(new Set(MODELS.map((model) => model.provider)));
 
 // Default model constant
-export const DEFAULT_MODEL = "openai/gpt-4o-mini";
+export const DEFAULT_MODEL = "openai/gpt-oss-120b";
 
 // Backward compatibility aliases
 export const getModelById = getModel;
