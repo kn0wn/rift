@@ -104,6 +104,7 @@ http.route({
             workos_id: data.id,
             firstName: data.first_name,
             lastName: data.last_name,
+            profilePictureUrl: data.profile_picture_url || undefined,
           });
           break;
         }
@@ -142,6 +143,7 @@ http.route({
               email: data.email,
               firstName: data.first_name,
               lastName: data.last_name,
+              profilePictureUrl: data.profile_picture_url || undefined,
             },
           });
 

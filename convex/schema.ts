@@ -22,6 +22,7 @@ export default defineSchema({
     workos_id: v.string(),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
+    profilePictureUrl: v.optional(v.string()),
     standardQuotaUsage: v.optional(v.number()),
     premiumQuotaUsage: v.optional(v.number()),
     lastQuotaResetAt: v.optional(v.number()),

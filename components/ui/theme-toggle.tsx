@@ -14,16 +14,9 @@ export function ThemeToggle({ className, size = "md" }: ThemeToggleProps) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
 
-  // useEffect only runs on the client, so now we can safely show the UI
   React.useEffect(() => {
     setMounted(true);
   }, []);
-
-  if (!mounted) {
-    return null;
-  }
-
-  const isDark = theme === "dark";
 
   const sizeClasses = {
     sm: "h-6 w-6",
@@ -36,6 +29,8 @@ export function ThemeToggle({ className, size = "md" }: ThemeToggleProps) {
     md: "size-4",
     lg: "size-5"
   };
+
+  const isDark = mounted ? theme === "dark" : false;
 
   return (
     <button

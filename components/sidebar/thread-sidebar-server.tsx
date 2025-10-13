@@ -1,7 +1,7 @@
 import { preloadQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { getAccessToken } from "@/lib/auth";
-import { ThreadSidebarClient } from "./thread-sidebar-client";
+import { ThreadSidebarLayout } from "./thread-sidebar-layout";
 
 // Server component for preloading thread data
 export async function ThreadSidebarServer() {
@@ -10,7 +10,7 @@ export async function ThreadSidebarServer() {
 
     // If no access token, render without preloaded data
     if (!accessToken) {
-      return <ThreadSidebarClient />;
+      return <ThreadSidebarLayout />;
     }
 
     // Preload the user's threads using their token
@@ -20,8 +20,8 @@ export async function ThreadSidebarServer() {
       { token: accessToken },
     );
 
-    return <ThreadSidebarClient preloadedThreads={preloadedThreads} />;
+    return <ThreadSidebarLayout preloadedThreads={preloadedThreads} />;
   } catch {
-    return <ThreadSidebarClient />;
+    return <ThreadSidebarLayout />;
   }
 }

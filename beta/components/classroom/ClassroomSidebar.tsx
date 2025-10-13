@@ -13,7 +13,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { AppLogo } from "@/components/ui/icons/svg-icons";
-import { UserProfileSection } from "@/components/user-profile-section";
+import { UserProfileSection } from "@/components/sidebar/user-profile-section";
 import { useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";

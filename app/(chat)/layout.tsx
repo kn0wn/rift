@@ -1,5 +1,5 @@
 import ChatShell from "@/components/ai/ChatShell";
-import ThreadSidebar from "@/components/thread-sidebar";
+import { ThreadSidebar } from "@/components/sidebar";
 
 export default function ChatLayout({
   children,
