@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import React from "react";
 import {
   IdeaIcon,
   BrainPersonIcon,
@@ -17,7 +18,7 @@ interface WelcomeScreenProps {
   onSuggestionClick?: (prompt: string) => void;
 }
 
-export function WelcomeScreen({ user, onSuggestionClick }: WelcomeScreenProps) {
+export const WelcomeScreen = React.memo(function WelcomeScreen({ user, onSuggestionClick }: WelcomeScreenProps) {
   return (
     <div className="flex items-center justify-center min-h-[70vh]">
       <div className="text-center max-w-2xl">
@@ -166,4 +167,4 @@ export function WelcomeScreen({ user, onSuggestionClick }: WelcomeScreenProps) {
       </div>
     </div>
   );
-}
+});

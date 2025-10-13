@@ -1,5 +1,4 @@
 import { withAuth } from "@workos-inc/authkit-nextjs";
-import { ConvexClientProvider } from "@/components/ConvexClientProvider";
 import SettingsPageContent from "./SettingsPageContent";
 
 interface WorkOSUser {
@@ -32,13 +31,11 @@ export default async function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-background dark:bg-popover-main">
-      <ConvexClientProvider>
-        <SettingsPageContent
-          debugUser={debugUser}
-          debugClaims={debugClaims}
-          hasManageBillingPermission={hasManageBillingPermission}
-        />
-      </ConvexClientProvider>
+      <SettingsPageContent
+        debugUser={debugUser}
+        debugClaims={debugClaims}
+        hasManageBillingPermission={hasManageBillingPermission}
+      />
     </div>
   );
 }

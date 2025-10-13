@@ -4,6 +4,7 @@ import {
   AttachmentsIcon,
   RedoIcon,
   CopyIcon,
+  CheckIcon,
 } from "@/components/ui/icons/svg-icons";
 import {
   Tool,
@@ -27,7 +28,7 @@ import {
   SourcesTrigger,
 } from "@/components/ai/sources";
 import type { UIMessage } from "@ai-sdk/react";
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 
 // Memoized action buttons component
 const MessageActions = React.memo(function MessageActions({
@@ -39,6 +40,8 @@ const MessageActions = React.memo(function MessageActions({
   onRegenerateAssistantMessage: (messageId: string) => void;
   onRegenerateAfterUserMessage: (messageId: string) => void;
 }) {
+  const [isCopied, setIsCopied] = useState(false);
+
   const handleRegenerateAssistant = useCallback(() => {
     onRegenerateAssistantMessage(message.id);
   }, [onRegenerateAssistantMessage, message.id]);
@@ -54,6 +57,8 @@ const MessageActions = React.memo(function MessageActions({
       .join("\n");
     await copyToClipboard(textContent);
     toast.success("Copied to clipboard");
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
   }, [message.id]);
 
   const handleCopyUser = useCallback(async () => {
@@ -62,6 +67,8 @@ const MessageActions = React.memo(function MessageActions({
       .map((part) => (part as { text: string }).text)
       .join("\n");
     await copyToClipboard(textContent);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
   }, [message.id]);
 
   if (message.role === "assistant") {
@@ -80,7 +87,7 @@ const MessageActions = React.memo(function MessageActions({
             label="Copy"
             tooltip="Copy to clipboard"
           >
-            <CopyIcon className="size-4" />
+            {isCopied ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
           </Action>
         </Actions>
       </div>
@@ -103,7 +110,7 @@ const MessageActions = React.memo(function MessageActions({
             label="Copy"
             tooltip="Copy to clipboard"
           >
-            <CopyIcon className="size-4" />
+            {isCopied ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
           </Action>
         </Actions>
       </div>

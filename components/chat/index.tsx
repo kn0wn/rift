@@ -347,6 +347,10 @@ export default function ChatInterface({
     stop();
   }, [setMessages, stop]);
 
+  const handleSuggestionClick = useCallback((prompt: string) => {
+    setInput(prompt);
+  }, [setInput]);
+
   return (
     <div className="flex h-screen w-full min-h-0 flex-col relative">
       <div className="flex-1 min-h-0">
@@ -354,7 +358,10 @@ export default function ChatInterface({
           <ConversationContent className="mx-auto w-full max-w-3xl p-4 pb-30">
             {/* Greeting message for welcome page when no messages */}
             {!isThread && renderedMessages.length === 0 && (
-              <WelcomeScreen user={user} />
+              <WelcomeScreen 
+                user={user} 
+                onSuggestionClick={handleSuggestionClick}
+              />
             )}
             {renderedMessages.map((message, index) => {
               const isLastMessage = index === renderedMessages.length - 1;

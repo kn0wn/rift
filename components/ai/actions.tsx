@@ -36,7 +36,7 @@ export const Action = React.memo(({
   const button = (
     <Button
       className={cn(
-        'size-10 p-2 text-black hover:bg-hover hover:text-secondary relative',
+        'size-10 p-2 text-black hover:bg-hover hover:text-secondary dark:text-popover-text dark:hover:bg-popover dark:hover:bg-hover/60 relative',
         className
       )}
       size={size}

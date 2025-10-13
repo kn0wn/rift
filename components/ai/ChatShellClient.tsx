@@ -46,8 +46,11 @@ export function ChatShellClient({ children, className, sidebar }: ChatShellClien
           )}
           style={sidebarStyle}
         >
-          <div className="absolute inset-0 overflow-y-auto">
-            {isOpen ? sidebar : null}
+          <div className={cn(
+            "absolute inset-0 overflow-y-auto",
+            !isOpen && "invisible"
+          )}>
+            {sidebar}
           </div>
         </aside>
 
