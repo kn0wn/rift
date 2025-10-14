@@ -49,7 +49,7 @@ function SettingItem({
   const isActive = pathname === href;
 
   const baseClasses = `
-    w-full flex items-center px-2 py-1.5 mb-0.5 rounded-lg text-sm font-medium transition-colors
+    w-full flex items-center px-2 py-1.5 mb-0.5 rounded-lg text-sm font-medium transition-colors border-2 border-transparent focus:outline-none focus:border-blue-500 dark:focus:border-border
     ${
       isLogout
         ? "text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/20"
@@ -64,22 +64,45 @@ function SettingItem({
     ${isLogout ? "text-red-500 dark:text-red-400" : isActive ? "text-gray-700 dark:text-white" : "text-gray-500 dark:text-text-muted"}
   `;
 
-  const content = (
-    <button
+  // If it's a logout button or has onClick, render as button
+  if (isLogout || onClick) {
+    return (
+      <button
+        className={baseClasses}
+        onClick={onClick}
+        type={isLogout ? "button" : undefined}
+      >
+        <Icon className={iconClasses} />
+        <span className="flex-1 text-left truncate">{title}</span>
+      </button>
+    );
+  }
+
+  // For external links (mailto, http, etc.), render as anchor tag
+  if (href.startsWith('mailto:') || href.startsWith('http')) {
+    return (
+      <a 
+        href={href}
+        className={baseClasses}
+        target={href.startsWith('http') ? '_blank' : undefined}
+        rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
+      >
+        <Icon className={iconClasses} />
+        <span className="flex-1 text-left truncate">{title}</span>
+      </a>
+    );
+  }
+
+  // For internal navigation items, render as Link with proper styling
+  return (
+    <Link 
+      href={href}
       className={baseClasses}
-      onClick={onClick}
-      type={isLogout ? "button" : undefined}
     >
       <Icon className={iconClasses} />
       <span className="flex-1 text-left truncate">{title}</span>
-    </button>
+    </Link>
   );
-
-  if (isLogout || onClick) {
-    return content;
-  }
-
-  return <Link href={href}>{content}</Link>;
 }
 
 function SettingSection({
@@ -206,7 +229,7 @@ const footerItems: SettingsNavItem[] = [
   },
   {
     title: "Contáctanos",
-    href: "/settings/contact-us",
+    href: "mailto:soporte@rift.mx",
     icon: Mail,
   },
 ];

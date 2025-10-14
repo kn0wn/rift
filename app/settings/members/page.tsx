@@ -1,6 +1,5 @@
-import { SettingsSection } from "@/components/settings";
+import { MembersWidget } from "@/components/settings/widgets/MembersWidget";
 import { Box, Card, Flex, Heading, Text } from "@radix-ui/themes";
-import { UsersManagement, WorkOsWidgets } from "@workos-inc/widgets";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { workos } from "@/app/api/workos";
 import "./table.css";
@@ -15,10 +14,10 @@ export default async function MembersPage() {
       <div className="pt-12 pb-12 pl-12 pr-12 flex flex-col max-w-4xl min-w-[520px] w-full min-h-full box-border">
         <Flex direction="column" gap="3" width="100%">
           <Box>
-            <Heading>Users Management</Heading>
+            <Heading>Gestión de Miembros</Heading>
           </Box>
           <Card>
-            <Text>You are not authorized to access this page</Text>
+            <Text>No tienes autorización para acceder a esta página</Text>
           </Card>
         </Flex>
       </div>
@@ -30,43 +29,29 @@ export default async function MembersPage() {
       <div className="pt-12 pb-12 pl-12 pr-12 flex flex-col max-w-4xl min-w-[520px] w-full min-h-full box-border">
         <Flex direction="column" gap="3" width="100%">
           <Box>
-            <Heading>Users Management</Heading>
+            <Heading>Gestión de Miembros</Heading>
           </Box>
           <Card>
-            <Text>No organization found</Text>
+            <Text>No se encontró organización</Text>
           </Card>
         </Flex>
       </div>
     );
   }
 
-  const authToken = await workos.widgets.getToken({
+  // Show section header immediately, load WorkOS widget asynchronously
+  const authTokenPromise = workos.widgets.getToken({
     organizationId,
     userId: user.id,
     scopes: ["widgets:users-table:manage"],
+  }).catch((error) => {
+    console.error("Error al obtener el token:", error);
+    return null;
   });
 
   return (
     <div className="pt-12 pb-12 pl-12 pr-12 flex flex-col max-w-4xl min-w-[520px] w-full min-h-full box-border">
-      {/* WorkOS Users Management Widget */}
-      <SettingsSection
-        title="Members Management"
-        description="Manage organization members, roles, and permissions with advanced features."
-      >
-        <Flex direction="column" gap="3" width="100%">
-          <WorkOsWidgets
-            theme={{
-              appearance: "inherit",
-              accentColor: "blue",
-              radius: "medium",
-              fontFamily: "Inter",
-              panelBackground: "solid",
-            }}
-          >
-            <UsersManagement authToken={authToken} />
-          </WorkOsWidgets>
-        </Flex>
-      </SettingsSection>
+      <MembersWidget authTokenPromise={authTokenPromise} />
     </div>
   );
 }

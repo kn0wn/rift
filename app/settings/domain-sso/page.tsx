@@ -1,10 +1,7 @@
 import { SettingsSection } from "@/components/settings/SettingsSection";
+import { DomainSsoWidget } from "@/components/settings/widgets/DomainSsoWidget";
+import { SsoWidget } from "@/components/settings/widgets/SsoWidget";
 import { Box, Card, Flex, Heading, Text } from "@radix-ui/themes";
-import {
-  AdminPortalDomainVerification,
-  AdminPortalSsoConnection,
-  WorkOsWidgets,
-} from "@workos-inc/widgets";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { workos } from "@/app/api/workos";
 
@@ -18,10 +15,10 @@ export default async function DomainSsoPage() {
       <div className="pt-12 pb-12 pl-12 pr-12 flex flex-col max-w-4xl min-w-[520px] w-full min-h-full box-border">
         <Flex direction="column" gap="3" width="100%">
           <Box>
-            <Heading>Domain & SSO Management</Heading>
+            <Heading>Gestión de Dominio y SSO</Heading>
           </Box>
           <Card>
-            <Text>You are not authorized to access this page</Text>
+            <Text>No tienes autorización para acceder a esta página</Text>
           </Card>
         </Flex>
       </div>
@@ -33,64 +30,39 @@ export default async function DomainSsoPage() {
       <div className="pt-12 pb-12 pl-12 pr-12 flex flex-col max-w-4xl min-w-[520px] w-full min-h-full box-border">
         <Flex direction="column" gap="3" width="100%">
           <Box>
-            <Heading>Domain & SSO Management</Heading>
+            <Heading>Gestión de Dominio y SSO</Heading>
           </Box>
           <Card>
-            <Text>No organization found</Text>
+            <Text>No se encontró organización</Text>
           </Card>
         </Flex>
       </div>
     );
   }
 
-  const authToken = await workos.widgets.getToken({
+  // Show section headers immediately, load WorkOS widget asynchronously
+  const authTokenPromise = workos.widgets.getToken({
     organizationId,
     userId: user.id,
     scopes: ["widgets:domain-verification:manage", "widgets:sso:manage"],
+  }).catch((error) => {
+    console.error("Error al obtener el token:", error);
+    return null;
   });
 
   return (
     <div className="pt-12 pb-12 pl-12 pr-12 flex flex-col max-w-4xl min-w-[520px] w-full min-h-full box-border">
       {/* Domain Verification Section */}
       <SettingsSection
-        title="Domain Verification"
-        description="Verify your organization's domains to enable secure authentication and email routing."
+        title="Verificación de Dominio"
+        description="Los usuarios que intenten registrarse desde un dominio verificado, seran agregados a la organizacion automáticamente."
       >
-        <Flex direction="column" gap="3" width="100%">
-          <WorkOsWidgets
-            theme={{
-              appearance: "inherit",
-              accentColor: "blue",
-              radius: "medium",
-              fontFamily: "Inter",
-              panelBackground: "solid",
-            }}
-          >
-            <AdminPortalDomainVerification authToken={authToken} />
-          </WorkOsWidgets>
-        </Flex>
+        <DomainSsoWidget authTokenPromise={authTokenPromise} />
       </SettingsSection>
 
       {/* SSO Connections Section */}
       <div className="mt-8">
-        <SettingsSection
-          title="SSO Connections"
-          description="Configure Single Sign-On (SSO) connections to allow secure authentication through identity providers."
-        >
-          <Flex direction="column" gap="3" width="100%">
-            <WorkOsWidgets
-              theme={{
-                appearance: "inherit",
-                accentColor: "blue",
-                radius: "medium",
-                fontFamily: "Inter",
-                panelBackground: "solid",
-              }}
-            >
-              <AdminPortalSsoConnection authToken={authToken} />
-            </WorkOsWidgets>
-          </Flex>
-        </SettingsSection>
+        <SsoWidget authTokenPromise={authTokenPromise} />
       </div>
     </div>
   );
