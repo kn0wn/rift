@@ -31,6 +31,7 @@ interface Thread {
   title: string;
   pinned: boolean;
   _creationTime: number;
+  lastMessageAt: number;
   generationStatus: "pending" | "generation" | "compleated" | "failed";
 }
 
@@ -163,7 +164,7 @@ export function ThreadSidebarInteractive({
 
     return filtered.reduce(
       (groups, thread) => {
-        const timeClass = getTimeClassification(thread._creationTime);
+        const timeClass = getTimeClassification(thread.lastMessageAt);
         const groupKey = thread.pinned ? "Fijados" : timeClass;
 
         if (!groups[groupKey]) {
