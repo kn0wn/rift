@@ -1,5 +1,5 @@
 import { ClassroomSidebarClient } from "./ClassroomSidebarClient";
-import { UserProfileSection } from "@/components/sidebar/user-profile-section";
+import { UserProfileSection } from "@/components/sidebar/user-profile-section-server";
 
 export function ClassroomSidebar() {
   return (

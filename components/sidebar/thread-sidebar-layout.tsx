@@ -15,7 +15,7 @@ export function ThreadSidebarLayout({ preloadedThreads }: ThreadSidebarLayoutPro
       <ThreadSidebarHeader />
 
       {/* Thread List with Search */}
-      <div className="flex-1 overflow-y-auto sidebar-scroll-container scrollbar-hidden">
+      <div className="flex-1 min-h-0">
         <ThreadSidebarInteractive preloadedThreads={preloadedThreads} />
       </div>
 

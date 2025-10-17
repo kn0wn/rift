@@ -10,6 +10,7 @@ interface ChatMessagesServerProps {
 // Server component that fetches messages server-side
 export async function ChatMessagesServer({ threadId }: ChatMessagesServerProps) {
   let initialMessages = null;
+  let hasMoreMessages = false;
   
   try {
     const token = await getAccessToken();
@@ -18,7 +19,7 @@ export async function ChatMessagesServer({ threadId }: ChatMessagesServerProps) 
         api.threads.getThreadMessagesPaginatedSafe,
         { 
           threadId,
-          paginationOpts: { numItems: 100, cursor: null } 
+          paginationOpts: { numItems: 20, cursor: null } 
         },
         { token }
       );
@@ -44,10 +45,12 @@ export async function ChatMessagesServer({ threadId }: ChatMessagesServerProps) 
           })) : []),
         ],
       }));
+      // Check if there are more messages available
+      hasMoreMessages = !result.isDone;
     }
   } catch (error) {
     console.error("Failed to fetch messages server-side:", error);
   }
 
-  return <ChatInterface id={threadId} initialMessages={initialMessages || undefined} />;
+  return <ChatInterface id={threadId} initialMessages={initialMessages || undefined} hasMoreMessages={hasMoreMessages} />;
 }

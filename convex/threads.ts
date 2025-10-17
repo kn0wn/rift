@@ -321,42 +321,6 @@ export const sendMessage = mutation({
   },
 });
 
-/**
- * Paginated messages for a thread (newest-first pages).
- * Returns PaginationResult so clients can load older messages incrementally.
- */
-export const getThreadMessagesPaginated = query({
-  args: {
-    threadId: v.string(),
-    paginationOpts: paginationOptsValidator,
-  },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-
-    // Ensure the thread belongs to the current user
-    const thread = await ctx.db
-      .query("threads")
-      .withIndex("by_user_and_threadId", (q) =>
-        q.eq("userId", userId).eq("threadId", args.threadId),
-      )
-      .unique();
-
-    if (!thread) {
-      // Return empty pagination result instead of throwing error
-      return {
-        page: [],
-        isDone: true,
-        continueCursor: "",
-      };
-    }
-
-    return await ctx.db
-      .query("messages")
-      .withIndex("by_treadId", (q) => q.eq("threadId", args.threadId))
-      .order("desc") // Newest first; client can reverse for display
-      .paginate(args.paginationOpts);
-  },
-});
 
 /**
  * Safe version of getThreadMessagesPaginated that returns empty results when unauthenticated.
@@ -364,6 +328,7 @@ export const getThreadMessagesPaginated = query({
  * when the user's authentication state hasn't been established yet.
  *
  * Used for instant UI rendering with preloaded data and graceful auth handling.
+ * Includes attachment data for messages that have attachments.
  */
 export const getThreadMessagesPaginatedSafe = query({
   args: {

@@ -9,10 +9,10 @@ import { useInitialMessage } from "@/contexts/initial-message-context";
 import { useMessageRegeneration } from "@/hooks/use-message-regeneration";
 import { useMessageEdit } from "@/hooks/use-message-edit";
 import { toast } from "sonner";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { ToolType, getDefaultTools } from "@/lib/ai/model-tools";
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
-import { useQuery, useConvexAuth } from "convex/react";
+import { useQuery, useConvexAuth, usePaginatedQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Loader } from "@/components/ai/loader";
 import {
@@ -32,6 +32,7 @@ import type { ChatInterfaceProps } from "./types";
 export default function ChatInterface({
   id,
   initialMessages,
+  hasMoreMessages = false,
   disableInput = false,
   onInitialMessage,
 }: ChatInterfaceProps) {
@@ -42,6 +43,7 @@ export default function ChatInterface({
   const { isAuthenticated } = useConvexAuth();
   const { user } = useAuth();
   const prevIdRef = useRef(id);
+  const autoStartTriggeredRef = useRef(false);
 
   const { state, setters, handleSearchToggle } = useChatState();
   const {
@@ -67,6 +69,49 @@ export default function ChatInterface({
   );
 
   const isThread = id !== "welcome";
+
+  // State to enable client-side pagination when user clicks "Load More"
+  const [enableClientPagination, setEnableClientPagination] = useState(false);
+
+  // Paginated query for historical messages
+  // Skip the query if we have initialMessages from server-side rendering, unless pagination is enabled
+  const { 
+    results: paginatedMessages, 
+    status: paginationStatus, 
+    loadMore 
+  } = usePaginatedQuery(
+    api.threads.getThreadMessagesPaginatedSafe,
+    isThread && (!initialMessages || enableClientPagination) ? { threadId: id } : "skip",
+    { initialNumItems: 5 }
+  );
+
+  // Transform paginated messages to UIMessage format
+  const historicalMessages: UIMessage[] = useMemo(() => {
+    if (!paginatedMessages || !isThread) return [];
+    
+    // Reverse order since query returns desc (newest first), we want oldest first for display
+    return paginatedMessages.reverse().map((m: any) => ({
+      id: m.messageId,
+      role: m.role,
+      parts: [
+        ...(m.reasoning ? [{ type: "reasoning", text: m.reasoning }] : []),
+        ...(m.content ? [{ type: "text", text: m.content }] : []),
+        ...(m.attachments ? m.attachments.map((att: any) => ({
+          type: "file" as const,
+          mediaType: att.mimeType,
+          url: att.attachmentUrl,
+          attachmentId: att.attachmentId,
+          attachmentType: att.attachmentType,
+        })) : []),
+        ...(m.sources ? m.sources.map((source: any) => ({
+          type: "source-url" as const,
+          sourceId: source.sourceId,
+          url: source.url,
+          title: source.title,
+        })) : []),
+      ],
+    }));
+  }, [paginatedMessages, isThread]);
 
   // Force useChat to re-initialize when model changes
   const { messages, status, setMessages, sendMessage, regenerate, stop } =
@@ -235,16 +280,58 @@ export default function ChatInterface({
   const sendMessageRef = useRef<((message: UIMessage) => Promise<void>) | null>(null);
   sendMessageRef.current = sendMessage;
 
-  // Use message data hook
-  const { renderedMessages, hasAssistantMessage } = useMessageData({
-    id,
-    initialMessages,
-    messages,
-    setMessages,
-    isAuthenticated,
-    consumeInitialMessage,
-    sendMessageRef,
-  });
+  // Merge historical messages with AI SDK streaming messages
+  const renderedMessages: UIMessage[] = useMemo(() => {
+    if (isThread) {
+      // For threads, prioritize server-fetched initialMessages over client-fetched historicalMessages
+      const baseMessages = initialMessages && initialMessages.length > 0 ? initialMessages : historicalMessages;
+      const allMessages = [...baseMessages];
+      
+      // Add current AI SDK messages, avoiding duplicates
+      messages.forEach(streamingMessage => {
+        const isDuplicate = allMessages.some(histMsg => histMsg.id === streamingMessage.id);
+        if (!isDuplicate) {
+          allMessages.push(streamingMessage);
+        }
+      });
+      
+      return allMessages;
+    } else {
+      // For welcome page, use AI SDK messages or initial messages
+      if (messages.length > 0) {
+        return messages;
+      }
+      if (initialMessages && initialMessages.length > 0) {
+        return initialMessages;
+      }
+      return [];
+    }
+  }, [isThread, historicalMessages, messages, initialMessages]);
+
+  const hasAssistantMessage = useMemo(
+    () => renderedMessages.some((m) => m.role === "assistant"),
+    [renderedMessages],
+  );
+
+  // Auto-start with initial message from context (preserve existing behavior)
+  useEffect(() => {
+    if (isThread && isAuthenticated && !autoStartTriggeredRef.current) {
+      const initialMessage = consumeInitialMessage(id);
+      if (initialMessage) {
+        autoStartTriggeredRef.current = true;
+        sendMessageRef.current?.(initialMessage);
+      }
+    }
+  }, [id, isThread, isAuthenticated, consumeInitialMessage, sendMessageRef]);
+
+  // Cleanup effect when thread ID changes
+  useEffect(() => {
+    if (prevIdRef.current !== id) {
+      autoStartTriggeredRef.current = false;
+      setMessages([]);
+      prevIdRef.current = id;
+    }
+  }, [id, setMessages]);
 
   // Use file handling hook
   const {
@@ -372,11 +459,47 @@ export default function ChatInterface({
     setInput(prompt);
   }, [setInput]);
 
+  // Handle loading more messages with scroll position preservation
+  const handleLoadMore = useCallback(() => {
+    // If we're using server data and haven't enabled client pagination yet, enable it first
+    if (initialMessages && !enableClientPagination) {
+      setEnableClientPagination(true);
+      return;
+    }
+    
+    if (paginationStatus === "CanLoadMore") {
+      const scrollContainer = document.querySelector('[role="log"]');
+      const oldScrollHeight = scrollContainer?.scrollHeight || 0;
+      
+      loadMore(5);
+      
+      // Preserve scroll position after loading
+      setTimeout(() => {
+        if (scrollContainer) {
+          const newScrollHeight = scrollContainer.scrollHeight;
+          scrollContainer.scrollTop += (newScrollHeight - oldScrollHeight);
+        }
+      }, 100);
+    }
+  }, [paginationStatus, loadMore, initialMessages, enableClientPagination]);
+
   return (
     <div className="flex h-screen w-full min-h-0 flex-col relative">
       <div className="flex-1 min-h-0">
         <Conversation>
           <ConversationContent className="mx-auto w-full max-w-3xl p-4 pb-30">
+            {/* Load More button for threads */}
+            {isThread && (paginationStatus === "CanLoadMore" || (initialMessages && hasMoreMessages && !enableClientPagination)) && (
+              <div className="flex justify-center mb-4">
+                <button
+                  onClick={handleLoadMore}
+                  className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-md hover:bg-accent transition-colors"
+                >
+                  Load older messages
+                </button>
+              </div>
+            )}
+            
             {/* Greeting message for welcome page when no messages */}
             {!isThread && renderedMessages.length === 0 && (
               <WelcomeScreen 

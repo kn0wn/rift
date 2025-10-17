@@ -1,17 +1,15 @@
 "use client";
 
-import { usePreloadedQuery, usePaginatedQuery } from "convex/react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { Preloaded, usePaginatedQuery, usePreloadedQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ai/ui/button";
-import { CheckIcon, AlertTriangleIcon } from "lucide-react";
-import { EditIcon, DeleteIcon, PinIcon } from "@/components/ui/icons/svg-icons";
-import { useMutation } from "convex/react";
+import { Loader } from "@/components/ai/loader";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useState, useEffect, useRef } from "react";
-import { Preloaded } from "convex/react";
-import { Loader } from "@/components/ai/loader";
+import { CheckIcon, AlertTriangleIcon } from "lucide-react";
+import { EditIcon, DeleteIcon, PinIcon } from "@/components/ui/icons/svg-icons";
 import {
   Tooltip,
   TooltipTrigger,
@@ -25,7 +23,6 @@ import {
   ContextMenuSeparator,
 } from "@/components/ai/ui/context-menu";
 
-// Types
 interface Thread {
   threadId: string;
   title: string;
@@ -33,13 +30,14 @@ interface Thread {
   _creationTime: number;
   lastMessageAt: number;
   generationStatus: "pending" | "generation" | "compleated" | "failed";
+  updatedAt?: number;
 }
 
 interface ThreadSidebarInteractiveProps {
   preloadedThreads?: Preloaded<typeof api.threads.getUserThreadsPaginatedSafe>;
 }
 
-// Constants
+const PAGE_SIZE = 20;
 const GROUP_ORDER = [
   "Fijados",
   "Hoy",
@@ -51,195 +49,252 @@ const GROUP_ORDER = [
 const MAX_TITLE_LENGTH = 18;
 const BLUR_DELAY = 150;
 
+const parsePreloadedSnapshot = (
+  preloadedThreads?: Preloaded<typeof api.threads.getUserThreadsPaginatedSafe>,
+) => {
+  const snapshot = (preloadedThreads as {
+    _valueJSON?: {
+      page?: Thread[];
+      continueCursor?: string;
+      isDone?: boolean;
+    };
+  })?._valueJSON;
+
+  return {
+    page: snapshot?.page ?? [],
+    continueCursor: snapshot?.continueCursor ?? null,
+    isDone: snapshot?.isDone ?? true,
+  };
+};
+
+const sortThreads = (a: Thread, b: Thread) => {
+  if (a.pinned && !b.pinned) return -1;
+  if (!a.pinned && b.pinned) return 1;
+
+  const aTime = a.lastMessageAt ?? a.updatedAt ?? a._creationTime;
+  const bTime = b.lastMessageAt ?? b.updatedAt ?? b._creationTime;
+
+  return bTime - aTime;
+};
+
 export function ThreadSidebarInteractive({
   preloadedThreads,
 }: ThreadSidebarInteractiveProps) {
-  // Hooks
   const router = useRouter();
   const pathname = usePathname();
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // State
   const [searchQuery, setSearchQuery] = useState("");
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
-  const [isLoadingMoreScroll, setIsLoadingMoreScroll] = useState(false);
+  const [loadingSource, setLoadingSource] = useState<null | "scroll">(null);
+  const [hasHydrated, setHasHydrated] = useState(false);
+  const requestInFlightRef = useRef(false);
 
-  // Extract initial data from preloaded prop for instant display
-  const initialThreads: Thread[] =
-    (preloadedThreads as { _valueJSON?: { page?: Thread[] } })?._valueJSON
-      ?.page || [];
-  const [stableThreads, setStableThreads] = useState<Thread[]>(initialThreads);
+  useEffect(() => {
+    setHasHydrated(true);
+  }, []);
 
-  // Convex queries and mutations
-  const preloadedResults = usePreloadedQuery(preloadedThreads!);
-  const fallbackResults = usePaginatedQuery(
-    api.threads.getUserThreadsPaginatedSafe,
-    { paginationOpts: { numItems: 20, cursor: null } },
-    { initialNumItems: 20 },
+  const preloadedSnapshot = useMemo(
+    () => parsePreloadedSnapshot(preloadedThreads),
+    [preloadedThreads],
   );
+
+  const preloadedResults = preloadedThreads
+    ? usePreloadedQuery(preloadedThreads)
+    : null;
+
+  const preloadedIsDone = preloadedResults?.isDone ?? preloadedSnapshot.isDone;
+  const hasPreloadedMore = Boolean(preloadedThreads && !preloadedIsDone);
+  const shouldUsePaginated = hasHydrated && (!preloadedThreads || hasPreloadedMore);
+
+  const paginatedArgs = useMemo(
+    () => ({
+      paginationOpts: {
+        numItems: PAGE_SIZE,
+        cursor: hasPreloadedMore ? preloadedSnapshot.continueCursor : null,
+      },
+    }),
+    [hasPreloadedMore, preloadedSnapshot.continueCursor],
+  );
+
+  const paginatedOptions = useMemo(
+    () => ({ initialNumItems: hasPreloadedMore ? 0 : PAGE_SIZE }),
+    [hasPreloadedMore],
+  );
+
+  const paginated = usePaginatedQuery(
+    api.threads.getUserThreadsPaginatedSafe,
+    shouldUsePaginated ? paginatedArgs : "skip",
+    paginatedOptions,
+  );
+
+  const paginatedResults = (paginated?.results ?? []) as Thread[];
+  const paginatedStatus = shouldUsePaginated
+    ? paginated?.status ?? "LoadingFirstPage"
+    : "Exhausted";
+  const loadMore = paginated?.loadMore;
+
+  useEffect(() => {
+    if (editingThreadId && inputRef.current) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }, 0);
+    }
+  }, [editingThreadId]);
+
+  useEffect(() => {
+    const searchInput = document.getElementById(
+      "thread-search-input",
+    ) as HTMLInputElement | null;
+
+    if (!searchInput) {
+      return;
+    }
+
+    searchInput.removeAttribute("readonly");
+    searchInput.value = searchQuery;
+
+    const handleInputChange = (event: Event) => {
+      const target = event.target as HTMLInputElement;
+      setSearchQuery(target.value);
+    };
+
+    searchInput.addEventListener("input", handleInputChange);
+    return () => searchInput.removeEventListener("input", handleInputChange);
+  }, [searchQuery]);
+
+  const combinedThreads = useMemo(() => {
+    const pageFromPreload = preloadedResults?.page ?? preloadedSnapshot.page;
+    const allThreads = hasPreloadedMore
+      ? [...pageFromPreload, ...paginatedResults]
+      : paginatedResults.length > 0
+        ? paginatedResults
+        : pageFromPreload;
+
+    const threadsById = new Map<string, Thread>();
+    for (const thread of allThreads) {
+      threadsById.set(thread.threadId, thread);
+    }
+
+    return Array.from(threadsById.values()).sort(sortThreads);
+  }, [hasPreloadedMore, paginatedResults, preloadedResults?.page, preloadedSnapshot.page]);
+
+  const filteredThreads = useMemo(() => {
+    if (!searchQuery) {
+      return combinedThreads;
+    }
+
+    const lowered = searchQuery.toLowerCase();
+    return combinedThreads.filter((thread) =>
+      thread.title.toLowerCase().includes(lowered),
+    );
+  }, [combinedThreads, searchQuery]);
+
+  const groupedThreads = useMemo(() => {
+    return filteredThreads.reduce((groups, thread) => {
+      const now = new Date();
+      const threadDate = new Date(thread.lastMessageAt);
+      const diffInMs = now.getTime() - threadDate.getTime();
+      const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+      let groupKey: (typeof GROUP_ORDER)[number] | string = "Anteriores";
+
+      if (thread.pinned) {
+        groupKey = "Fijados";
+      } else if (diffInDays === 0) {
+        groupKey = "Hoy";
+      } else if (diffInDays === 1) {
+        groupKey = "Ayer";
+      } else if (diffInDays <= 7) {
+        groupKey = "Esta Semana";
+      } else if (diffInDays <= 30) {
+        groupKey = "Este Mes";
+      }
+
+      if (!groups[groupKey]) {
+        groups[groupKey] = [];
+      }
+
+      groups[groupKey]!.push(thread);
+      return groups;
+    }, {} as Record<string, Thread[]>);
+  }, [filteredThreads]);
 
   const deleteThread = useMutation(api.threads.deleteThread);
   const renameThread = useMutation(api.threads.renameThread);
   const togglePinThread = useMutation(api.threads.togglePinThread);
 
-  // Derived state
-  const threads = stableThreads;
-  const status =
-    preloadedThreads && preloadedResults?.isDone
-      ? "Exhausted"
-      : !preloadedThreads
-        ? fallbackResults.status
-        : "CanLoadMore";
-  
-  // Check if we're currently loading (either manual or scroll)
-  const isCurrentlyLoading = isLoadingMore || isLoadingMoreScroll;
+  const canLoadMore = shouldUsePaginated && paginatedStatus === "CanLoadMore" && !searchQuery;
+  const isLoadingMore = loadingSource !== null;
+  const isScrollLoading = loadingSource === "scroll";
 
-  // Effects
-  useEffect(() => {
-    if (
-      preloadedThreads &&
-      preloadedResults?.page &&
-      preloadedResults.page.length > 0
-    ) {
-      setStableThreads(preloadedResults.page);
-    }
-  }, [preloadedResults?.page, preloadedThreads]);
-
-  useEffect(() => {
-    if (
-      !preloadedThreads &&
-      fallbackResults.results &&
-      fallbackResults.results.length > 0 &&
-      stableThreads.length === 0
-    ) {
-      setStableThreads(fallbackResults.results);
-    }
-  }, [fallbackResults.results, preloadedThreads, stableThreads.length]);
-
-  useEffect(() => {
-    const searchInput = document.getElementById(
-      "thread-search-input",
-    ) as HTMLInputElement;
-    if (searchInput) {
-      searchInput.removeAttribute("readonly");
-      searchInput.value = searchQuery;
-
-      const handleInputChange = (e: Event) => {
-        const target = e.target as HTMLInputElement;
-        setSearchQuery(target.value);
-      };
-
-      searchInput.addEventListener("input", handleInputChange);
-      return () => searchInput.removeEventListener("input", handleInputChange);
-    }
-  }, [searchQuery]);
-
-  useEffect(() => {
-    if (editingThreadId && inputRef.current) {
-      setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.focus();
-          inputRef.current.select();
-        }
-      }, 0);
-    }
-  }, [editingThreadId]);
-
-  // Infinite scroll effect
-  useEffect(() => {
-    const scrollContainer = scrollContainerRef.current;
-    if (!scrollContainer) return;
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
-      const threshold = 200; // Increased threshold to 200px
-      
-      // Only trigger if we're near the bottom and can load more
-      if (
-        scrollTop + clientHeight >= scrollHeight - threshold &&
-        status === "CanLoadMore" &&
-        !isCurrentlyLoading &&
-        !searchQuery // Don't auto-load during search
-      ) {
-        setIsLoadingMoreScroll(true);
-        try {
-          fallbackResults.loadMore(10);
-        } finally {
-          // Use a longer delay to prevent rapid successive calls
-          setTimeout(() => setIsLoadingMoreScroll(false), 1000);
-        }
+  const triggerLoadMore = useCallback(
+    async (source: "scroll") => {
+      if (!loadMore || !canLoadMore || isLoadingMore || requestInFlightRef.current) {
+        return;
       }
-    };
 
-    // Add debounced scroll listener with longer debounce
-    let timeoutId: NodeJS.Timeout;
-    const debouncedHandleScroll = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(handleScroll, 200); // Increased debounce time
-    };
-
-    scrollContainer.addEventListener('scroll', debouncedHandleScroll);
-    
-    return () => {
-      scrollContainer.removeEventListener('scroll', debouncedHandleScroll);
-      clearTimeout(timeoutId);
-    };
-  }, [status, isCurrentlyLoading, searchQuery, fallbackResults]);
-
-  // Helper functions
-  const getTimeClassification = (timestamp: number): string => {
-    const now = new Date();
-    const threadDate = new Date(timestamp);
-    const diffInMs = now.getTime() - threadDate.getTime();
-    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-
-    if (diffInDays === 0) return "Hoy";
-    if (diffInDays === 1) return "Ayer";
-    if (diffInDays <= 7) return "Esta Semana";
-    if (diffInDays <= 30) return "Este Mes";
-    return "Anteriores";
-  };
-
-  const filterAndGroupThreads = (threads: Thread[], searchQuery: string) => {
-    const filtered = threads.filter((thread) =>
-      thread.title.toLowerCase().includes(searchQuery.toLowerCase()),
-    );
-
-    return filtered.reduce(
-      (groups, thread) => {
-        const timeClass = getTimeClassification(thread.lastMessageAt);
-        const groupKey = thread.pinned ? "Fijados" : timeClass;
-
-        if (!groups[groupKey]) {
-          groups[groupKey] = [];
-        }
-        groups[groupKey].push(thread);
-        return groups;
-      },
-      {} as Record<string, Thread[]>,
-    );
-  };
-
-  // Event handlers
-  const handleLoadMore = () => {
-    if (status === "CanLoadMore") {
-      setIsLoadingMore(true);
+      setLoadingSource(source);
       try {
-        fallbackResults.loadMore(10);
+        requestInFlightRef.current = true;
+        await loadMore(PAGE_SIZE);
       } finally {
-        setIsLoadingMore(false);
+        requestInFlightRef.current = false;
+        setLoadingSource(null);
       }
-    }
-  };
+    },
+    [canLoadMore, isLoadingMore, loadMore],
+  );
 
-  const handleDeleteThread = async (threadId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    const sentinel = sentinelRef.current;
+
+    if (!container || !sentinel || !shouldUsePaginated) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            triggerLoadMore("scroll");
+          }
+        }
+      },
+      {
+        root: container,
+        rootMargin: "200px",
+        threshold: 0,
+      },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [shouldUsePaginated, triggerLoadMore]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || searchQuery || !canLoadMore || isLoadingMore) {
+      return;
+    }
+
+    if (container.scrollHeight <= container.clientHeight + 32) {
+      triggerLoadMore("scroll");
+    }
+  }, [canLoadMore, combinedThreads.length, isLoadingMore, searchQuery, triggerLoadMore]);
+
+  const handleDeleteThread = async (threadId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+
     if (pathname === `/chat/${threadId}`) {
       router.replace("/");
     }
+
     try {
       await deleteThread({ threadId });
       toast.success("Hilo eliminado");
@@ -252,34 +307,36 @@ export function ThreadSidebarInteractive({
   const handleStartEdit = (
     threadId: string,
     currentTitle: string,
-    e: React.MouseEvent,
+    event: React.MouseEvent,
   ) => {
-    e.stopPropagation();
+    event.stopPropagation();
     setEditingThreadId(threadId);
     setEditingTitle(currentTitle);
   };
 
-  const handleSaveEdit = async (threadId: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleSaveEdit = async (threadId: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
 
-    if (!editingTitle.trim()) {
+    const trimmedTitle = editingTitle.trim();
+    if (!trimmedTitle) {
       toast.error("El título no puede estar vacío");
       return;
     }
 
-    const originalThread = threads.find((t) => t.threadId === threadId);
-    const originalTitle = originalThread?.title || "";
-    const newTitle = editingTitle.trim();
+    const originalThread = combinedThreads.find((thread) => thread.threadId === threadId);
+    if (!originalThread) {
+      return;
+    }
 
-    if (originalTitle === newTitle) {
+    if (originalThread.title === trimmedTitle) {
       setEditingThreadId(null);
       setEditingTitle("");
       return;
     }
 
     try {
-      await renameThread({ threadId, title: newTitle });
+      await renameThread({ threadId, title: trimmedTitle });
       setEditingThreadId(null);
       setEditingTitle("");
       toast.success("Hilo renombrado");
@@ -294,8 +351,8 @@ export function ThreadSidebarInteractive({
     setEditingTitle("");
   };
 
-  const handleTogglePin = async (threadId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleTogglePin = async (threadId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
     try {
       await togglePinThread({ threadId });
       toast.success("Estado de fijado actualizado");
@@ -305,28 +362,171 @@ export function ThreadSidebarInteractive({
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent, threadId: string) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      e.stopPropagation();
-      handleSaveEdit(threadId, e as unknown as React.MouseEvent);
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      e.stopPropagation();
+  const handleKeyDown = (event: React.KeyboardEvent, threadId: string) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      event.stopPropagation();
+      handleSaveEdit(threadId, event as unknown as React.MouseEvent);
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
       handleCancelEdit();
     }
   };
 
-  const handleInputBlur = (e: React.FocusEvent) => {
-    const relatedTarget = e.relatedTarget as HTMLElement;
+  const handleInputBlur = (event: React.FocusEvent) => {
+    const relatedTarget = event.relatedTarget as HTMLElement | null;
     if (!relatedTarget || !relatedTarget.closest("button")) {
-      setTimeout(() => {
-        handleCancelEdit();
-      }, BLUR_DELAY);
+      setTimeout(() => handleCancelEdit(), BLUR_DELAY);
     }
   };
 
-  // Render helpers
+  const renderThreadItem = (thread: Thread) => {
+    const isEditing = editingThreadId === thread.threadId;
+
+    return (
+      <ContextMenu key={thread.threadId}>
+        <ContextMenuTrigger>
+          <div
+            onClick={() => !isEditing && router.push(`/chat/${thread.threadId}`)}
+            className={cn(
+              "group relative mb-1 flex cursor-pointer items-center gap-2 overflow-hidden rounded-lg p-2.5 transition-colors",
+              "hover:bg-hover hover:text-accent-foreground",
+              pathname === `/chat/${thread.threadId}` &&
+                "bg-hover text-accent-foreground",
+              isEditing && "bg-hover text-accent-foreground",
+            )}
+          >
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                {isEditing ? (
+                  <div className="flex h-5 w-full items-center gap-2">
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={editingTitle}
+                      onChange={(event) => setEditingTitle(event.target.value)}
+                      onKeyDown={(event) => handleKeyDown(event, thread.threadId)}
+                      onBlur={handleInputBlur}
+                      className="h-5 min-w-0 flex-1 border-none bg-transparent text-sm font-medium leading-5 outline-none"
+                      maxLength={MAX_TITLE_LENGTH}
+                    />
+                    <Button
+                      onClick={(event) => handleSaveEdit(thread.threadId, event)}
+                      onMouseDown={(event) => event.preventDefault()}
+                      size="sm"
+                      variant="ghost"
+                      className="flex-shrink-0 h-6 w-6 p-0 hover:bg-green-500 hover:text-white"
+                    >
+                      <CheckIcon className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <h3 className="flex-1 truncate text-sm font-medium leading-5">
+                      {thread.title}
+                    </h3>
+                    {(thread.generationStatus === "pending" ||
+                      thread.generationStatus === "generation") && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex-shrink-0">
+                            <Loader
+                              size={14}
+                              className="text-muted-foreground transition-colors hover:text-muted-foreground"
+                            />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" sideOffset={8}>
+                          <p>
+                            {thread.generationStatus === "pending"
+                              ? "Preparando respuesta..."
+                              : "Generando respuesta..."}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                    {thread.generationStatus === "failed" && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex-shrink-0">
+                            <AlertTriangleIcon
+                              size={14}
+                              className="text-destructive/70 transition-colors hover:text-destructive"
+                            />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" sideOffset={8}>
+                          <p>Error al generar la respuesta</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
+                )}
+                {thread.pinned && (
+                  <PinIcon className="flex-shrink-0 h-3 w-3 text-muted-foreground" />
+                )}
+              </div>
+            </div>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem
+            className="hover:bg-hover"
+            onClick={(event: React.MouseEvent) =>
+              handleStartEdit(thread.threadId, thread.title, event)
+            }
+          >
+            <EditIcon className="mr-2 h-3 w-3" />
+            Renombrar
+          </ContextMenuItem>
+          <ContextMenuItem
+            className="hover:bg-hover"
+            onClick={(event: React.MouseEvent) =>
+              handleTogglePin(thread.threadId, event)
+            }
+          >
+            <PinIcon className="mr-2 h-3 w-3" />
+            {thread.pinned ? "Desfijar" : "Fijar"}
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            variant="destructive"
+            className="hover:bg-hover"
+            onClick={(event: React.MouseEvent) =>
+              handleDeleteThread(thread.threadId, event)
+            }
+          >
+            <DeleteIcon className="mr-2 h-3 w-3" />
+            Eliminar
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    );
+  };
+
+  const renderThreadGroup = (
+    groupName: (typeof GROUP_ORDER)[number],
+    groupThreads: Thread[] | undefined,
+  ) => {
+    if (!groupThreads || groupThreads.length === 0) {
+      return null;
+    }
+
+    return (
+      <div key={groupName} className="mb-4">
+        <div className="px-5 py-2">
+          <span className="text-xs font-semibold text-black/75 dark:text-popover-text/75">
+            {groupName}
+          </span>
+        </div>
+        <div className="space-y-0.5 px-5">{groupThreads.map(renderThreadItem)}</div>
+      </div>
+    );
+  };
+
   const renderEmptyState = () => {
     if (filteredThreads.length === 0 && searchQuery) {
       return (
@@ -351,193 +551,31 @@ export function ThreadSidebarInteractive({
     return null;
   };
 
-  const renderThreadItem = (thread: Thread) => {
-    const isEditing = editingThreadId === thread.threadId;
-
-    return (
-      <ContextMenu key={thread.threadId}>
-        <ContextMenuTrigger>
-          <div
-            onClick={() =>
-              !isEditing && router.push(`/chat/${thread.threadId}`)
-            }
-            className={cn(
-              "group relative flex items-center gap-2 p-2.5 mb-1 rounded-lg cursor-pointer transition-colors overflow-hidden",
-              "hover:bg-hover hover:text-accent-foreground",
-              pathname === `/chat/${thread.threadId}` &&
-                "bg-hover text-accent-foreground",
-              isEditing && "bg-hover text-accent-foreground",
-            )}
-          >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                {isEditing ? (
-                  <div className="flex items-center gap-2 w-full h-5">
-                    <input
-                      ref={inputRef}
-                      type="text"
-                      value={editingTitle}
-                      onChange={(e) => setEditingTitle(e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(e, thread.threadId)}
-                      onBlur={handleInputBlur}
-                      className="flex-1 bg-transparent border-none outline-none text-sm font-medium min-w-0 h-5 leading-5"
-                      maxLength={MAX_TITLE_LENGTH}
-                    />
-                    <Button
-                      onClick={(e) => handleSaveEdit(thread.threadId, e)}
-                      onMouseDown={(e) => e.preventDefault()}
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 w-6 p-0 hover:bg-green-500 hover:text-white flex-shrink-0"
-                    >
-                      <CheckIcon className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <h3 className="text-sm font-medium truncate h-5 leading-5 flex-1">
-                      {thread.title}
-                    </h3>
-                    {(thread.generationStatus === "pending" ||
-                      thread.generationStatus === "generation") && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex-shrink-0">
-                            <Loader
-                              size={14}
-                              className="text-muted-foreground hover:text-muted-foreground transition-colors"
-                            />
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="right" sideOffset={8}>
-                          <p>
-                            {thread.generationStatus === "pending"
-                              ? "Preparando respuesta..."
-                              : "Generando respuesta..."}
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                    {thread.generationStatus === "failed" && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex-shrink-0">
-                            <AlertTriangleIcon
-                              size={14}
-                              className="text-destructive/70 hover:text-destructive transition-colors"
-                            />
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="right" sideOffset={8}>
-                          <p>Error al generar la respuesta</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                  </div>
-                )}
-                {thread.pinned && (
-                  <PinIcon className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                )}
-              </div>
-            </div>
-          </div>
-        </ContextMenuTrigger>
-        <ContextMenuContent>
-          <ContextMenuItem
-            className="hover:bg-hover"
-            onClick={(e: React.MouseEvent) => {
-              e.stopPropagation();
-              handleStartEdit(thread.threadId, thread.title, e);
-            }}
-          >
-            <EditIcon className="h-3 w-3 mr-2" />
-            Renombrar
-          </ContextMenuItem>
-          <ContextMenuItem
-            className="hover:bg-hover"
-            onClick={(e: React.MouseEvent) => {
-              e.stopPropagation();
-              handleTogglePin(thread.threadId, e);
-            }}
-          >
-            <PinIcon className="h-3 w-3 mr-2" />
-            {thread.pinned ? "Desfijar" : "Fijar"}
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem
-            variant="destructive"
-            className="hover:bg-hover"
-            onClick={(e: React.MouseEvent) => {
-              e.stopPropagation();
-              handleDeleteThread(thread.threadId, e);
-            }}
-          >
-            <DeleteIcon className="h-3 w-3 mr-2" />
-            Eliminar
-          </ContextMenuItem>
-        </ContextMenuContent>
-      </ContextMenu>
-    );
-  };
-
-  const renderThreadGroup = (groupName: string, groupThreads: Thread[]) => {
-    if (!groupThreads || groupThreads.length === 0) return null;
-
-    return (
-      <div key={groupName} className="mb-4">
-        <div className="px-5 py-2">
-          <span className="text-xs font-semibold text-black/75 dark:text-popover-text/75">
-            {groupName}
-          </span>
-        </div>
-        <div className="space-y-0.5 px-5">
-          {groupThreads.map(renderThreadItem)}
-        </div>
-      </div>
-    );
-  };
-
-  // Main render
-  const filteredThreads = threads.filter((thread) =>
-    thread.title.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
-  const groupedThreads = filterAndGroupThreads(threads, searchQuery);
-
   return (
-    <>
-      {renderEmptyState() || (
-        <div 
-          ref={scrollContainerRef}
-          className="sidebar-scroll-container auto-hide-scrollbar w-full overflow-hidden max-h-[calc(100vh-200px)] overflow-y-auto"
-        >
-          {GROUP_ORDER.map((groupName) =>
-            renderThreadGroup(groupName, groupedThreads[groupName]),
-          )}
-        </div>
-      )}
-
-      {/* Loading indicator positioned outside scroll container to prevent flickering */}
-      {isLoadingMoreScroll && (
-        <div className="p-2 text-center text-muted-foreground border-t border-border">
-          <Loader size={14} className="mx-auto" />
-          <p className="text-xs mt-1">Cargando más chats...</p>
-        </div>
-      )}
-
-      {/* Fallback Load More button - only show if infinite scroll fails */}
-      {status === "CanLoadMore" && !searchQuery && !isCurrentlyLoading && (
-        <div className="p-4 border-t border-border">
-          <Button
-            onClick={handleLoadMore}
-            disabled={isLoadingMore}
-            variant="outline"
-            size="sm"
-            className="w-full"
+    <div className="flex h-full flex-col">
+      <div className="flex-1 min-h-0">
+        {renderEmptyState() || (
+          <div
+            ref={scrollContainerRef}
+            className="sidebar-scroll-container h-full w-full overflow-y-auto"
           >
-            {isLoadingMore ? "Cargando..." : "Cargar más"}
-          </Button>
+            {GROUP_ORDER.map((groupName) =>
+              renderThreadGroup(groupName, groupedThreads[groupName]),
+            )}
+            <div ref={sentinelRef} className="h-[1px] w-full" />
+          </div>
+        )}
+      </div>
+
+      {isScrollLoading && (
+        <div className="border-t border-border p-2 text-center text-muted-foreground">
+          <Loader size={14} className="mx-auto" />
+          <p className="mt-1 text-xs">Cargando más chats...</p>
         </div>
       )}
-    </>
+
+      {/* Button removed: automatic infinite scroll handles pagination */}
+    </div>
   );
 }
+
