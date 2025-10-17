@@ -126,7 +126,6 @@ export default function ChatInterface({
     useChat({
       id: `${id}-${chatKey}`,
       generateId: generateUUID,
-      experimental_throttle: 50,
       onFinish() {
         if (pathname === "/") {
           router.push(`/chat/${id}`);
