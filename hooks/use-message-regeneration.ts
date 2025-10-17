@@ -1,6 +1,6 @@
 import { useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
-import type { UIMessage } from "ai";
+import { useChatMessages, useChat, type UIMessage } from "@ai-sdk-tools/store";
 
 // Utility function to deduplicate messages by ID to prevent React key conflicts
 export function deduplicateMessages(messages: UIMessage[]): UIMessage[] {
@@ -14,17 +14,9 @@ export function deduplicateMessages(messages: UIMessage[]): UIMessage[] {
   });
 }
 
-interface UseMessageRegenerationProps {
-  messages: UIMessage[];
-  setMessages: (messages: UIMessage[]) => void;
-  regenerate?: (options?: { messageId?: string }) => void;
-}
-
-export function useMessageRegeneration({
-  messages,
-  setMessages,
-  regenerate,
-}: UseMessageRegenerationProps) {
+export function useMessageRegeneration() {
+  const messages = useChatMessages();
+  const { setMessages, regenerate } = useChat();
   // Use ref to access current messages without causing re-renders
   const messagesRef = useRef(messages);
   useEffect(() => {
@@ -130,4 +122,4 @@ export function useMessageRegeneration({
   };
 }
 
-export type { UseMessageRegenerationProps };
+// No external props are needed; hook uses global store

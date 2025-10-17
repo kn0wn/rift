@@ -5,6 +5,7 @@ import { InitialMessageProvider } from "@/contexts/initial-message-context";
 import { Theme } from "@radix-ui/themes";
 import { ReactNode } from "react";
 import { AIDevtools } from "@ai-sdk-tools/devtools";
+import { Provider as AIStoreProvider } from "@ai-sdk-tools/store";
 
 interface ProvidersProps {
   children: ReactNode;
@@ -15,8 +16,10 @@ export function Providers({ children, initialModel }: ProvidersProps) {
   return (
     <Theme>
       <ModelProvider initialModel={initialModel}>
-      <AIDevtools />
-        <InitialMessageProvider>{children}</InitialMessageProvider>
+        <AIStoreProvider initialMessages={[]}>
+          <AIDevtools />
+          <InitialMessageProvider>{children}</InitialMessageProvider>
+        </AIStoreProvider>
       </ModelProvider>
     </Theme>
   );

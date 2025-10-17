@@ -336,7 +336,8 @@ export async function POST(req: Request) {
     const stream = createUIMessageStream({
       originalMessages: messages as UIMessage[], // Type assertion for AI SDK compatibility
       execute: async ({ writer }) => {
-        writer.write({ type: "start", messageId });
+        // Start assistant UI message with the server-side generated id so UI and DB ids match
+        writer.write({ type: "start", messageId: newMessageId });
 
         console.log(`Stream execution started: ${Date.now() - start}ms`);
 
@@ -589,6 +590,7 @@ export async function POST(req: Request) {
             },
           });
 
+          // We already sent a start with newMessageId above; keep sendStart false to avoid duplicate
           writer.merge(result.toUIMessageStream({ sendStart: false, sendSources: true }));
         } catch (error) {
           cleanup();

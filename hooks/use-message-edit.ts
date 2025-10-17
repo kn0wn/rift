@@ -1,25 +1,19 @@
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
-import type { UIMessage } from "ai";
+import { useChat, useChatMessages, type UIMessage } from "@ai-sdk-tools/store";
 import { deduplicateMessages } from "./use-message-regeneration";
 
 interface UseMessageEditProps {
-  messages: UIMessage[];
-  setMessages: (
-    messages: UIMessage[] | ((messages: UIMessage[]) => UIMessage[]),
-  ) => void;
   regenerateAfterUserMessage: (messageId: string) => Promise<void>;
-  status?: "ready" | "submitted" | "streaming" | "error";
   threadId: string;
 }
 
 export function useMessageEdit({
-  messages,
-  setMessages,
   regenerateAfterUserMessage,
-  status,
   threadId,
 }: UseMessageEditProps) {
+  const messages = useChatMessages();
+  const { setMessages, status } = useChat();
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [isLoading, setIsLoading] = useState(false);

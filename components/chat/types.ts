@@ -1,5 +1,5 @@
 import type React from "react";
-import type { UIMessage } from "@ai-sdk/react";
+import type { UIMessage } from "@ai-sdk-tools/store";
 import type { FileAttachment } from "@/lib/file-utils";
 
 export interface ChatInterfaceProps {

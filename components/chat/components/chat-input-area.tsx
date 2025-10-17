@@ -23,69 +23,45 @@ import {
 import { ModelSelector } from "@/components/ai/model-selector";
 import type { FileAttachment } from "@/lib/file-utils";
 import React from "react";
+import { useChatStatus } from "@ai-sdk-tools/store";
+import { useChatUIStore } from "../ui-store";
+import { uploadFiles, isSupportedFileType } from "@/lib/file-utils";
+import { toast } from "sonner";
 
 interface ChatInputAreaProps {
-  input: string;
-  isSearchEnabled: boolean;
-  quotaError: {
-    type: "standard" | "premium";
-    message: string;
-    currentUsage: number;
-    limit: number;
-    otherTypeUsage: number;
-    otherTypeLimit: number;
-  } | null;
-  showNoSubscriptionDialog: boolean;
-  orgName?: string;
-  uploadedAttachments: FileAttachment[];
-  uploadingFiles: Array<{ file: File; isUploading: boolean }>;
-  isSendingMessage: boolean;
   disableInput: boolean;
-  isUploading: boolean;
   selectedModel: string;
-  status: "ready" | "submitted" | "streaming" | "error";
-  messages: any[];
-
-  onInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  onSearchToggle: () => void;
-  onQuotaErrorClose: () => void;
-  onNoSubscriptionDialogClose: () => void;
-  onAttachClick: () => void;
-  onFilesSelected: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onRemoveFile: (index: number) => void;
+  orgName?: string;
   onModelChange: (model: string) => void;
   onSubmit: (e?: React.FormEvent) => void;
   onStop: () => void;
-
-  fileInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
 export const ChatInputArea = React.memo(function ChatInputArea({
-  input,
-  isSearchEnabled,
-  quotaError,
-  showNoSubscriptionDialog,
-  orgName,
-  uploadedAttachments,
-  uploadingFiles,
-  isSendingMessage,
   disableInput,
-  isUploading,
   selectedModel,
-  status,
-  messages,
-  onInputChange,
-  onSearchToggle,
-  onQuotaErrorClose,
-  onNoSubscriptionDialogClose,
-  onAttachClick,
-  onFilesSelected,
-  onRemoveFile,
+  orgName,
   onModelChange,
   onSubmit,
   onStop,
-  fileInputRef,
 }: ChatInputAreaProps) {
+  const status = useChatStatus();
+  const input = useChatUIStore((s) => s.input);
+  const isSearchEnabled = useChatUIStore((s) => s.isSearchEnabled);
+  const quotaError = useChatUIStore((s) => s.quotaError);
+  const showNoSubscriptionDialog = useChatUIStore((s) => s.showNoSubscriptionDialog);
+  const uploadedAttachments = useChatUIStore((s) => s.uploadedAttachments);
+  const uploadingFiles = useChatUIStore((s) => s.uploadingFiles);
+  const isSendingMessage = useChatUIStore((s) => s.isSendingMessage);
+  const isUploading = useChatUIStore((s) => s.isUploading);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const setInput = useChatUIStore((s) => s.setInput);
+  const setSelectedFiles = useChatUIStore((s) => s.setSelectedFiles);
+  const setUploadedAttachments = useChatUIStore((s) => s.setUploadedAttachments);
+  const setUploadingFiles = useChatUIStore((s) => s.setUploadingFiles);
+  const handleSearchToggle = useChatUIStore((s) => s.handleSearchToggle);
+  const setQuotaError = useChatUIStore((s) => s.setQuotaError);
+  const setShowNoSubscriptionDialog = useChatUIStore((s) => s.setShowNoSubscriptionDialog);
   // Memoize files array transformation
   const files = useMemo(() => {
     if (isSendingMessage) return [];
@@ -113,7 +89,7 @@ export const ChatInputArea = React.memo(function ChatInputArea({
         {/* No Subscription Dialog */}
         <NoSubscriptionDialog
           isOpen={showNoSubscriptionDialog}
-          onClose={onNoSubscriptionDialogClose}
+          onClose={() => setShowNoSubscriptionDialog(false)}
           orgName={orgName}
         />
         
@@ -139,7 +115,7 @@ export const ChatInputArea = React.memo(function ChatInputArea({
                 </div>
               </div>
               <button
-                onClick={onQuotaErrorClose}
+                onClick={() => setQuotaError(null)}
                 className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200"
                 aria-label="Close"
               >
@@ -173,11 +149,20 @@ export const ChatInputArea = React.memo(function ChatInputArea({
         <PromptInput onSubmit={onSubmit}>
           <PromptInputFilePreview
             files={files}
-            onRemoveFile={onRemoveFile}
+            onRemoveFile={(index) => {
+              const uploadedCount = uploadedAttachments.length;
+              if (index < uploadedCount) {
+                setUploadedAttachments((prev) => prev.filter((_, i) => i !== index));
+              } else {
+                const uploadingIndex = index - uploadedCount;
+                setUploadingFiles((prev) => prev.filter((_, i) => i !== uploadingIndex));
+              }
+              setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+            }}
             disabled={disableInput}
           />
           <PromptInputTextarea
-            onChange={onInputChange}
+            onChange={(e) => setInput(e.target.value)}
             value={input}
             disabled={disableInput || isUploading}
             placeholder="Escribe tu mensaje..."
@@ -186,11 +171,67 @@ export const ChatInputArea = React.memo(function ChatInputArea({
             <PromptInputTools>
               <PromptInputFileUpload
                 ref={fileInputRef}
-                onFilesSelected={onFilesSelected}
+                onFilesSelected={(e) => {
+                  const files = e.target.files;
+                  if (!files || files.length === 0) return;
+                  const fileArray = Array.from(files);
+
+                  const currentTotal = uploadedAttachments.length + uploadingFiles.length;
+                  const newTotal = currentTotal + fileArray.length;
+                  if (newTotal > 5) {
+                    const remaining = 5 - currentTotal;
+                    if (remaining <= 0) {
+                      toast.error("Maximum of 5 files allowed per message");
+                    } else {
+                      toast.error(`You can only add ${remaining} more file${remaining === 1 ? '' : 's'}. Maximum of 5 files allowed per message.`);
+                    }
+                    return;
+                  }
+
+                  const unsupported = fileArray.filter((f) => !isSupportedFileType(f));
+                  if (unsupported.length > 0) {
+                    toast.error(`Unsupported file types: ${unsupported.map((f) => f.name).join(", ")}`);
+                    return;
+                  }
+
+                  const oversized = fileArray.filter((f) => f.size > 10 * 1024 * 1024);
+                  if (oversized.length > 0) {
+                    toast.error(`Files too large: ${oversized.map((f) => f.name).join(", ")}`);
+                    return;
+                  }
+
+                  setSelectedFiles((prev) => [...prev, ...fileArray]);
+                  setUploadingFiles((prev) => [
+                    ...prev,
+                    ...fileArray.map((file) => ({ file, isUploading: true })),
+                  ]);
+
+                  (async () => {
+                    try {
+                      const dt = new DataTransfer();
+                      fileArray.forEach((f) => dt.items.add(f));
+                      const attachments = await uploadFiles(dt.files);
+                      setUploadedAttachments((prev) => [...prev, ...attachments]);
+                    } catch (err) {
+                      console.error("File upload error:", err);
+                      toast.error("Failed to upload files");
+                    } finally {
+                      setUploadingFiles((prev) => prev.filter((uf) => !fileArray.includes(uf.file)));
+                    }
+                  })();
+                }}
                 disabled={disableInput || isUploading}
               />
               <PromptInputButton
-                onClick={onAttachClick}
+                onClick={() => {
+                  if (disableInput) return;
+                  const currentTotalFiles = uploadedAttachments.length + uploadingFiles.length;
+                  if (currentTotalFiles >= 5) {
+                    toast.error("Maximum of 5 files allowed per message");
+                    return;
+                  }
+                  fileInputRef.current?.click();
+                }}
                 aria-label="Add attachments"
                 disabled={disableInput || (uploadedAttachments.length + uploadingFiles.length) >= 5}
                 title={
@@ -206,7 +247,7 @@ export const ChatInputArea = React.memo(function ChatInputArea({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <PromptInputButton
-                      onClick={onSearchToggle}
+                      onClick={handleSearchToggle}
                       aria-label="Toggle web search"
                       disabled={disableInput}
                       variant={isSearchEnabled ? "default" : "ghost"}
@@ -247,24 +288,31 @@ export const ChatInputArea = React.memo(function ChatInputArea({
           type="file"
           multiple
           className="hidden"
-          onChange={onFilesSelected}
+          onChange={(e) => {
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+            const fileArray = Array.from(files);
+            const currentTotalFiles = uploadedAttachments.length + uploadingFiles.length;
+            const newTotalFiles = currentTotalFiles + fileArray.length;
+            if (newTotalFiles > 5) {
+              const remaining = 5 - currentTotalFiles;
+              if (remaining <= 0) return;
+              return;
+            }
+            setSelectedFiles((prev) => [...prev, ...fileArray]);
+          }}
         />
       </div>
     </div>
   );
 }, (prevProps, nextProps) => {
-  // Custom comparison function to prevent unnecessary re-renders
+  // Re-render when any external prop used by this component changes
   return (
-    prevProps.input === nextProps.input &&
-    prevProps.isSearchEnabled === nextProps.isSearchEnabled &&
-    prevProps.quotaError === nextProps.quotaError &&
-    prevProps.showNoSubscriptionDialog === nextProps.showNoSubscriptionDialog &&
-    prevProps.uploadedAttachments.length === nextProps.uploadedAttachments.length &&
-    prevProps.uploadingFiles.length === nextProps.uploadingFiles.length &&
-    prevProps.isSendingMessage === nextProps.isSendingMessage &&
     prevProps.disableInput === nextProps.disableInput &&
-    prevProps.isUploading === nextProps.isUploading &&
     prevProps.selectedModel === nextProps.selectedModel &&
-    prevProps.status === nextProps.status
+    prevProps.onSubmit === nextProps.onSubmit &&
+    prevProps.onStop === nextProps.onStop &&
+    prevProps.onModelChange === nextProps.onModelChange &&
+    prevProps.orgName === nextProps.orgName
   );
 });

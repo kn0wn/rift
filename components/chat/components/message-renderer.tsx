@@ -27,7 +27,8 @@ import {
   SourcesContent,
   SourcesTrigger,
 } from "@/components/ai/sources";
-import type { UIMessage } from "@ai-sdk/react";
+import { Loader } from "@/components/ai/loader";
+import type { UIMessage } from "@ai-sdk-tools/store";
 import React, { useCallback, useState } from "react";
 
 // Memoized action buttons component
@@ -125,19 +126,21 @@ const MessageActions = React.memo(function MessageActions({
 
 interface MessageRendererProps {
   message: UIMessage;
-  status: "ready" | "submitted" | "streaming" | "error";
-  messages: UIMessage[];
+  isStreaming: boolean;
   onRegenerateAssistantMessage: (messageId: string) => void;
   onRegenerateAfterUserMessage: (messageId: string) => void;
 }
 
 export const MessageRenderer = React.memo(function MessageRenderer({
   message,
-  status,
-  messages,
+  isStreaming,
   onRegenerateAssistantMessage,
   onRegenerateAfterUserMessage,
 }: MessageRendererProps) {
+  const hasTextParts = message.parts.some(
+    (p) => p.type === "text" && (p as any).text && (p as any).text.length > 0,
+  );
+  const showInlineLoader = isStreaming && message.role === "assistant" && !hasTextParts;
   const renderMessageContent = useCallback(() => {
     // Group reasoning parts together
     const reasoningParts = message.parts.filter(
@@ -157,10 +160,7 @@ export const MessageRenderer = React.memo(function MessageRenderer({
           <Reasoning
             key={`${message.id}-reasoning`}
             className="w-full mb-4"
-            isStreaming={
-              status === "streaming" &&
-              message.id === messages[messages.length - 1]?.id
-            }
+            isStreaming={isStreaming}
             defaultOpen={false}
           >
             <ReasoningTrigger />
@@ -348,7 +348,7 @@ export const MessageRenderer = React.memo(function MessageRenderer({
         )}
       </>
     );
-  }, [message, status, messages]);
+  }, [message, isStreaming]);
 
 
   return (
@@ -356,13 +356,18 @@ export const MessageRenderer = React.memo(function MessageRenderer({
       <Message from={message.role} key={message.id}>
         <MessageContent from={message.role}>
           {renderMessageContent()}
+          {showInlineLoader ? (
+            <div className="py-1">
+              <Loader />
+            </div>
+          ) : null}
         </MessageContent>
       </Message>
       
       {/* Sources section for assistant messages - only show when sources exist and response is completed */}
       {message.role === "assistant" && 
        message.parts.filter((part) => part.type === "source-url").length > 0 &&
-       !(status === "streaming" && message.id === messages[messages.length - 1]?.id) && (
+       !isStreaming && (
         <Sources className="mt-4 px-4">
           <SourcesTrigger
             count={
@@ -396,22 +401,16 @@ export const MessageRenderer = React.memo(function MessageRenderer({
     </div>
   );
 }, (prevProps, nextProps) => {
-  // Allow re-renders during streaming 
-  if (nextProps.status === "streaming") {
-    return false;
-  }
-  
-  // For non-streaming messages, use strict comparison
-  // Check most likely-to-change properties first for better performance
+  // While streaming, always allow re-render so tokens appear incrementally
+  if (nextProps.isStreaming) return false;
+  // For non-streaming messages, use strict comparison to avoid churn
   return (
     prevProps.message.id === nextProps.message.id &&
-    prevProps.status === nextProps.status &&
     prevProps.message.role === nextProps.message.role &&
     prevProps.message.parts.length === nextProps.message.parts.length &&
     prevProps.message.parts.every((part, index) => {
       const nextPart = nextProps.message.parts[index];
-      return part.type === nextPart.type && 
-             (part as any).text === (nextPart as any).text;
+      return part.type === nextPart.type && (part as any).text === (nextPart as any).text;
     })
   );
 });

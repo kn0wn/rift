@@ -1,6 +1,6 @@
 "use client";
 
-import { useChat, type UIMessage } from "@ai-sdk/react";
+import { useChat, type UIMessage } from "@ai-sdk-tools/store";
 import { DefaultChatTransport } from "ai";
 import { usePathname, useRouter } from "next/navigation";
 import { generateUUID } from "@/lib/utils";
@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { ToolType, getDefaultTools } from "@/lib/ai/model-tools";
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
-import { useQuery, useConvexAuth, usePaginatedQuery } from "convex/react";
+import { useConvexAuth, usePaginatedQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Loader } from "@/components/ai/loader";
 import {
@@ -21,9 +21,8 @@ import {
   ConversationScrollButton,
 } from "@/components/ai/conversation";
 
-import { useChatState, useModelChangeEffect } from "./hooks/use-chat-state";
-import { useMessageData } from "./hooks/use-message-data";
-import { useFileHandling } from "./hooks/use-file-handling";
+import { useModelChangeEffect } from "./hooks/use-chat-state";
+import { useChatUIStore } from "./ui-store";
 import { WelcomeScreen } from "./components/welcome-screen";
 import { MessageRenderer } from "./components/message-renderer";
 import { ChatInputArea } from "./components/chat-input-area";
@@ -45,19 +44,26 @@ export default function ChatInterface({
   const prevIdRef = useRef(id);
   const autoStartTriggeredRef = useRef(false);
 
-  const { state, setters, handleSearchToggle } = useChatState();
-  const {
-    setInput,
-    setSelectedFiles,
-    setUploadedAttachments,
-    setIsUploading,
-    setUploadingFiles,
-    setIsSendingMessage,
-    setIsSearchEnabled,
-    setQuotaError,
-    setShowNoSubscriptionDialog,
-    setChatKey,
-  } = setters;
+  const input = useChatUIStore((s) => s.input);
+  const selectedFiles = useChatUIStore((s) => s.selectedFiles);
+  const uploadedAttachments = useChatUIStore((s) => s.uploadedAttachments);
+  const uploadingFiles = useChatUIStore((s) => s.uploadingFiles);
+  const isSendingMessage = useChatUIStore((s) => s.isSendingMessage);
+  const isSearchEnabled = useChatUIStore((s) => s.isSearchEnabled);
+  const quotaError = useChatUIStore((s) => s.quotaError);
+  const showNoSubscriptionDialog = useChatUIStore((s) => s.showNoSubscriptionDialog);
+  const chatKey = useChatUIStore((s) => s.chatKey);
+  const setInput = useChatUIStore((s) => s.setInput);
+  const setSelectedFiles = useChatUIStore((s) => s.setSelectedFiles);
+  const setUploadedAttachments = useChatUIStore((s) => s.setUploadedAttachments);
+  const setIsUploading = useChatUIStore((s) => s.setIsUploading);
+  const setUploadingFiles = useChatUIStore((s) => s.setUploadingFiles);
+  const setIsSendingMessage = useChatUIStore((s) => s.setIsSendingMessage);
+  const setIsSearchEnabled = useChatUIStore((s) => s.setIsSearchEnabled);
+  const setQuotaError = useChatUIStore((s) => s.setQuotaError);
+  const setShowNoSubscriptionDialog = useChatUIStore((s) => s.setShowNoSubscriptionDialog);
+  const setChatKey = useChatUIStore((s) => s.setChatKey);
+  const handleSearchToggle = useChatUIStore((s) => s.handleSearchToggle);
 
   // Apply model change effects
   useModelChangeEffect(
@@ -116,7 +122,7 @@ export default function ChatInterface({
   // Force useChat to re-initialize when model changes
   const { messages, status, setMessages, sendMessage, regenerate, stop } =
     useChat({
-      id: `${id}-${state.chatKey}`,
+      id: `${id}-${chatKey}`,
       generateId: generateUUID,
       onFinish() {
         if (pathname === "/") {
@@ -233,11 +239,7 @@ export default function ChatInterface({
 
   // Initialize regeneration hook
   const { regenerateAssistantMessage, regenerateAfterUserMessage } =
-    useMessageRegeneration({
-      messages,
-      setMessages,
-      regenerate,
-    });
+    useMessageRegeneration();
 
   // Cleanup effect when thread ID changes - reset all UI state
   useEffect(() => {
@@ -269,43 +271,35 @@ export default function ChatInterface({
     isEditing,
     isLoading,
   } = useMessageEdit({
-    messages,
-    setMessages,
     regenerateAfterUserMessage,
     threadId: id,
-    status,
   });
 
   // Store sendMessage in ref to prevent useEffect from re-running
   const sendMessageRef = useRef<((message: UIMessage) => Promise<void>) | null>(null);
   sendMessageRef.current = sendMessage;
 
-  // Merge historical messages with AI SDK streaming messages
+  // Merge historical messages with AI SDK streaming messages (overlay stream onto base by id)
   const renderedMessages: UIMessage[] = useMemo(() => {
-    if (isThread) {
-      // For threads, prioritize server-fetched initialMessages over client-fetched historicalMessages
-      const baseMessages = initialMessages && initialMessages.length > 0 ? initialMessages : historicalMessages;
-      const allMessages = [...baseMessages];
-      
-      // Add current AI SDK messages, avoiding duplicates
-      messages.forEach(streamingMessage => {
-        const isDuplicate = allMessages.some(histMsg => histMsg.id === streamingMessage.id);
-        if (!isDuplicate) {
-          allMessages.push(streamingMessage);
-        }
-      });
-      
-      return allMessages;
-    } else {
-      // For welcome page, use AI SDK messages or initial messages
-      if (messages.length > 0) {
-        return messages;
-      }
-      if (initialMessages && initialMessages.length > 0) {
-        return initialMessages;
-      }
+    if (!isThread) {
+      if (messages.length > 0) return messages;
+      if (initialMessages && initialMessages.length > 0) return initialMessages;
       return [];
     }
+
+    const base = initialMessages && initialMessages.length > 0 ? initialMessages : historicalMessages;
+
+    // Keep base order, overlay streaming message if same id, append new streaming-only items at the end
+    const usedIds = new Set<string>();
+    const result: UIMessage[] = base.map((m) => {
+      const sm = messages.find((s) => s.id === m.id);
+      usedIds.add(m.id);
+      return sm ?? m;
+    });
+    messages.forEach((s) => {
+      if (!usedIds.has(s.id)) result.push(s);
+    });
+    return result;
   }, [isThread, historicalMessages, messages, initialMessages]);
 
   const hasAssistantMessage = useMemo(
@@ -333,37 +327,14 @@ export default function ChatInterface({
     }
   }, [id, setMessages]);
 
-  // Use file handling hook
-  const {
-    fileInputRef,
-    handleFileUpload,
-    handleAttachClick,
-    handleFilesSelected,
-    handleRemoveFile,
-  } = useFileHandling({
-    uploadedAttachments: state.uploadedAttachments,
-    setUploadedAttachments,
-    uploadingFiles: state.uploadingFiles,
-    setUploadingFiles,
-    selectedFiles: state.selectedFiles,
-    setSelectedFiles,
-    disableInput,
-  });
-
-  const handleInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      if (disableInput) return;
-      setInput(e.target.value);
-    },
-    [disableInput, setInput],
-  );
+  // Removed legacy file handling and input change props (handled inside ChatInputArea via UI store)
 
   const handleSubmit = useCallback(
     async (e?: React.FormEvent) => {
       e?.preventDefault();
-      if (disableInput || (!state.input.trim() && state.uploadedAttachments.length === 0 && state.uploadingFiles.length === 0)) return;
+      if (disableInput || (!input.trim() && uploadedAttachments.length === 0 && uploadingFiles.length === 0)) return;
 
-      const messageContent = state.input.trim();
+      const messageContent = input.trim();
       const messageId = generateUUID();
 
       // Clear any existing quota error when user tries to send a new message
@@ -374,7 +345,7 @@ export default function ChatInterface({
       setIsSendingMessage(true);
       
       // Capture attachments before clearing state
-      const currentAttachments = state.uploadedAttachments;
+      const currentAttachments = uploadedAttachments;
       
       // Clear attachments immediately
       setUploadedAttachments([]);
@@ -434,7 +405,7 @@ export default function ChatInterface({
         setIsSendingMessage(false);
       }
     },
-    [disableInput, state.input, state.uploadedAttachments, state.uploadingFiles, id, onInitialMessage, setMessages, sendMessage, setQuotaError, setInput, setIsSendingMessage, setUploadedAttachments, setSelectedFiles, setUploadingFiles],
+    [disableInput, input, uploadedAttachments, uploadingFiles, id, onInitialMessage, setMessages, sendMessage, setQuotaError, setInput, setIsSendingMessage, setUploadedAttachments, setSelectedFiles, setUploadingFiles],
   );
 
   const handleStop = useCallback(() => {
@@ -508,13 +479,13 @@ export default function ChatInterface({
               />
             )}
             {renderedMessages.map((message, index) => {
-              const isLastMessage = index === renderedMessages.length - 1;
+              const isLast = index === renderedMessages.length - 1;
+              const isStreaming = isLast && (status === "streaming");
               return (
                 <MessageRenderer
                   key={message.id}
                   message={message}
-                  status={isLastMessage ? status : "ready"}
-                  messages={messages}
+                  isStreaming={isStreaming}
                   onRegenerateAssistantMessage={regenerateAssistantMessage}
                   onRegenerateAfterUserMessage={regenerateAfterUserMessage}
                 />
@@ -529,30 +500,12 @@ export default function ChatInterface({
 
       {/* Prompt input overlayed at bottom of the main area */}
       <ChatInputArea
-        input={state.input}
-        isSearchEnabled={state.isSearchEnabled}
-        quotaError={state.quotaError}
-        showNoSubscriptionDialog={state.showNoSubscriptionDialog}
-        orgName={`orgName`}
-        uploadedAttachments={state.uploadedAttachments}
-        uploadingFiles={state.uploadingFiles}
-        isSendingMessage={state.isSendingMessage}
         disableInput={disableInput}
-        isUploading={state.isUploading}
         selectedModel={selectedModel}
-        status={status}
-        messages={messages}
-        onInputChange={handleInputChange}
-        onSearchToggle={handleSearchToggle}
-        onQuotaErrorClose={() => setQuotaError(null)}
-        onNoSubscriptionDialogClose={() => setShowNoSubscriptionDialog(false)}
-        onAttachClick={handleAttachClick}
-        onFilesSelected={handleFilesSelected}
-        onRemoveFile={handleRemoveFile}
+        orgName={`orgName`}
         onModelChange={setSelectedModel}
         onSubmit={handleSubmit}
         onStop={handleStop}
-        fileInputRef={fileInputRef}
       />
     </div>
   );
