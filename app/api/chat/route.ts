@@ -403,9 +403,9 @@ export async function POST(req: Request) {
             model,
             messages: convertToModelMessages(filterMessagesForModel(messages as UIMessage[], modelId)), // Filter unsupported file types for non-supporting models
             tools,
-            stopWhen: stepCountIs(5), // Allow multi-step tool usage for web search
+            stopWhen: stepCountIs(3), // Allow multi-step tool usage for web search
             experimental_transform: smoothStream({
-              delayInMs: 20,
+              delayInMs: 5,
               chunking: "word",
             }),
             abortSignal: req.signal,
