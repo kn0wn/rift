@@ -182,6 +182,11 @@ const settingsSections: SettingsSection[] = [
         href: "/settings/security",
         icon: Shield,
       },
+      {
+        title: "Uso y límites",
+        href: "/settings/uso-y-limites",
+        icon: BarChart3,
+      },
       // {
       //   title: "Claves API",
       //   href: "/settings/api-keys",

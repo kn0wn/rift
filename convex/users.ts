@@ -134,6 +134,87 @@ export const getUserQuotaInfo = query({
   },
 });
 
+export const getUserFullQuotaInfo = query({
+  args: {},
+  returns: v.object({
+    standard: v.object({
+      currentUsage: v.number(),
+      limit: v.number(),
+      quotaConfigured: v.boolean(),
+    }),
+    premium: v.object({
+      currentUsage: v.number(),
+      limit: v.number(),
+      quotaConfigured: v.boolean(),
+    }),
+    nextResetDate: v.optional(v.number()),
+  }),
+  handler: async (ctx) => {
+    const userWorkosId = await getAuthUserId(ctx);
+    const identity = await getAuthUserIdentity(ctx);
+
+    if (!identity || !identity.org_id) {
+      throw new Error("No organization found in auth identity");
+    }
+
+    const orgWorkosId = extractOrganizationIdFromJWT(identity);
+
+    if (!orgWorkosId) {
+      throw new Error("Could not extract organization ID");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_workos_id", (q) => q.eq("workos_id", userWorkosId))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const organization = await ctx.db
+      .query("organizations")
+      .withIndex("by_workos_id", (q) => q.eq("workos_id", orgWorkosId))
+      .first();
+
+    if (!organization) {
+      throw new Error("Organization not found");
+    }
+
+    const billingCycle = await getOrganizationBillingCycle(ctx, orgWorkosId);
+
+    const standardQuota = await checkQuotaLimit(
+      ctx,
+      userWorkosId,
+      orgWorkosId,
+      "standard",
+      billingCycle?.billingCycleStart,
+    );
+
+    const premiumQuota = await checkQuotaLimit(
+      ctx,
+      userWorkosId,
+      orgWorkosId,
+      "premium",
+      billingCycle?.billingCycleStart,
+    );
+
+    return {
+      standard: {
+        currentUsage: standardQuota.currentUsage,
+        limit: standardQuota.limit,
+        quotaConfigured: standardQuota.quotaConfigured,
+      },
+      premium: {
+        currentUsage: premiumQuota.currentUsage,
+        limit: premiumQuota.limit,
+        quotaConfigured: premiumQuota.quotaConfigured,
+      },
+      nextResetDate: organization.billingCycleEnd || billingCycle?.billingCycleEnd,
+    };
+  },
+});
+
 
 /**
  * SERVER-ONLY VARIANTS (require shared secret and explicit userId/orgId)
