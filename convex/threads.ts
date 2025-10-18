@@ -9,6 +9,7 @@ import {
   incrementToolCallQuota,
   getOrganizationBillingCycle,
 } from "./helpers/quota";
+import { ensureServerSecret } from "./helpers/auth";
 
 /**
  * Create a new thread with an initial message.
@@ -181,146 +182,6 @@ export const getThreadInfo = query({
     return thread;
   },
 });
-
-/**
- * Send a message to an existing thread.
- * This mutation is secure and only allows authenticated users to send messages to their own threads.
- */
-export const sendMessage = mutation({
-  args: {
-    threadId: v.string(), // Client-generated thread ID
-    content: v.string(), // Message content
-    model: v.string(),
-    messageId: v.string(), // Client-generated message ID
-    quotaType: v.union(v.literal("standard"), v.literal("premium")),
-    secretToken: v.string(), // Secret token for server-only access
-    attachmentIds: v.optional(v.array(v.id("attachments"))), // File attachments
-    modelParams: v.optional(
-      v.object({
-        temperature: v.optional(v.number()),
-        topP: v.optional(v.number()),
-        topK: v.optional(v.number()),
-        reasoningEffort: v.optional(
-          v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
-        ),
-        includeSearch: v.optional(v.boolean()),
-      }),
-    ),
-  },
-  returns: v.object({
-    messageId: v.string(),
-    messageDocId: v.id("messages"),
-  }),
-  handler: async (ctx, args) => {
-    // Validate secret token first
-    const expectedToken = process.env.CONVEX_SECRET_TOKEN;
-    if (!expectedToken) {
-      throw new Error("Server configuration error - secret token not set");
-    }
-    
-    if (args.secretToken !== expectedToken) {
-      throw new Error("Unauthorized - Just stop here");
-    }
-
-    // Get the authenticated user identity (full JWT token)
-    const identity = await getAuthUserIdentity(ctx);
-    if (!identity) {
-      throw new Error("Unauthenticated call - user must be logged in");
-    }
-
-    // Get the authenticated user ID
-    const userId = identity.subject;
-
-    // Extract organization ID from JWT token
-    const orgId = extractOrganizationIdFromJWT(identity);
-    if (!orgId) {
-      throw new Error("No organization ID found in user token");
-    }
-
-    // Get organization's billing cycle information
-    const billingCycle = await getOrganizationBillingCycle(ctx, orgId);
-
-    // Note: Quota check is handled in the API route before calling this mutation
-    // This ensures quota limits are enforced before AI requests are made
-
-    // Get current timestamp
-    const now = Date.now();
-
-    // Verify the thread exists and belongs to the authenticated user
-    const thread = await ctx.db
-      .query("threads")
-      .withIndex("by_user_and_threadId", (q) =>
-        q.eq("userId", userId).eq("threadId", args.threadId),
-      )
-      .unique();
-
-    if (!thread) {
-      throw new Error("Thread not found or access denied");
-    }
-
-    // // Idempotency: if a message with this messageId already exists for this user, return it
-    // const existing = await ctx.db
-    //   .query("messages")
-    //   .withIndex("by_messageId_and_userId", (q) =>
-    //     q.eq("messageId", args.messageId).eq("userId", userId)
-    //   )
-    //   .unique();
-
-    // if (existing) {
-    //   return {
-    //     messageId: existing.messageId,
-    //     messageDocId: existing._id,
-    //   };
-    // }
-
-    // Increment user's quota usage
-    await incrementQuotaUsage(
-      ctx,
-      userId,
-      args.quotaType,
-      billingCycle?.billingCycleStart,
-    );
-
-    // Create the message
-    const messageDocId = await ctx.db.insert("messages", {
-      messageId: args.messageId,
-      threadId: args.threadId,
-      userId: userId,
-      content: args.content,
-      status: "done" as const,
-      role: "user" as const,
-      created_at: now,
-      model: args.model,
-      attachmentsIds: args.attachmentIds || [], // Include file attachments
-      modelParams: args.modelParams,
-      backfill: false,
-    });
-
-    // Update attachment records to include this message
-    if (args.attachmentIds && args.attachmentIds.length > 0) {
-      for (const attachmentId of args.attachmentIds) {
-        const attachment = await ctx.db.get(attachmentId);
-        if (attachment && attachment.userId === userId) {
-          await ctx.db.patch(attachmentId, {
-            publicMessageIds: [...attachment.publicMessageIds, messageDocId],
-          });
-        }
-      }
-    }
-
-    // Update the thread's lastMessageAt timestamp
-    await ctx.db.patch(thread._id, {
-      lastMessageAt: now,
-      updatedAt: now,
-    });
-
-    return {
-      messageId: args.messageId,
-      messageDocId,
-    };
-  },
-});
-
 
 /**
  * Safe version of getThreadMessagesPaginated that returns empty results when unauthenticated.
@@ -508,112 +369,6 @@ export const deleteThread = mutation({
 });
 
 /**
- * Begin assistant streaming lifecycle
- */
-export const startAssistantMessage = mutation({
-  args: {
-    threadId: v.string(),
-    messageId: v.string(),
-    model: v.string(),
-  },
-  returns: v.object({ messageDocId: v.id("messages") }),
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-
-    // Ensure thread belongs to user
-    const thread = await ctx.db
-      .query("threads")
-      .withIndex("by_user_and_threadId", (q) =>
-        q.eq("userId", userId).eq("threadId", args.threadId),
-      )
-      .unique();
-
-    if (!thread) {
-      throw new Error("Thread not found or access denied");
-    }
-
-    const now = Date.now();
-
-    const messageDocId = await ctx.db.insert("messages", {
-      messageId: args.messageId,
-      threadId: args.threadId,
-      userId: userId,
-      reasoning: undefined,
-      content: "",
-      status: "streaming" as const,
-      updated_at: now,
-      branches: undefined,
-      role: "assistant" as const,
-      created_at: now,
-      serverError: undefined,
-      model: args.model,
-      attachmentsIds: [],
-      modelParams: undefined,
-      providerMetadata: undefined,
-      backfill: false,
-    });
-
-    // Update thread generation status
-    await ctx.db.patch(thread._id, {
-      generationStatus: "generation" as const,
-      updatedAt: now,
-      lastMessageAt: now,
-    });
-
-    return { messageDocId };
-  },
-});
-
-/**
- * Append assistant message delta
- */
-export const appendAssistantMessageDelta = mutation({
-  args: {
-    messageId: v.string(),
-    delta: v.string(),
-    reasoningDelta: v.optional(v.string()),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-
-    const message = await ctx.db
-      .query("messages")
-      .withIndex("by_messageId_and_userId", (q) =>
-        q.eq("messageId", args.messageId).eq("userId", userId),
-      )
-      .unique();
-
-    if (!message) {
-      throw new Error("Message not found or access denied");
-    }
-
-    const now = Date.now();
-
-    // Prepare update object with content and optional reasoning
-    const updateData: {
-      content: string;
-      updated_at: number;
-      status: "streaming";
-      reasoning?: string;
-    } = {
-      content: (message.content || "") + args.delta,
-      updated_at: now,
-      status: "streaming" as const,
-    };
-
-    // Add reasoning if provided
-    if (args.reasoningDelta) {
-      updateData.reasoning = (message.reasoning || "") + args.reasoningDelta;
-    }
-
-    await ctx.db.patch(message._id, updateData);
-
-    return null;
-  },
-});
-
-/**
  * Agent update thread title
  */
 export const autoUpdateThreadTitle = mutation({
@@ -648,63 +403,323 @@ export const autoUpdateThreadTitle = mutation({
 });
 
 /**
- * Add sources to assistant message
+ * SERVER-ONLY VARIANTS (require shared secret and explicit userId)
  */
-export const addSourcesToMessage = mutation({
+
+export const serverGetThreadInfo = query({
   args: {
+    secret: v.string(),
+    userId: v.string(),
+    threadId: v.string(),
+  },
+  returns: v.union(
+    v.object({
+      _id: v.id("threads"),
+      _creationTime: v.number(),
+      threadId: v.string(),
+      title: v.string(),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+      lastMessageAt: v.number(),
+      generationStatus: v.union(
+        v.literal("pending"),
+        v.literal("generation"),
+        v.literal("compleated"),
+        v.literal("failed"),
+      ),
+      visibility: v.union(v.literal("visible"), v.literal("archived")),
+      userSetTitle: v.optional(v.boolean()),
+      userId: v.string(),
+      model: v.string(),
+      pinned: v.boolean(),
+      branchParentThreadId: v.optional(v.id("threads")),
+      branchParentPublicMessageId: v.optional(v.string()),
+      backfill: v.optional(v.boolean()),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    ensureServerSecret(args.secret);
+    const thread = await ctx.db
+      .query("threads")
+      .withIndex("by_user_and_threadId", (q) =>
+        q.eq("userId", args.userId).eq("threadId", args.threadId),
+      )
+      .unique();
+    return thread;
+  },
+});
+
+export const serverDeleteMessagesAfter = mutation({
+  args: {
+    secret: v.string(),
+    userId: v.string(),
+    threadId: v.string(),
+    afterMessageId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    ensureServerSecret(args.secret);
+
+    const targetMessage = await ctx.db
+      .query("messages")
+      .withIndex("by_messageId_and_userId", (q) =>
+        q.eq("messageId", args.afterMessageId).eq("userId", args.userId),
+      )
+      .unique();
+
+    if (!targetMessage) {
+      return null;
+    }
+
+    const inclusive = targetMessage.role !== "user";
+    const rangeQuery = ctx.db
+      .query("messages")
+      .withIndex("by_thread_and_user_and_created_at", (q) =>
+        q
+          .eq("threadId", args.threadId)
+          .eq("userId", args.userId)
+          [inclusive ? "gte" : "gt"]("created_at", targetMessage.created_at),
+      );
+
+    for await (const m of rangeQuery) {
+      await ctx.db.delete(m._id);
+    }
+
+    const thread = await ctx.db
+      .query("threads")
+      .withIndex("by_user_and_threadId", (q) =>
+        q.eq("userId", args.userId).eq("threadId", args.threadId),
+      )
+      .unique();
+    if (thread) {
+      await ctx.db.patch(thread._id, {
+        updatedAt: Date.now(),
+        lastMessageAt: Date.now(),
+      });
+    }
+    return null;
+  },
+});
+
+export const serverSendMessage = mutation({
+  args: {
+    secret: v.string(),
+    userId: v.string(),
+    orgId: v.string(),
+    threadId: v.string(),
+    content: v.string(),
+    model: v.string(),
+    messageId: v.string(),
+    quotaType: v.union(v.literal("standard"), v.literal("premium")),
+    attachmentIds: v.optional(v.array(v.id("attachments"))),
+    modelParams: v.optional(
+      v.object({
+        temperature: v.optional(v.number()),
+        topP: v.optional(v.number()),
+        topK: v.optional(v.number()),
+        reasoningEffort: v.optional(
+          v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+        ),
+        includeSearch: v.optional(v.boolean()),
+      }),
+    ),
+  },
+  returns: v.object({
+    messageId: v.string(),
+    messageDocId: v.id("messages"),
+  }),
+  handler: async (ctx, args) => {
+    ensureServerSecret(args.secret);
+
+    const billingCycle = await getOrganizationBillingCycle(ctx, args.orgId);
+    const now = Date.now();
+    const thread = await ctx.db
+      .query("threads")
+      .withIndex("by_user_and_threadId", (q) =>
+        q.eq("userId", args.userId).eq("threadId", args.threadId),
+      )
+      .unique();
+    if (!thread) {
+      throw new Error("Thread not found or access denied");
+    }
+
+    await incrementQuotaUsage(
+      ctx,
+      args.userId,
+      args.quotaType,
+      billingCycle?.billingCycleStart,
+    );
+
+    const messageDocId = await ctx.db.insert("messages", {
+      messageId: args.messageId,
+      threadId: args.threadId,
+      userId: args.userId,
+      content: args.content,
+      status: "done" as const,
+      role: "user" as const,
+      created_at: now,
+      model: args.model,
+      attachmentsIds: args.attachmentIds || [],
+      modelParams: args.modelParams,
+      backfill: false,
+    });
+
+    if (args.attachmentIds && args.attachmentIds.length > 0) {
+      for (const attachmentId of args.attachmentIds) {
+        const attachment = await ctx.db.get(attachmentId);
+        if (attachment && attachment.userId === args.userId) {
+          await ctx.db.patch(attachmentId, {
+            publicMessageIds: [...attachment.publicMessageIds, messageDocId],
+          });
+        }
+      }
+    }
+
+    await ctx.db.patch(thread._id, {
+      lastMessageAt: now,
+      updatedAt: now,
+    });
+
+    return {
+      messageId: args.messageId,
+      messageDocId,
+    };
+  },
+});
+
+export const serverStartAssistantMessage = mutation({
+  args: {
+    secret: v.string(),
+    userId: v.string(),
+    threadId: v.string(),
+    messageId: v.string(),
+    model: v.string(),
+  },
+  returns: v.object({ messageDocId: v.id("messages") }),
+  handler: async (ctx, args) => {
+    ensureServerSecret(args.secret);
+    const thread = await ctx.db
+      .query("threads")
+      .withIndex("by_user_and_threadId", (q) =>
+        q.eq("userId", args.userId).eq("threadId", args.threadId),
+      )
+      .unique();
+    if (!thread) {
+      throw new Error("Thread not found or access denied");
+    }
+    const now = Date.now();
+    const messageDocId = await ctx.db.insert("messages", {
+      messageId: args.messageId,
+      threadId: args.threadId,
+      userId: args.userId,
+      reasoning: undefined,
+      content: "",
+      status: "streaming" as const,
+      updated_at: now,
+      branches: undefined,
+      role: "assistant" as const,
+      created_at: now,
+      serverError: undefined,
+      model: args.model,
+      attachmentsIds: [],
+      modelParams: undefined,
+      providerMetadata: undefined,
+      backfill: false,
+    });
+    await ctx.db.patch(thread._id, {
+      generationStatus: "generation" as const,
+      updatedAt: now,
+      lastMessageAt: now,
+    });
+    return { messageDocId };
+  },
+});
+
+export const serverAppendAssistantMessageDelta = mutation({
+  args: {
+    secret: v.string(),
+    userId: v.string(),
+    messageId: v.string(),
+    delta: v.string(),
+    reasoningDelta: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    ensureServerSecret(args.secret);
+    const message = await ctx.db
+      .query("messages")
+      .withIndex("by_messageId_and_userId", (q) =>
+        q.eq("messageId", args.messageId).eq("userId", args.userId),
+      )
+      .unique();
+    if (!message) {
+      throw new Error("Message not found or access denied");
+    }
+    const now = Date.now();
+    const updateData: {
+      content: string;
+      updated_at: number;
+      status: "streaming";
+      reasoning?: string;
+    } = {
+      content: (message.content || "") + args.delta,
+      updated_at: now,
+      status: "streaming" as const,
+    };
+    if (args.reasoningDelta) {
+      updateData.reasoning = (message.reasoning || "") + args.reasoningDelta;
+    }
+    await ctx.db.patch(message._id, updateData);
+    return null;
+  },
+});
+
+export const serverAddSourcesToMessage = mutation({
+  args: {
+    secret: v.string(),
+    userId: v.string(),
     messageId: v.string(),
     sources: v.array(
       v.object({
         sourceId: v.string(),
         url: v.string(),
         title: v.optional(v.string()),
-      })
+      }),
     ),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-
+    ensureServerSecret(args.secret);
     const message = await ctx.db
       .query("messages")
       .withIndex("by_messageId_and_userId", (q) =>
-        q.eq("messageId", args.messageId).eq("userId", userId),
+        q.eq("messageId", args.messageId).eq("userId", args.userId),
       )
       .unique();
-
     if (!message) {
       throw new Error("Message not found or access denied");
     }
-
-    // Get existing sources and append new ones, avoiding duplicates
     const existingSources = message.sources || [];
-    const existingUrls = new Set(existingSources.map(s => s.url));
-    
-    // Filter out sources that already exist (by URL)
-    const newSources = args.sources.filter(source => !existingUrls.has(source.url));
-    
-    // Combine existing and new sources
+    const existingUrls = new Set(existingSources.map((s: any) => s.url));
+    const newSources = args.sources.filter((s) => !existingUrls.has(s.url));
     const allSources = [...existingSources, ...newSources];
-
-    // Update message with combined sources
     await ctx.db.patch(message._id, {
       sources: allSources,
       updated_at: Date.now(),
     });
-
     return null;
   },
 });
 
-/**
- * Finalize assistant message
- */
-export const finalizeAssistantMessage = mutation({
+export const serverFinalizeAssistantMessage = mutation({
   args: {
+    secret: v.string(),
+    userId: v.string(),
     messageId: v.string(),
     ok: v.boolean(),
-    finalContent: v.optional(v.string()), // Add final content parameter
-    finalReasoning: v.optional(v.string()), // Add final reasoning parameter
+    finalContent: v.optional(v.string()),
+    finalReasoning: v.optional(v.string()),
     error: v.optional(
       v.object({
         type: v.string(),
@@ -714,20 +729,16 @@ export const finalizeAssistantMessage = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-
+    ensureServerSecret(args.secret);
     const message = await ctx.db
       .query("messages")
       .withIndex("by_messageId_and_userId", (q) =>
-        q.eq("messageId", args.messageId).eq("userId", userId),
+        q.eq("messageId", args.messageId).eq("userId", args.userId),
       )
       .unique();
-
     if (!message) {
       throw new Error("Message not found or access denied");
     }
-
-    // Prepare update object
     const updateData: {
       status: "done" | "error";
       serverError?: { type: string; message: string };
@@ -739,98 +750,24 @@ export const finalizeAssistantMessage = mutation({
       serverError: args.ok ? undefined : args.error,
       updated_at: Date.now(),
     };
-
-    // If final content is provided (manual stop case), save it directly
     if (args.finalContent !== undefined && args.finalContent.length > 0) {
       updateData.content = args.finalContent;
     }
-
-    // If final reasoning is provided, save it directly
     if (args.finalReasoning !== undefined && args.finalReasoning.length > 0) {
       updateData.reasoning = args.finalReasoning;
     }
-
-    // Update message
     await ctx.db.patch(message._id, updateData);
-
-    // Update thread state as well
     const thread = await ctx.db
       .query("threads")
       .withIndex("by_threadId", (q) => q.eq("threadId", message.threadId))
       .unique();
-
     if (thread) {
       await ctx.db.patch(thread._id, {
-        generationStatus: args.ok
-          ? ("compleated" as const)
-          : ("failed" as const),
+        generationStatus: args.ok ? ("compleated" as const) : ("failed" as const),
         updatedAt: Date.now(),
         lastMessageAt: Date.now(),
       });
     }
-
-    return null;
-  },
-});
-
-/**
- * Delete all messages after a specific message in a thread
- */
-export const deleteMessagesAfter = mutation({
-  args: {
-    threadId: v.string(),
-    afterMessageId: v.string(),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-
-    // Get the target message to find its creation time
-    const targetMessage = await ctx.db
-      .query("messages")
-      .withIndex("by_messageId_and_userId", (q) =>
-        q.eq("messageId", args.afterMessageId).eq("userId", userId),
-      )
-      .unique();
-
-    if (!targetMessage) {
-      // If the target message doesn't exist, there's nothing to delete
-      // This can happen when UI state and database state are out of sync
-      return null;
-    }
-
-    // Determine inclusivity: keep user message (strictly after), remove assistant/system too (inclusive)
-    const inclusive = targetMessage.role !== "user"; // true => gte, false => gt
-
-    // Range delete using index: by_thread_and_user_and_created_at
-    const rangeQuery = ctx.db
-      .query("messages")
-      .withIndex("by_thread_and_user_and_created_at", (q) =>
-        q
-          .eq("threadId", args.threadId)
-          .eq("userId", userId)
-          [inclusive ? "gte" : "gt"]("created_at", targetMessage.created_at),
-      );
-
-    for await (const m of rangeQuery) {
-      await ctx.db.delete(m._id);
-    }
-
-    // Optionally, update thread timestamps to reflect pruning
-    const thread = await ctx.db
-      .query("threads")
-      .withIndex("by_user_and_threadId", (q) =>
-        q.eq("userId", userId).eq("threadId", args.threadId),
-      )
-      .unique();
-
-    if (thread) {
-      await ctx.db.patch(thread._id, {
-        updatedAt: Date.now(),
-        lastMessageAt: Date.now(),
-      });
-    }
-
     return null;
   },
 });

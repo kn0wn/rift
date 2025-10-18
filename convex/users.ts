@@ -7,6 +7,7 @@ import {
   getOrganizationBillingCycle,
   incrementQuotaUsage,
 } from "./helpers/quota";
+import { ensureServerSecret } from "./helpers/auth";
 
 export const createUser = internalMutation({
   args: { 
@@ -133,11 +134,16 @@ export const getUserQuotaInfo = query({
   },
 });
 
+
 /**
- * Check if the authenticated user is within their quota limits
+ * SERVER-ONLY VARIANTS (require shared secret and explicit userId/orgId)
  */
-export const checkUserQuota = query({
+
+export const serverCheckUserQuota = query({
   args: {
+    secret: v.string(),
+    userId: v.string(),
+    orgId: v.string(),
     quotaType: v.union(v.literal("standard"), v.literal("premium")),
   },
   returns: v.object({
@@ -147,84 +153,25 @@ export const checkUserQuota = query({
     quotaConfigured: v.boolean(),
   }),
   handler: async (ctx, args) => {
-    // Get the authenticated user identity (full JWT token)
-    const identity = await getAuthUserIdentity(ctx);
-    if (!identity) {
-      throw new Error("Unauthenticated call - user must be logged in");
-    }
-
-    // Get the authenticated user ID
-    const userId = identity.subject;
-
-    // Extract organization ID from JWT token
-    const orgId = extractOrganizationIdFromJWT(identity);
-    if (!orgId) {
-      throw new Error("No organization ID found in user token");
-    }
-
-    // Get organization's billing cycle information
-    const billingCycle = await getOrganizationBillingCycle(ctx, orgId);
-
-    // Check quota limits using organization's quota by type
+    ensureServerSecret(args.secret);
+    const billingCycle = await getOrganizationBillingCycle(ctx, args.orgId);
     const quotaCheck = await checkQuotaLimit(
       ctx,
-      userId,
-      orgId,
+      args.userId,
+      args.orgId,
       args.quotaType,
       billingCycle?.billingCycleStart,
     );
-
     return quotaCheck;
   },
 });
 
-/**
- * Increment the authenticated user's quota usage
- * Used for regenerations where we don't need to persist a new user message
- */
-export const incrementUserQuota = mutation({
+export const serverGetUserBothQuotas = query({
   args: {
-    quotaType: v.union(v.literal("standard"), v.literal("premium")),
+    secret: v.string(),
+    userId: v.string(),
+    orgId: v.string(),
   },
-  returns: v.object({
-    newUsage: v.number(),
-  }),
-  handler: async (ctx, args) => {
-    // Get the authenticated user identity (full JWT token)
-    const identity = await getAuthUserIdentity(ctx);
-    if (!identity) {
-      throw new Error("Unauthenticated call - user must be logged in");
-    }
-
-    // Get the authenticated user ID
-    const userId = identity.subject;
-
-    // Extract organization ID from JWT token
-    const orgId = extractOrganizationIdFromJWT(identity);
-    if (!orgId) {
-      throw new Error("No organization ID found in user token");
-    }
-
-    // Get organization's billing cycle information
-    const billingCycle = await getOrganizationBillingCycle(ctx, orgId);
-
-    // Increment quota usage
-    const newUsage = await incrementQuotaUsage(
-      ctx,
-      userId,
-      args.quotaType,
-      billingCycle?.billingCycleStart,
-    );
-
-    return { newUsage };
-  },
-});
-
-/**
- * Get both standard and premium quota info for the authenticated user
- */
-export const getUserBothQuotas = query({
-  args: {},
   returns: v.object({
     standard: v.object({
       allowed: v.boolean(),
@@ -239,45 +186,44 @@ export const getUserBothQuotas = query({
       quotaConfigured: v.boolean(),
     }),
   }),
-  handler: async (ctx) => {
-    // Get the authenticated user identity (full JWT token)
-    const identity = await getAuthUserIdentity(ctx);
-    if (!identity) {
-      throw new Error("Unauthenticated call - user must be logged in");
-    }
-
-    // Get the authenticated user ID
-    const userId = identity.subject;
-
-    // Extract organization ID from JWT token
-    const orgId = extractOrganizationIdFromJWT(identity);
-    if (!orgId) {
-      throw new Error("No organization ID found in user token");
-    }
-
-    // Get organization's billing cycle information
-    const billingCycle = await getOrganizationBillingCycle(ctx, orgId);
-
-    // Check both quota types
+  handler: async (ctx, args) => {
+    ensureServerSecret(args.secret);
+    const billingCycle = await getOrganizationBillingCycle(ctx, args.orgId);
     const standardQuota = await checkQuotaLimit(
       ctx,
-      userId,
-      orgId,
+      args.userId,
+      args.orgId,
       "standard",
       billingCycle?.billingCycleStart,
     );
-
     const premiumQuota = await checkQuotaLimit(
       ctx,
-      userId,
-      orgId,
+      args.userId,
+      args.orgId,
       "premium",
       billingCycle?.billingCycleStart,
     );
+    return { standard: standardQuota, premium: premiumQuota };
+  },
+});
 
-    return {
-      standard: standardQuota,
-      premium: premiumQuota,
-    };
+export const serverIncrementUserQuota = mutation({
+  args: {
+    secret: v.string(),
+    userId: v.string(),
+    orgId: v.string(),
+    quotaType: v.union(v.literal("standard"), v.literal("premium")),
+  },
+  returns: v.object({ newUsage: v.number() }),
+  handler: async (ctx, args) => {
+    ensureServerSecret(args.secret);
+    const billingCycle = await getOrganizationBillingCycle(ctx, args.orgId);
+    const newUsage = await incrementQuotaUsage(
+      ctx,
+      args.userId,
+      args.quotaType,
+      billingCycle?.billingCycleStart,
+    );
+    return { newUsage };
   },
 });

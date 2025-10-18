@@ -9,6 +9,7 @@
  */
 
 import type * as admin_organizations from "../admin/organizations.js";
+import type * as helpers_auth from "../helpers/auth.js";
 import type * as helpers_getUser from "../helpers/getUser.js";
 import type * as helpers_quota from "../helpers/quota.js";
 import type * as http from "../http.js";
@@ -34,6 +35,7 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   "admin/organizations": typeof admin_organizations;
+  "helpers/auth": typeof helpers_auth;
   "helpers/getUser": typeof helpers_getUser;
   "helpers/quota": typeof helpers_quota;
   http: typeof http;

@@ -219,13 +219,16 @@ export async function POST(req: Request) {
 
     console.log(`Time after model/tools setup: ${Date.now() - start}ms`);
 
+    // Capture identifiers needed for server-only Convex calls
+    const userId = auth.userId;
+    const orgId = auth.orgId;
+
     // Handle regeneration: synchronously delete messages after the target message
     if (trigger === "regenerate-message" && messageId) {
       // First verify the user owns this thread
       const threadInfo = await fetchQuery(
-        api.threads.getThreadInfo,
-        { threadId },
-        { token: auth.token },
+        api.threads.serverGetThreadInfo,
+        { secret: process.env.CONVEX_SECRET_TOKEN!, userId, threadId },
       );
 
       if (!threadInfo) {
@@ -234,12 +237,13 @@ export async function POST(req: Request) {
 
       // Await deletion to ensure persistence before streaming begins
       await fetchMutation(
-        api.threads.deleteMessagesAfter,
+        api.threads.serverDeleteMessagesAfter,
         {
+          secret: process.env.CONVEX_SECRET_TOKEN!,
+          userId,
           threadId,
           afterMessageId: messageId,
         },
-        { token: auth.token },
       );
     }
 
@@ -251,9 +255,8 @@ export async function POST(req: Request) {
     if (lastUser && (userText || userFiles.length > 0)) {
       // Check quota limits first (blocking)
       const quotaCheck = await fetchQuery(
-        api.users.checkUserQuota,
-        { quotaType },
-        { token: auth.token },
+        api.users.serverCheckUserQuota,
+        { secret: process.env.CONVEX_SECRET_TOKEN!, userId, orgId: orgId!, quotaType },
       );
 
       if (!quotaCheck.allowed) {
@@ -276,9 +279,8 @@ export async function POST(req: Request) {
 
         // Get both quota types for detailed error message (quota exceeded case)
         const bothQuotas = await fetchQuery(
-          api.users.getUserBothQuotas,
-          {},
-          { token: auth.token },
+          api.users.serverGetUserBothQuotas,
+          { secret: process.env.CONVEX_SECRET_TOKEN!, userId, orgId: orgId! },
         );
 
         const errorResponse = {
@@ -318,26 +320,26 @@ export async function POST(req: Request) {
         // For new messages: persist user message (which also increments quota)
         DatabaseQueue.add(async () => {
           await fetchMutation(
-            api.threads.sendMessage,
+            api.threads.serverSendMessage,
             {
+              secret: process.env.CONVEX_SECRET_TOKEN!,
+              userId,
+              orgId: orgId!,
               threadId,
-              content: userText || "", // Handle case where there's no text but there are files
+              content: userText || "",
               model: modelId,
               messageId: lastUser.id,
               quotaType,
-              secretToken: process.env.CONVEX_SECRET_TOKEN!,
               attachmentIds: attachmentIds.length > 0 ? attachmentIds : undefined,
             },
-            { token: auth.token },
           );
         });
       } else {
         // For regenerations: only increment quota (no message persistence)
         DatabaseQueue.add(async () => {
           await fetchMutation(
-            api.users.incrementUserQuota,
-            { quotaType },
-            { token: auth.token },
+            api.users.serverIncrementUserQuota,
+            { secret: process.env.CONVEX_SECRET_TOKEN!, userId, orgId: orgId!, quotaType },
           );
         });
       }
@@ -360,13 +362,14 @@ export async function POST(req: Request) {
         // Background: Start assistant message
         DatabaseQueue.add(async () => {
           await fetchMutation(
-            api.threads.startAssistantMessage,
+            api.threads.serverStartAssistantMessage,
             {
+              secret: process.env.CONVEX_SECRET_TOKEN!,
+              userId,
               threadId,
               messageId: newMessageId,
               model: modelId,
             },
-            { token: auth.token },
           );
         });
 
@@ -385,14 +388,15 @@ export async function POST(req: Request) {
           if (update.content.length > 0 || update.reasoning.length > 0) {
             DatabaseQueue.add(async () => {
               await fetchMutation(
-                api.threads.appendAssistantMessageDelta,
+                api.threads.serverAppendAssistantMessageDelta,
                 {
+                  secret: process.env.CONVEX_SECRET_TOKEN!,
+                  userId,
                   messageId: newMessageId,
                   delta: update.content || " ",
                   reasoningDelta:
                     update.reasoning.length > 0 ? update.reasoning : undefined,
                 },
-                { token: auth.token },
               );
             });
           }
@@ -459,12 +463,13 @@ export async function POST(req: Request) {
                     DatabaseQueue.add(async () => {
                       try {
                         await fetchMutation(
-                          api.threads.addSourcesToMessage,
+                          api.threads.serverAddSourcesToMessage,
                           {
+                            secret: process.env.CONVEX_SECRET_TOKEN!,
+                            userId,
                             messageId: newMessageId,
                             sources: sources,
                           },
-                          { token: auth.token },
                         );
                       } catch (error) {
                         console.error("Failed to save sources to database:", error);
@@ -486,10 +491,12 @@ export async function POST(req: Request) {
               await flushUpdate();
 
               DatabaseQueue.add(async () => {
-                const success = content.length > 0; // Minimum viable response
+                const success = content.length > 0;
                 await fetchMutation(
-                  api.threads.finalizeAssistantMessage,
+                  api.threads.serverFinalizeAssistantMessage,
                   {
+                    secret: process.env.CONVEX_SECRET_TOKEN!,
+                    userId,
                     messageId: newMessageId,
                     ok: success,
                     finalContent: content || undefined,
@@ -498,7 +505,6 @@ export async function POST(req: Request) {
                       ? undefined
                       : { type: "empty", message: "No content generated" },
                   },
-                  { token: auth.token },
                 );
               });
 
@@ -540,14 +546,15 @@ export async function POST(req: Request) {
                   await flushUpdate();
                   DatabaseQueue.add(async () => {
                     await fetchMutation(
-                      api.threads.finalizeAssistantMessage,
+                      api.threads.serverFinalizeAssistantMessage,
                       {
+                        secret: process.env.CONVEX_SECRET_TOKEN!,
+                        userId,
                         messageId: newMessageId,
                         ok: true,
                         finalContent: content,
                         finalReasoning: reasoning || undefined,
                       },
-                      { token: auth.token },
                     );
                   });
                 }
@@ -581,8 +588,10 @@ export async function POST(req: Request) {
               console.error("Stream error:", error);
               DatabaseQueue.add(async () => {
                 await fetchMutation(
-                  api.threads.finalizeAssistantMessage,
+                  api.threads.serverFinalizeAssistantMessage,
                   {
+                    secret: process.env.CONVEX_SECRET_TOKEN!,
+                    userId,
                     messageId: newMessageId,
                     ok: false,
                     error: {
@@ -590,7 +599,6 @@ export async function POST(req: Request) {
                       message: errorObj.message || "Stream failed",
                     },
                   },
-                  { token: auth.token },
                 );
               });
 
