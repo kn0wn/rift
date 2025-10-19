@@ -1,6 +1,7 @@
 import { internalQuery, internalMutation, query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId, getAuthUserIdentity } from "./helpers/getUser";
+import { paginationOptsValidator } from "convex/server";
 import {
   extractOrganizationIdFromJWT,
   checkQuotaLimit,
@@ -212,6 +213,75 @@ export const getUserFullQuotaInfo = query({
       },
       nextResetDate: organization.billingCycleEnd || billingCycle?.billingCycleEnd,
     };
+  },
+});
+
+export const getUserAttachmentsPaginated = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    return await ctx.db
+      .query("attachments")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .order("desc")
+      .paginate(args.paginationOpts);
+  },
+});
+
+
+// HARD DELETE: remove from R2 then delete Convex doc(s)
+import { internal } from "./_generated/api";
+
+export const deleteAttachment = mutation({
+  args: { attachmentId: v.id("attachments") },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const attachment = await ctx.db.get(args.attachmentId);
+    if (!attachment || attachment.userId !== userId) {
+      throw new Error("Attachment not found or unauthorized");
+    }
+
+    await ctx.scheduler.runAfter(0, (internal as any).storageActions.deleteAttachmentsFromR2, {
+      items: [{ id: attachment._id, fileKey: (attachment as any).fileKey }],
+    });
+
+    return { success: true };
+  },
+});
+
+export const bulkDeleteAttachments = mutation({
+  args: { attachmentIds: v.array(v.id("attachments")) },
+  returns: v.object({ deleted: v.number(), failed: v.number() }),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    const MAX = 50;
+    const ids = args.attachmentIds.slice(0, MAX);
+    const docs = await Promise.all(ids.map((id) => ctx.db.get(id)));
+    const owned = docs.filter((d): d is NonNullable<typeof d> => !!d && d.userId === userId);
+    if (owned.length === 0) {
+      return { deleted: 0, failed: ids.length };
+    }
+
+    await ctx.scheduler.runAfter(0, (internal as any).storageActions.deleteAttachmentsFromR2, {
+      items: owned.map((d) => ({ id: d._id, fileKey: (d as any).fileKey })),
+    });
+
+    return { deleted: owned.length, failed: ids.length - owned.length };
+  },
+});
+
+export const finalizeAttachmentDeletion = internalMutation({
+  args: { ids: v.array(v.id("attachments")) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    for (const id of args.ids) {
+      const doc = await ctx.db.get(id);
+      if (doc) {
+        await ctx.db.delete(id);
+      }
+    }
+    return null;
   },
 });
 

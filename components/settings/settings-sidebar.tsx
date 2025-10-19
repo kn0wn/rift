@@ -19,6 +19,7 @@ import {
   Shield,
   Building2,
   BarChart3,
+  File,
 } from "lucide-react";
 interface SettingsNavItem {
   title: string;
@@ -186,6 +187,11 @@ const settingsSections: SettingsSection[] = [
         title: "Uso y límites",
         href: "/settings/uso-y-limites",
         icon: BarChart3,
+      },
+      {
+        title: "Archivos",
+        href: "/settings/files",
+        icon: File,
       },
       // {
       //   title: "Claves API",

@@ -35,6 +35,10 @@ interface DataTableProps<TData, TValue> {
   showSearch?: boolean;
   className?: string;
   onRowClick?: (row: TData) => void;
+  pageSize?: number;
+  onRowSelectionChange?: (selection: Record<string, boolean>) => void;
+  getRowId?: (row: TData) => string;
+  clearSelectionSignal?: number;
 }
 
 export function DataTable<TData, TValue>({
@@ -46,6 +50,10 @@ export function DataTable<TData, TValue>({
   showSearch = true,
   className,
   onRowClick,
+  pageSize,
+  onRowSelectionChange,
+  getRowId,
+  clearSelectionSignal,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -62,10 +70,17 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
+    onRowSelectionChange: (updater) => {
+      const newSelection = typeof updater === 'function' ? updater(rowSelection) : updater;
+      setRowSelection(newSelection);
+      onRowSelectionChange?.(newSelection);
+    },
+    getRowId: getRowId
+      ? (originalRow: TData, index: number | string, parent?: any) => getRowId(originalRow)
+      : undefined,
     initialState: {
       pagination: {
-        pageSize: 30,
+        pageSize: pageSize || 20, // Use prop or default 20
       },
     },
     state: {
@@ -75,6 +90,12 @@ export function DataTable<TData, TValue>({
       rowSelection,
     },
   });
+
+  React.useEffect(() => {
+    if (clearSelectionSignal !== undefined) {
+      setRowSelection({});
+    }
+  }, [clearSelectionSignal]);
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -90,11 +111,11 @@ export function DataTable<TData, TValue>({
           />
         </div>
       )}
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-hidden">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="rounded-t-lg">
                 {headerGroup.headers.map((header) => {
                   return (
                     <TableHead 
@@ -104,7 +125,8 @@ export function DataTable<TData, TValue>({
                         header.id === "studentCount" && "w-[100px]",
                         header.id === "category" && "w-[120px]",
                         header.id === "avgResponseTime" && "w-[120px]",
-                        header.id === "satisfaction" && "w-[120px]"
+                        header.id === "satisfaction" && "w-[120px]",
+                        "hover:bg-transparent group-hover:bg-transparent"
                       )}
                     >
                       {header.isPlaceholder
@@ -113,7 +135,7 @@ export function DataTable<TData, TValue>({
                             <div
                               className={cn(
                                 "flex items-center gap-2",
-                                header.column.getCanSort() && "cursor-pointer select-none hover:text-foreground"
+                                header.column.getCanSort() && "cursor-pointer select-none hover:text-foreground hover:bg-transparent"
                               )}
                               onClick={header.column.getToggleSortingHandler()}
                             >
@@ -147,7 +169,11 @@ export function DataTable<TData, TValue>({
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                   onClick={() => onRowClick?.(row.original)}
-                  className={cn(onRowClick && "cursor-pointer hover:bg-muted/50")}
+                  className={cn(
+                    onRowClick && "cursor-pointer",
+                    row.getIsSelected() && "bg-hover/50 dark:bg-hover/50",
+                    "hover:bg-hover/75 dark:hover:bg-hover/75"
+                  )}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell 
