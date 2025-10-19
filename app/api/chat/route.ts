@@ -5,6 +5,8 @@ import {
   smoothStream,
   stepCountIs,
 } from "ai";
+import { withTracing } from "@posthog/ai";
+import { PostHog } from "posthog-node";
 import {
   getLanguageModel,
   getProviderOptions,
@@ -222,7 +224,24 @@ export async function POST(req: Request) {
 
     const quotaType = isPremium(modelId) ? "premium" : "standard";
     const newMessageId = crypto.randomUUID();
-    const model = getLanguageModel(modelId);
+    // Create traced model for PostHog LLM analytics
+    const baseModel = getLanguageModel(modelId);
+    const phClient = new PostHog(process.env.NEXT_PUBLIC_POSTHOG_KEY || "", {
+      host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    });
+    const model = withTracing(baseModel, phClient, {
+      posthogDistinctId: auth.userId,
+      posthogTraceId: newMessageId,
+      posthogProperties: {
+        threadId,
+        modelId,
+        quotaType,
+        orgId: auth.orgId || null,
+        trigger: trigger || "submit-message",
+      },
+      posthogPrivacyMode: false,
+      posthogGroups: auth.orgId ? { organization: auth.orgId } : undefined,
+    });
 
     // Tools setup
     const providerTools = enabledTools.length > 0
@@ -527,6 +546,9 @@ export async function POST(req: Request) {
                 );
               });
 
+              // Ensure PostHog flush
+              phClient.shutdown();
+
               // Increment tool call quota if any tools were used when the assistant message is finalized
               if (toolCallCount > 0) {
                 DatabaseQueue.add(async () => {
@@ -579,6 +601,9 @@ export async function POST(req: Request) {
                 }
 
                 // Increment tool call quota when abort
+                // Ensure PostHog flush on abort
+                phClient.shutdown();
+
                 if (toolCallCount > 0) {
                   DatabaseQueue.add(async () => {
                     try {
@@ -605,6 +630,8 @@ export async function POST(req: Request) {
 
               // Handle actual errors
               console.error("Stream error:", error);
+              // Ensure PostHog flush on error
+              phClient.shutdown();
               DatabaseQueue.add(async () => {
                 await fetchMutation(
                   api.threads.serverFinalizeAssistantMessage,
