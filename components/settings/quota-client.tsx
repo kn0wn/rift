@@ -81,7 +81,7 @@ function NextResetDate({ nextResetDate }: { nextResetDate?: number }) {
   return (
     <div className="text-sm text-gray-600 dark:text-text-muted">
       <strong>Próximo Reinicio:</strong>{" "}
-      <span className="text-white dark:text-white">{formatDate(nextResetDate)}</span>
+      <span className="text-gray-900 dark:text-white">{formatDate(nextResetDate)}</span>
     </div>
   );
 }

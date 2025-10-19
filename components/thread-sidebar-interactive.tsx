@@ -464,7 +464,7 @@ export function ThreadSidebarInteractive({
                       {(thread.generationStatus === "pending" ||
                         thread.generationStatus === "generation") && (
                         <Tooltip>
-                          <TooltipTrigger asChild>
+                          <TooltipTrigger className="flex items-center justify-center w-full h-full">
                             <Loader
                               size={14}
                               className="text-muted-foreground transition-colors hover:text-muted-foreground"
@@ -481,7 +481,7 @@ export function ThreadSidebarInteractive({
                       )}
                       {thread.generationStatus === "failed" && (
                         <Tooltip>
-                          <TooltipTrigger asChild>
+                          <TooltipTrigger className="flex items-center justify-center w-full h-full">
                             <AlertTriangleIcon
                               size={14}
                               className="text-destructive/70 transition-colors hover:text-destructive"
