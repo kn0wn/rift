@@ -161,8 +161,12 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    background-color: var(--background);
+  }
   body {
     @apply bg-background text-foreground;
+    overscroll-behavior-y: none;
   }
 
   /* Text selection styles */
