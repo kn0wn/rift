@@ -45,7 +45,7 @@ export function createBaseStateCreator<UI_MESSAGE extends UIMessage>(
   initialMessages: UI_MESSAGE[] = [],
 ): StateCreator<BaseChatStoreState<UI_MESSAGE>, [], []> {
   return (set, get) => {
-    const MESSAGES_THROTTLE_MS = 100;
+    const MESSAGES_THROTTLE_MS = 0;
     const throttledEffects = new Set<() => void>();
     let throttledMessagesUpdater: (() => void) | null = null;
     if (!throttledMessagesUpdater) {

@@ -30,9 +30,11 @@ export const withMarkdownMemo =
     const base = creator(set, get, api);
     base.registerThrottledMessagesEffect(() => {
       const state = get();
+      const streaming = state.status === 'streaming';
       const { cache } = precomputeMarkdownForAllMessages(
         state.messages,
-        get()._markdownCache
+        get()._markdownCache,
+        { streaming }
       );
       set({
         _markdownCache: cache,

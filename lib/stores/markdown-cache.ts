@@ -28,15 +28,19 @@ function computeCacheEntry({
   partIdx,
   text,
   preparedText,
+  streaming,
 }: {
   cache: Map<string, MarkdownCacheEntry>;
   messageId: string;
   partIdx: number;
   text: string;
   preparedText?: string;
+  streaming?: boolean;
 }): void {
   const input = preparedText ?? text;
-  const blocks = lexToBlocks(input);
+  // In streaming mode, avoid markdown token batching: render as a single block
+  // so content appears character-by-character.
+  const blocks = streaming ? [input] : lexToBlocks(input);
   const key = getMarkdownCacheKey({ messageId, partIdx });
   cache.set(key, { text, blocks });
 }
@@ -47,12 +51,14 @@ function ensureCacheForPart({
   partIdx,
   text,
   preparedText,
+  streaming,
 }: {
   cache: Map<string, MarkdownCacheEntry>;
   messageId: string;
   partIdx: number;
   text: string;
   preparedText?: string;
+  streaming?: boolean;
 }): void {
   const key = getMarkdownCacheKey({ messageId, partIdx });
   const cached = cache.get(key);
@@ -63,6 +69,7 @@ function ensureCacheForPart({
     partIdx,
     text,
     preparedText,
+    streaming,
   });
 }
 
@@ -103,13 +110,15 @@ function precomputeMarkdownForMessage(
 
 export function precomputeMarkdownForAllMessages(
   messages: UIMessage[],
-  existingCache?: Map<string, MarkdownCacheEntry>
+  existingCache?: Map<string, MarkdownCacheEntry>,
+  options?: { streaming?: boolean }
 ): {
   cache: Map<string, MarkdownCacheEntry>;
 } {
   const cache = existingCache
     ? new Map(existingCache)
     : new Map<string, MarkdownCacheEntry>();
+  const streaming = Boolean(options?.streaming);
 
   // Stable caches for all assistant messages
   for (let i = 0; i < messages.length; i++) {
@@ -134,6 +143,7 @@ export function precomputeMarkdownForAllMessages(
           partIdx: lastPartIdx,
           text,
           preparedText: parseIncompleteMarkdown(text),
+          streaming,
         });
       }
     }

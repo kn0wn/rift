@@ -34,6 +34,8 @@ export function useRegeneration({ setMessages, status, stop, regenerate }: UseRe
         const idsToHide = renderedMessages.slice(idx).map((m) => m.id);
         hiddenIdsRef.current = new Set(idsToHide);
       }
+      // Force a re-render so hiddenIdsRef takes effect immediately
+      setMessages((curr: UIMessage[]) => [...curr]);
       regenerateAnchorRef.current = { id: messageId, role };
       if (status === "streaming") stop();
       // Do not prune hook messages; regenerate needs the target to exist in the store
@@ -45,7 +47,7 @@ export function useRegeneration({ setMessages, status, stop, regenerate }: UseRe
         }
       })();
     },
-    [status, stop, regenerate],
+    [status, stop, regenerate, setMessages],
   );
 
   const handleRegenerateAfterUser = useCallback(
@@ -107,12 +109,7 @@ export function filterHiddenForRender(
 ): UIMessage[] {
   const hidden = hiddenIdsRef.current;
   if (!hidden || hidden.size === 0) return messages;
-  const filtered = messages.filter((m) => !hidden.has(m.id));
-  if (filtered.length === messages.length) {
-    // All hidden ids are gone from the view; clear the set
-    hidden.clear();
-  }
-  return filtered;
+  return messages.filter((m) => !hidden.has(m.id));
 }
 
 
