@@ -261,6 +261,41 @@ export async function POST(req: Request) {
     const userId = auth.userId;
     const orgId = auth.orgId;
 
+    // Synchronous finalization with retries
+    const finalizeWithRetry = async (args: {
+      ok: boolean;
+      finalContent?: string;
+      finalReasoning?: string;
+      error?: { type: string; message: string };
+      context: string;
+    }) => {
+      const maxAttempts = 3;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          await fetchMutation(
+            api.threads.serverFinalizeAssistantMessage,
+            {
+              secret: process.env.CONVEX_SECRET_TOKEN!,
+              userId,
+              messageId: newMessageId,
+              ok: args.ok,
+              finalContent: args.finalContent,
+              finalReasoning: args.finalReasoning,
+              error: args.error,
+            },
+          );
+          // success
+          return;
+        } catch (e: any) {
+          const errMsg = typeof e?.message === "string" ? e.message : String(e);
+          if (attempt === maxAttempts) break;
+          const backoff = Math.min(250 * 2 ** (attempt - 1), 2000);
+          const jitter = Math.floor(Math.random() * 100);
+          await new Promise((r) => setTimeout(r, backoff + jitter));
+        }
+      }
+    };
+
     // Handle regeneration: synchronously delete messages after the target message
     if (trigger === "regenerate-message" && messageId) {
       // First verify the user owns this thread
@@ -389,8 +424,6 @@ export async function POST(req: Request) {
       execute: async ({ writer }) => {
         // Start assistant UI message with the server-side generated id so UI and DB ids match
         writer.write({ type: "start", messageId: newMessageId });
-
-        console.log(`Stream execution started: ${Date.now() - start}ms`);
 
         let content = "";
         let reasoning = "";
@@ -521,29 +554,20 @@ export async function POST(req: Request) {
               console.log(
                 `StreamText finished (total generation time): ${Date.now() - start}ms`,
               );
-              if (req.signal?.aborted || isComplete) return;
+              if (isComplete) return;
               isComplete = true;
               cleanup();
 
               // Final flush and finalization
               await flushUpdate();
 
-              DatabaseQueue.add(async () => {
-                const success = content.length > 0;
-                await fetchMutation(
-                  api.threads.serverFinalizeAssistantMessage,
-                  {
-                    secret: process.env.CONVEX_SECRET_TOKEN!,
-                    userId,
-                    messageId: newMessageId,
-                    ok: success,
-                    finalContent: content || undefined,
-                    finalReasoning: reasoning || undefined,
-                    error: success
-                      ? undefined
-                      : { type: "empty", message: "No content generated" },
-                  },
-                );
+              const success = content.length > 0;
+              await finalizeWithRetry({
+                ok: success,
+                finalContent: success ? content : undefined,
+                finalReasoning: reasoning || undefined,
+                error: success ? undefined : { type: "empty", message: "No content generated" },
+                context: "onFinish",
               });
 
               // Ensure PostHog flush
@@ -582,23 +606,13 @@ export async function POST(req: Request) {
                 errorObj.name === "AbortError" || req.signal?.aborted;
               if (isAbort) {
                 // Handle graceful abort
-                const hasContent = content.length > 0;
-                if (hasContent) {
-                  await flushUpdate();
-                  DatabaseQueue.add(async () => {
-                    await fetchMutation(
-                      api.threads.serverFinalizeAssistantMessage,
-                      {
-                        secret: process.env.CONVEX_SECRET_TOKEN!,
-                        userId,
-                        messageId: newMessageId,
-                        ok: true,
-                        finalContent: content,
-                        finalReasoning: reasoning || undefined,
-                      },
-                    );
-                  });
-                }
+                await flushUpdate();
+                await finalizeWithRetry({
+                  ok: true,
+                  finalContent: content.length > 0 ? content : undefined,
+                  finalReasoning: reasoning || undefined,
+                  context: "abort",
+                });
 
                 // Increment tool call quota when abort
                 // Ensure PostHog flush on abort
@@ -632,20 +646,13 @@ export async function POST(req: Request) {
               console.error("Stream error:", error);
               // Ensure PostHog flush on error
               phClient.shutdown();
-              DatabaseQueue.add(async () => {
-                await fetchMutation(
-                  api.threads.serverFinalizeAssistantMessage,
-                  {
-                    secret: process.env.CONVEX_SECRET_TOKEN!,
-                    userId,
-                    messageId: newMessageId,
-                    ok: false,
-                    error: {
-                      type: "generation",
-                      message: errorObj.message || "Stream failed",
-                    },
-                  },
-                );
+              await finalizeWithRetry({
+                ok: false,
+                error: {
+                  type: "generation",
+                  message: errorObj.message || "Stream failed",
+                },
+                context: "error",
               });
 
               writer.write({
