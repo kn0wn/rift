@@ -28,12 +28,15 @@ function useAuthFromAuthKit() {
     error: tokenError,
   } = useAccessToken();
   const loading = (isLoading ?? false) || (tokenLoading ?? false);
-  const authenticated = !!user && !!accessToken && !loading;
 
+  // Keep last known-good token to ride out transient refresh gaps
   const stableAccessToken = useRef<string | null>(null);
   if (accessToken && !tokenError) {
     stableAccessToken.current = accessToken;
   }
+
+  // Consider authenticated if we have a user OR a stable token while loading
+  const authenticated = !!user || (!!stableAccessToken.current && !tokenError);
 
   const fetchAccessToken = useCallback(async () => {
     if (stableAccessToken.current && !tokenError) {

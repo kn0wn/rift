@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Preloaded, usePaginatedQuery, usePreloadedQuery, useMutation } from "convex/react";
+import { Preloaded, usePaginatedQuery, usePreloadedQuery, useMutation, useConvexAuth, Authenticated, AuthLoading, Unauthenticated } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ai/ui/button";
 import { Loader } from "@/components/ai/loader";
@@ -81,6 +81,7 @@ const sortThreads = (a: Thread, b: Thread) => {
 export function ThreadSidebarInteractive({
   preloadedThreads,
 }: ThreadSidebarInteractiveProps) {
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const router = useRouter();
   const pathname = usePathname();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -104,13 +105,15 @@ export function ThreadSidebarInteractive({
     [preloadedThreads],
   );
 
+  // Always call the hook when preloaded exists
   const preloadedResults = preloadedThreads
     ? usePreloadedQuery(preloadedThreads)
     : null;
 
   const preloadedIsDone = preloadedResults?.isDone ?? preloadedSnapshot.isDone;
   const hasPreloadedMore = Boolean(preloadedThreads && !preloadedIsDone);
-  const shouldUsePaginated = hasHydrated && (!preloadedThreads || hasPreloadedMore);
+  // Avoid running live paginated query until auth is confirmed
+  const shouldUsePaginated = hasHydrated && isAuthenticated && (!preloadedThreads || hasPreloadedMore);
 
   const paginatedArgs = useMemo(
     () => ({
@@ -127,10 +130,29 @@ export function ThreadSidebarInteractive({
     [hasPreloadedMore],
   );
 
+  // Keep args/options shape stable to avoid internal memo size warnings
+  const effectivePaginatedArgs = useMemo(
+    () => (
+      shouldUsePaginated
+        ? paginatedArgs
+        : { paginationOpts: { numItems: 0, cursor: null } }
+    ),
+    [shouldUsePaginated, paginatedArgs],
+  );
+
+  const effectivePaginatedOptions = useMemo(
+    () => (
+      shouldUsePaginated
+        ? paginatedOptions
+        : { initialNumItems: 0 }
+    ),
+    [shouldUsePaginated, paginatedOptions],
+  );
+
   const paginated = usePaginatedQuery(
     api.threads.getUserThreadsPaginatedSafe,
-    shouldUsePaginated ? paginatedArgs : "skip",
-    paginatedOptions,
+    effectivePaginatedArgs,
+    effectivePaginatedOptions,
   );
 
   const paginatedResults = (paginated?.results ?? []) as Thread[];
@@ -170,7 +192,8 @@ export function ThreadSidebarInteractive({
   }, [searchQuery]);
 
   const combinedThreads = useMemo(() => {
-    const pageFromPreload = preloadedResults?.page ?? preloadedSnapshot.page;
+    // Freeze to SSR snapshot while auth is loading or unauthenticated
+    const pageFromPreload = (isAuthenticated ? preloadedResults?.page : undefined) ?? preloadedSnapshot.page;
     const allThreads = hasPreloadedMore
       ? [...pageFromPreload, ...paginatedResults]
       : paginatedResults.length > 0
@@ -183,7 +206,7 @@ export function ThreadSidebarInteractive({
     }
 
     return Array.from(threadsById.values()).sort(sortThreads);
-  }, [hasPreloadedMore, paginatedResults, preloadedResults?.page, preloadedSnapshot.page]);
+  }, [hasPreloadedMore, paginatedResults, preloadedResults?.page, preloadedSnapshot.page, isAuthenticated]);
 
   const filteredThreads = useMemo(() => {
     if (!searchQuery) {
@@ -558,6 +581,10 @@ export function ThreadSidebarInteractive({
   };
 
   const renderEmptyState = () => {
+    // During auth loading, show nothing changing to avoid flicker from empty safe query
+    if (authLoading) {
+      return null;
+    }
     if (filteredThreads.length === 0 && searchQuery) {
       return (
         <div className="p-4 text-center text-muted-foreground">
@@ -584,17 +611,49 @@ export function ThreadSidebarInteractive({
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 min-h-0">
-        {renderEmptyState() || (
-          <div
-            ref={scrollContainerRef}
-            className="sidebar-scroll-container h-full w-full overflow-y-auto"
-          >
-            {GROUP_ORDER.map((groupName) =>
-              renderThreadGroup(groupName, groupedThreads[groupName]),
-            )}
-            <div ref={sentinelRef} className="h-[1px] w-full" />
-          </div>
-        )}
+        <AuthLoading>
+          {/* Keep layout stable while auth loads; render snapshot groups when present */}
+          {preloadedSnapshot.page.length > 0 ? (
+            <div
+              ref={scrollContainerRef}
+              className="sidebar-scroll-container h-full w-full overflow-y-auto"
+            >
+              {GROUP_ORDER.map((groupName) =>
+                renderThreadGroup(groupName, groupedThreads[groupName]),
+              )}
+              <div ref={sentinelRef} className="h-[1px] w-full" />
+            </div>
+          ) : null}
+        </AuthLoading>
+        <Authenticated>
+          {renderEmptyState() || (
+            <div
+              ref={scrollContainerRef}
+              className="sidebar-scroll-container h-full w-full overflow-y-auto"
+            >
+              {GROUP_ORDER.map((groupName) =>
+                renderThreadGroup(groupName, groupedThreads[groupName]),
+              )}
+              <div ref={sentinelRef} className="h-[1px] w-full" />
+            </div>
+          )}
+        </Authenticated>
+        <Unauthenticated>
+          {/* If unauthenticated, show snapshot if any; otherwise show empty-state copy */}
+          {preloadedSnapshot.page.length > 0 ? (
+            <div
+              ref={scrollContainerRef}
+              className="sidebar-scroll-container h-full w-full overflow-y-auto"
+            >
+              {GROUP_ORDER.map((groupName) =>
+                renderThreadGroup(groupName, groupedThreads[groupName]),
+              )}
+              <div ref={sentinelRef} className="h-[1px] w-full" />
+            </div>
+          ) : (
+            renderEmptyState()
+          )}
+        </Unauthenticated>
       </div>
 
       {isScrollLoading && (
