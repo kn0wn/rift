@@ -47,7 +47,7 @@ interface RequestBody {
 interface AuthContext {
   token: string;
   userId: string;
-  orgId?: string;
+  orgId: string;
 }
 
 class StreamError extends Error {
@@ -128,6 +128,14 @@ async function getAuth(): Promise<AuthContext> {
   const auth = await withAuth();
   if (!auth.accessToken || !auth.user?.id) {
     throw new StreamError("Unauthorized", 401);
+  }
+
+  // Check if user has an organization
+  if (!auth.organizationId) {
+    throw new StreamError(
+      "No organization found. Please create or join an organization first.",
+      403
+    );
   }
 
   return {
@@ -342,7 +350,7 @@ export async function POST(req: Request) {
       // Check quota limits first (blocking)
       const quotaCheck = await fetchQuery(
         api.users.serverCheckUserQuota,
-        { secret: process.env.CONVEX_SECRET_TOKEN!, userId, orgId: orgId!, quotaType },
+        { secret: process.env.CONVEX_SECRET_TOKEN!, userId, orgId, quotaType },
       );
 
       if (!quotaCheck.allowed) {
@@ -366,7 +374,7 @@ export async function POST(req: Request) {
         // Get both quota types for detailed error message (quota exceeded case)
         const bothQuotas = await fetchQuery(
           api.users.serverGetUserBothQuotas,
-          { secret: process.env.CONVEX_SECRET_TOKEN!, userId, orgId: orgId! },
+          { secret: process.env.CONVEX_SECRET_TOKEN!, userId, orgId },
         );
 
         const errorResponse = {
@@ -410,7 +418,7 @@ export async function POST(req: Request) {
             {
               secret: process.env.CONVEX_SECRET_TOKEN!,
               userId,
-              orgId: orgId!,
+              orgId,
               threadId,
               content: userText || "",
               model: modelId,
@@ -425,7 +433,7 @@ export async function POST(req: Request) {
         DatabaseQueue.add(async () => {
           await fetchMutation(
             api.users.serverIncrementUserQuota,
-            { secret: process.env.CONVEX_SECRET_TOKEN!, userId, orgId: orgId!, quotaType },
+            { secret: process.env.CONVEX_SECRET_TOKEN!, userId, orgId, quotaType },
           );
         });
       }

@@ -42,6 +42,19 @@ export const createThread = mutation({
     // Get the authenticated user ID using the helper
     const userId = await getAuthUserId(ctx);
 
+    // Validate user has an organization
+    const identity = await getAuthUserIdentity(ctx);
+    if (!identity) {
+      throw new Error("User authentication identity not found");
+    }
+
+    const orgId = extractOrganizationIdFromJWT(identity);
+    if (!orgId) {
+      throw new Error(
+        "No organization found. User must be part of an organization to create threads."
+      );
+    }
+
     // Get current timestamp
     const now = Date.now();
 
@@ -531,6 +544,13 @@ export const serverSendMessage = mutation({
   }),
   handler: async (ctx, args) => {
     ensureServerSecret(args.secret);
+
+    // Validate that orgId is provided
+    if (!args.orgId || args.orgId.trim() === "") {
+      throw new Error(
+        "Organization ID is required. User must be part of an organization to send messages."
+      );
+    }
 
     const billingCycle = await getOrganizationBillingCycle(ctx, args.orgId);
     const now = Date.now();

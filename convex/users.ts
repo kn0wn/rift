@@ -305,6 +305,14 @@ export const serverCheckUserQuota = query({
   }),
   handler: async (ctx, args) => {
     ensureServerSecret(args.secret);
+    
+    // Validate that orgId is provided
+    if (!args.orgId || args.orgId.trim() === "") {
+      throw new Error(
+        "Organization ID is required. User must be part of an organization to send messages."
+      );
+    }
+    
     const billingCycle = await getOrganizationBillingCycle(ctx, args.orgId);
     const quotaCheck = await checkQuotaLimit(
       ctx,
@@ -339,6 +347,14 @@ export const serverGetUserBothQuotas = query({
   }),
   handler: async (ctx, args) => {
     ensureServerSecret(args.secret);
+    
+    // Validate that orgId is provided
+    if (!args.orgId || args.orgId.trim() === "") {
+      throw new Error(
+        "Organization ID is required. User must be part of an organization to send messages."
+      );
+    }
+    
     const billingCycle = await getOrganizationBillingCycle(ctx, args.orgId);
     const standardQuota = await checkQuotaLimit(
       ctx,
