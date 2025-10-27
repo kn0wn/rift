@@ -20,6 +20,7 @@ import {
   Building2,
   BarChart3,
   File,
+  Bug,
 } from "lucide-react";
 interface SettingsNavItem {
   title: string;
@@ -232,6 +233,11 @@ const footerItems: SettingsNavItem[] = [
     title: "Actualizaciones",
     href: "/settings/updates",
     icon: Bell,
+  },
+  {
+    title: "Reportar Errores",
+    href: "/settings/reportar-errores",
+    icon: Bug,
   },
   {
     title: "Contáctanos",

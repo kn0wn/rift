@@ -168,4 +168,23 @@ export default defineSchema({
   userConfiguration: defineTable({
     userId: v.string(),
   }).index("by_userId", ["userId"]),
+
+  bugs: defineTable({
+    userId: v.string(),
+    orgId: v.string(),
+    userEmail: v.string(),
+    title: v.string(),
+    description: v.string(),
+    stepsToReproduce: v.optional(v.string()),
+    priority: v.union(
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high"),
+      v.literal("critical"),
+    ),
+    browserDetails: v.string(),
+    reportedAt: v.number(),
+  })
+    .index("by_user", ["userId"]) 
+    .index("by_org_and_reportedAt", ["orgId", "reportedAt"]),
 });
