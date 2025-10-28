@@ -61,6 +61,7 @@ function ChatInterfaceInternal({
   const setShowNoSubscriptionDialog = useChatUIStore((s) => s.setShowNoSubscriptionDialog);
   const setChatKey = useChatUIStore((s) => s.setChatKey);
   const handleSearchToggle = useChatUIStore((s) => s.handleSearchToggle);
+  const setFileUploadError = useChatUIStore((s) => s.setFileUploadError);
   const [isDragActive, setIsDragActive] = useState(false);
   const dragCounterRef = useRef(0);
 
@@ -68,28 +69,35 @@ function ChatInterfaceInternal({
   const handleProcessFiles = useCallback(async (fileArray: File[]) => {
     if (!fileArray || fileArray.length === 0) return;
 
+    // Clear previous error
+    setFileUploadError(null);
+
     const state = useChatUIStore.getState();
     const currentTotal = state.uploadedAttachments.length + state.uploadingFiles.length;
     const newTotal = currentTotal + fileArray.length;
     if (newTotal > 5) {
       const remaining = 5 - currentTotal;
-      if (remaining <= 0) {
-        toast.error("Máximo de 5 archivos permitidos por mensaje");
-      } else {
-        toast.error(`Solo puedes agregar ${remaining} más archivo${remaining === 1 ? '' : 's'}. Máximo de 5 archivos permitidos por mensaje.`);
-      }
+      const errorMsg = remaining <= 0
+        ? "Máximo de 5 archivos permitidos por mensaje"
+        : `Solo puedes agregar ${remaining} más archivo${remaining === 1 ? '' : 's'}. Máximo de 5 archivos permitidos por mensaje.`;
+      toast.error(errorMsg);
+      setFileUploadError(errorMsg);
       return;
     }
 
     const unsupported = fileArray.filter((f) => !isSupportedFileType(f));
     if (unsupported.length > 0) {
-      toast.error(`Tipos de archivo no permitido: ${unsupported.map((f) => f.name).join(", ")}`);
+      const errorMsg = `Tipos de archivo no soportados: ${unsupported.map((f) => f.name).join(", ")}. Solo se permiten imágenes (JPEG, PNG, GIF, WebP) y PDFs.`;
+      toast.error(errorMsg);
+      setFileUploadError(errorMsg);
       return;
     }
 
     const oversized = fileArray.filter((f) => f.size > 10 * 1024 * 1024);
     if (oversized.length > 0) {
-      toast.error(`Archivo demasiado grande: ${oversized.map((f) => f.name).join(", ")}`);
+      const errorMsg = `Archivos demasiado grandes: ${oversized.map((f) => f.name).join(", ")}. El tamaño máximo es 10MB por archivo.`;
+      toast.error(errorMsg);
+      setFileUploadError(errorMsg);
       return;
     }
 
@@ -106,11 +114,13 @@ function ChatInterfaceInternal({
       setUploadedAttachments((prev: any[]) => [...prev, ...attachments]);
     } catch (err) {
       console.error("Error al subir archivos:", err);
-      toast.error("Error al subir archivos");
+      const errorMsg = "Error al subir archivos. Por favor, inténtalo de nuevo.";
+      toast.error(errorMsg);
+      setFileUploadError(errorMsg);
     } finally {
       setUploadingFiles((prev: any[]) => prev.filter((uf) => !fileArray.includes(uf.file)));
     }
-  }, [setSelectedFiles, setUploadingFiles, setUploadedAttachments]);
+  }, [setSelectedFiles, setUploadingFiles, setUploadedAttachments, setFileUploadError]);
 
   // Apply model change effects
   const prevModelRef = useRef(selectedModel);

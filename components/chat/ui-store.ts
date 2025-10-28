@@ -17,6 +17,7 @@ export const useChatUIStore = create<ChatUIStore>((set, get) => ({
   quotaError: null,
   showNoSubscriptionDialog: false,
   chatKey: 0,
+  fileUploadError: null,
 
   setInput: (value) =>
     set(typeof value === "function" ? (state) => ({ input: value(state.input) }) : { input: value }),
@@ -58,6 +59,8 @@ export const useChatUIStore = create<ChatUIStore>((set, get) => ({
     ),
   setChatKey: (value) =>
     set(typeof value === "function" ? (state) => ({ chatKey: value(state.chatKey) }) : { chatKey: value }),
+  setFileUploadError: (value) =>
+    set(typeof value === "function" ? (state) => ({ fileUploadError: value(state.fileUploadError) }) : { fileUploadError: value }),
 
   handleSearchToggle: () => {
     const next = !get().isSearchEnabled;

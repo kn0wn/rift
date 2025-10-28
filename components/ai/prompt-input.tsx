@@ -290,6 +290,37 @@ export const PromptInputFileUpload = ({
   );
 };
 
+export type PromptInputErrorProps = {
+  error: string | null;
+  onDismiss?: () => void;
+};
+
+export const PromptInputError = ({
+  error,
+  onDismiss,
+}: PromptInputErrorProps) => {
+  if (!error) return null;
+
+  return (
+    <div className="flex items-start gap-2 p-3 border-t bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50">
+      <AlertTriangle className="size-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+      <div className="flex-1 text-sm text-red-800 dark:text-red-200">
+        {error}
+      </div>
+      {onDismiss && (
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="shrink-0 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 transition-colors"
+          title="Dismiss error"
+        >
+          <XIcon className="size-4" />
+        </button>
+      )}
+    </div>
+  );
+};
+
 export type PromptInputFilePreviewProps = {
   files: (File | { name: string; type: string; url?: string; isUploading?: boolean })[];
   onRemoveFile?: (index: number) => void;

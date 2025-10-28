@@ -55,6 +55,7 @@ export interface ChatState {
   quotaError: QuotaError | null;
   showNoSubscriptionDialog: boolean;
   chatKey: number;
+  fileUploadError: string | null;
 }
 
 export interface ChatStateSetters {
@@ -68,4 +69,5 @@ export interface ChatStateSetters {
   setQuotaError: React.Dispatch<React.SetStateAction<QuotaError | null>>;
   setShowNoSubscriptionDialog: React.Dispatch<React.SetStateAction<boolean>>;
   setChatKey: React.Dispatch<React.SetStateAction<number>>;
+  setFileUploadError: React.Dispatch<React.SetStateAction<string | null>>;
 }
