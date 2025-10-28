@@ -22,6 +22,8 @@ export default authkitMiddleware({
       "/sign-in",
       "/sign-up",
       "/callback",
+      "/terms-of-service",
+      "/privacy-policy",
     ],
   },
 });
