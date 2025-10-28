@@ -33,25 +33,26 @@ export async function logServerAuditEvent({ action, resource, metadata }: AuditE
       ...(userAgent ? { user_agent: userAgent } : {}),
     };
 
-    await workos.auditLogs.createEvent(organizationId, {
-      action,
-      occurredAt: new Date(),
-      actor: {
-        type: "user",
-        id: user.id,
-        name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
-        metadata: { role: role || "" },
-      },
-      targets: [
-        { type: "user", id: user.id, name: `${user.firstName || ""} ${user.lastName || ""}`.trim() },
-      ],
-      context,
-      metadata: {
-        ...(resource ? { resource_type: resource.type, resource_id: resource.id } : {}),
-        ...(resource?.name ? { resource_name: resource.name } : {}),
-        ...(metadata || {}),
-      },
-    });
+    // Disabled for now: await workos.auditLogs.createEvent(organizationId, {
+    //   action,
+    //   occurredAt: new Date(),
+    //   actor: {
+    //     type: "user",
+    //     id: user.id,
+    //     name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+    //     metadata: { role: role || "" },
+    //   },
+    //   targets: [
+    //     { type: "user", id: user.id, name: `${user.firstName || ""} ${user.lastName || ""}`.trim() },
+    //   ],
+    //   context,
+    //   metadata: {
+    //     ...(resource ? { resource_type: resource.type, resource_id: resource.id } : {}),
+    //     ...(resource?.name ? { resource_name: resource.name } : {}),
+    //     ...(metadata || {}),
+    //   },
+    // });
+
   } catch (error) {
     console.warn("Server audit log failed:", error);
   }

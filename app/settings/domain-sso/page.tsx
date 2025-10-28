@@ -57,7 +57,7 @@ export default async function DomainSsoPage() {
       {/* Domain Verification Section */}
       <SettingsSection
         title="Verificación de Dominio"
-        description="Los usuarios que intenten registrarse desde un dominio verificado, seran agregados a la organizacion automáticamente."
+        description="Los usuarios que intenten registrarse desde un dominio verificado, podrán ser agregados a la organizacion automáticamente."
       >
         <DomainSsoWidget authTokenPromise={authTokenPromise} />
       </SettingsSection>
