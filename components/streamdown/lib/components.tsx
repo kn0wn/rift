@@ -217,7 +217,7 @@ const MemoTable = memo<TableProps>(
   ({ children, className, ...props }: TableProps) => (
     <div className="my-4 overflow-x-auto">
       <table
-        className={cn('w-full border-collapse border border-border', className)}
+        className={cn('w-full border-collapse border border-border text-[14px]', className)}
         {...props}
       >
         {children}
@@ -392,7 +392,7 @@ const CodeComponent = ({
     return (
       <div
         className={cn(
-          'group relative my-4 h-auto rounded-lg border p-4',
+          'group relative my-4 h-auto rounded-lg border p-4 text-[14px]',
           className
         )}
       >
@@ -404,7 +404,7 @@ const CodeComponent = ({
 
   return (
     <CodeBlock
-      className={cn('my-4 h-auto rounded-lg border p-4', className)}
+      className={cn('my-4 h-auto rounded-lg border p-4 text-[14px]', className)}
       code={code}
       language={language}
     >
