@@ -73,28 +73,47 @@ export const CodeBlock = memo(({
 
   return (
     <CodeBlockContext.Provider value={{ code }}>
-      <div className="group relative">
-        {/* Language label */}
-        <div className="absolute top-2 left-3 z-0 rounded bg-muted px-2 py-1 font-mono text-muted-foreground text-xs">
-          {language}
+      <div className="group relative overflow-hidden rounded-lg border border-border/50 bg-gray-50 dark:bg-[#1e1e1e] shadow-lg">
+        {/* Terminal Header Bar */}
+        <div className="flex items-center gap-2 border-b border-border/50 bg-gray-100 dark:bg-[#2d2d2d] px-4 py-2">
+          {/* Language indicator */}
+          <span 
+            className="text-sm text-gray-700 dark:text-white"
+            style={{ fontFamily: 'lilex, monospace' }}
+          >
+            {language}
+          </span>
+          
+          {/* Spacer */}
+          <div className="flex-1"></div>
+          
+          {/* Action icons */}
+          <div className="flex items-center gap-2">
+            {children}
+          </div>
         </div>
-        <div
-          className={cn(
-            'overflow-x-auto dark:hidden [&>pre]:bg-transparent! [&>pre]:pt-10',
-            className
-          )}
-          dangerouslySetInnerHTML={{ __html: html }}
-          {...props}
-        />
-        <div
-          className={cn(
-            'hidden overflow-x-auto dark:block [&>pre]:bg-transparent! [&>pre]:pt-10',
-            className
-          )}
-          dangerouslySetInnerHTML={{ __html: darkHtml }}
-          {...props}
-        />
-        {children}
+        
+        {/* Code content */}
+        <div className="relative bg-white dark:bg-[#1e1e1e]">
+          <div
+            className={cn(
+              'overflow-x-auto dark:hidden [&>pre]:bg-transparent! [&>pre]:px-4 [&>pre]:pb-4 [&>pre]:pt-2 [&>pre]:font-[lilex,monospace] [&>pre]:text-sm [&>pre>code]:font-[lilex,monospace]',
+              className
+            )}
+            style={{ fontFamily: 'lilex, monospace' }}
+            dangerouslySetInnerHTML={{ __html: html }}
+            {...props}
+          />
+          <div
+            className={cn(
+              'hidden overflow-x-auto dark:block [&>pre]:bg-transparent! [&>pre]:px-4 [&>pre]:pb-4 [&>pre]:pt-2 [&>pre]:font-[lilex,monospace] [&>pre]:text-sm [&>pre>code]:font-[lilex,monospace]',
+              className
+            )}
+            style={{ fontFamily: 'lilex, monospace' }}
+            dangerouslySetInnerHTML={{ __html: darkHtml }}
+            {...props}
+          />
+        </div>
       </div>
     </CodeBlockContext.Provider>
   );
@@ -140,12 +159,12 @@ export const CodeBlockCopyButton = ({
   return (
     <button
       className={cn(
-        'absolute top-2 right-2 shrink-0 rounded-md p-3 opacity-0 transition-all',
-        'hover:bg-secondary group-hover:opacity-100',
+        'text-gray-600 dark:text-white/70 transition-colors hover:text-gray-900 dark:hover:text-white',
         className
       )}
       onClick={copyToClipboard}
       type="button"
+      aria-label="Copy code"
       {...props}
     >
       {children ?? <Icon size={14} />}

@@ -112,6 +112,9 @@
   },
   "trustedDependencies": [
     "@tailwindcss/oxide",
+    "ai-sdk-tools",
+    "core-js",
+    "esbuild",
     "unrs-resolver"
   ]
 }

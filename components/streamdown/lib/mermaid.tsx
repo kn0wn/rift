@@ -13,7 +13,7 @@ const initializeMermaid = async () => {
       startOnLoad: false,
       theme: 'default',
       securityLevel: 'strict',
-      fontFamily: 'monospace',
+      fontFamily: 'lilex, monospace',
       suppressErrorRendering: true,
     });
 
@@ -97,12 +97,12 @@ export const Mermaid = ({ chart, className }: MermaidProps) => {
           className
         )}
       >
-        <p className="font-mono text-red-700 text-sm">Mermaid Error: {error}</p>
+        <p className="text-red-700 text-sm" style={{ fontFamily: 'lilex, monospace' }}>Mermaid Error: {error}</p>
         <details className="mt-2">
           <summary className="cursor-pointer text-red-600 text-xs">
             Show Code
           </summary>
-          <pre className="mt-2 overflow-x-auto rounded bg-red-100 p-2 text-red-800 text-xs">
+          <pre className="mt-2 overflow-x-auto rounded bg-red-100 p-2 text-red-800 text-xs" style={{ fontFamily: 'lilex, monospace' }}>
             {chart}
           </pre>
         </details>

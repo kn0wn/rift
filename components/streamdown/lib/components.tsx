@@ -135,7 +135,7 @@ const MemoH1 = memo<HeadingProps<'h1'>>(
   ({ children, className, ...props }: HeadingProps<'h1'>) => (
     <h1
       className={cn(
-        'mt-[2em] mb-[1em] font-bold text-[1.5em] leading-[1.33333]',
+        'mt-0 mb-[0.888889em] font-[800] text-[2.25em] leading-[1.11111]',
         className
       )}
       {...props}
@@ -167,7 +167,7 @@ const MemoH3 = memo<HeadingProps<'h3'>>(
   ({ children, className, ...props }: HeadingProps<'h3'>) => (
     <h3
       className={cn(
-        'mt-[2em] mb-[1em] font-bold text-[1.5em] leading-[1.33333]',
+        'mb-[0.6em] font-semibold text-[1.25em] leading-[1.6]',
         className
       )}
       {...props}
@@ -181,7 +181,7 @@ MemoH3.displayName = 'MarkdownH3';
 
 const MemoH4 = memo<HeadingProps<'h4'>>(
   ({ children, className, ...props }: HeadingProps<'h4'>) => (
-    <h4 className={cn('mt-6 mb-2 font-semibold text-lg', className)} {...props}>
+    <h4 className={cn('mb-[0.5em] font-semibold leading-[1.5]', className)} {...props}>
       {children}
     </h4>
   ),
@@ -192,7 +192,7 @@ MemoH4.displayName = 'MarkdownH4';
 const MemoH5 = memo<HeadingProps<'h5'>>(
   ({ children, className, ...props }: HeadingProps<'h5'>) => (
     <h5
-      className={cn('mt-6 mb-2 font-semibold text-base', className)}
+      className={cn('mb-1 font-semibold text-base', className)}
       {...props}
     >
       {children}
@@ -204,7 +204,7 @@ MemoH5.displayName = 'MarkdownH5';
 
 const MemoH6 = memo<HeadingProps<'h6'>>(
   ({ children, className, ...props }: HeadingProps<'h6'>) => (
-    <h6 className={cn('mt-6 mb-2 font-semibold text-sm', className)} {...props}>
+    <h6 className={cn('mb-1 font-semibold text-sm', className)} {...props}>
       {children}
     </h6>
   ),
@@ -215,13 +215,15 @@ MemoH6.displayName = 'MarkdownH6';
 type TableProps = WithNode<React.JSX.IntrinsicElements['table']>;
 const MemoTable = memo<TableProps>(
   ({ children, className, ...props }: TableProps) => (
-    <div className="my-4 overflow-x-auto">
-      <table
-        className={cn('w-full border-collapse border border-border text-[14px]', className)}
-        {...props}
-      >
-        {children}
-      </table>
+    <div className="my-4 overflow-hidden rounded-lg border border-border/50 bg-gray-50 dark:bg-[#1e1e1e] shadow-lg">
+      <div className="overflow-x-auto bg-white dark:bg-[#1e1e1e]">
+        <table
+          className={cn('w-full border-collapse text-[14px]', className)}
+          {...props}
+        >
+          {children}
+        </table>
+      </div>
     </div>
   ),
   (p, n) => sameClassAndNode(p, n)
@@ -231,7 +233,7 @@ MemoTable.displayName = 'MarkdownTable';
 type TheadProps = WithNode<React.JSX.IntrinsicElements['thead']>;
 const MemoThead = memo<TheadProps>(
   ({ children, className, ...props }: TheadProps) => (
-    <thead className={cn('bg-muted/50', className)} {...props}>
+    <thead className={cn('bg-gray-100 dark:bg-[#2d2d2d] border-b border-border/50', className)} {...props}>
       {children}
     </thead>
   ),
@@ -242,7 +244,7 @@ MemoThead.displayName = 'MarkdownThead';
 type TbodyProps = WithNode<React.JSX.IntrinsicElements['tbody']>;
 const MemoTbody = memo<TbodyProps>(
   ({ children, className, ...props }: TbodyProps) => (
-    <tbody className={cn('divide-y divide-border', className)} {...props}>
+    <tbody className={cn('divide-y divide-border/50', className)} {...props}>
       {children}
     </tbody>
   ),
@@ -253,7 +255,7 @@ MemoTbody.displayName = 'MarkdownTbody';
 type TrProps = WithNode<React.JSX.IntrinsicElements['tr']>;
 const MemoTr = memo<TrProps>(
   ({ children, className, ...props }: TrProps) => (
-    <tr className={cn('border-border border-b', className)} {...props}>
+    <tr className={cn('border-border/50 border-b', className)} {...props}>
       {children}
     </tr>
   ),
@@ -265,7 +267,7 @@ type ThProps = WithNode<React.JSX.IntrinsicElements['th']>;
 const MemoTh = memo<ThProps>(
   ({ children, className, ...props }: ThProps) => (
     <th
-      className={cn('px-4 py-2 text-left font-semibold text-sm', className)}
+      className={cn('px-4 py-2 text-left font-semibold text-sm text-gray-700 dark:text-white', className)}
       {...props}
     >
       {children}
@@ -325,6 +327,58 @@ const MemoSub = memo<SubProps>(
 );
 MemoSub.displayName = 'MarkdownSub';
 
+type InputProps = WithNode<React.JSX.IntrinsicElements['input']> & { type?: string };
+const MemoInput = memo<InputProps>(
+  ({ type, className, checked, disabled, ...props }: InputProps) => {
+    if (type === 'checkbox') {
+      return (
+        <label className="inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            checked={checked}
+            disabled={disabled}
+            className="sr-only"
+            {...props}
+          />
+          <span
+            className={cn(
+              'h-4 w-4 rounded border-2 flex items-center justify-center cursor-default',
+              checked && 'bg-accent border-accent',
+            )}
+            style={{
+              accentColor: 'var(--accent)',
+            }}
+          >
+            {checked && (
+              <svg
+                className="h-3 w-3 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={3}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            )}
+          </span>
+        </label>
+      );
+    }
+    return <input type={type} className={cn(className)} {...props} />;
+  },
+  (p, n) =>
+    p.className === n.className &&
+    p.type === n.type &&
+    p.checked === n.checked &&
+    p.disabled === n.disabled &&
+    sameNodePosition(p.node, n.node)
+);
+MemoInput.displayName = 'MarkdownInput';
+
 type LiProps = WithNode<React.JSX.IntrinsicElements['li']>;
 
 const MemoLi = memo<LiProps>(
@@ -353,9 +407,10 @@ const CodeComponent = ({
     return (
       <code
         className={cn(
-          'rounded bg-muted px-1.5 py-0.5 font-mono text-sm',
+          'rounded-md px-2 py-1 text-sm bg-hover dark:bg-popover-main',
           className
         )}
+        style={{ fontFamily: 'lilex, monospace' }}
         {...props}
       >
         {children}
@@ -404,7 +459,7 @@ const CodeComponent = ({
 
   return (
     <CodeBlock
-      className={cn('my-4 h-auto rounded-lg border p-4 text-[14px]', className)}
+      className={cn(className)}
       code={code}
       language={language}
     >
@@ -450,5 +505,6 @@ export const components: Options['components'] = {
   pre: ({ children }) => children,
   sup: MemoSup,
   sub: MemoSub,
+  input: MemoInput,
 };
 

@@ -38,8 +38,8 @@ export const MessageContent = React.memo(({
     className={cn(
       'group flex flex-col gap-2 overflow-hidden px-1 text-foreground text-sm',
       from === 'user' 
-        ? 'rounded-lg py-3 px-4 bg-popover-main border border-popover-secondary text-popover-text' 
-        : 'bg-transparent text-foreground py-0',
+      ? 'bg-hover text-secondary rounded-lg py-3 px-4 dark:bg-popover-main dark:text-popover-text dark:border-popover-secondary shadow-sm' 
+      : 'bg-transparent text-foreground py-0',
       'is-user:dark',
       className
     )}
