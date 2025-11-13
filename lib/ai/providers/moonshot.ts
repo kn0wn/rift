@@ -33,7 +33,7 @@ export const MOONSHOT_MODELS: BaseModelConfig[] = [
     name: "Kimi K2",
     provider: "moonshotai",
     description:
-      "Modelo estándar de Moonshot AI con capacidades avanzadas y 131K de contexto",
+      "Modelo versátil de Moonshot AI optimizado para código y razonamiento",
     contextWindow: 131072,
     isPremium: false,
     capabilities: mergeCapabilities({
@@ -50,7 +50,7 @@ export const MOONSHOT_MODELS: BaseModelConfig[] = [
     name: "Kimi K2 Thinking",
     provider: "moonshotai",
     description:
-      "Modelo premium de Moonshot AI con razonamiento avanzado y 262K de contexto",
+      "Modelo de razonamiento avanzado para resolver problemas complejos paso a paso",
     contextWindow: 262144,
     isPremium: true,
     capabilities: mergeCapabilities({
