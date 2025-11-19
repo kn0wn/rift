@@ -16,9 +16,9 @@ export default function NavbarAuthButtons() {
         <Link href="/chat">
           <Button
             size="sm"
-            className="bg-accent hover:bg-accent/90 text-white px-4 py-2 rounded-lg font-medium text-sm"
+            className="bg-accent hover:bg-accent/90 text-white px-4 py-2 rounded-lg font-semibold text-sm"
           >
-            Ir a chat
+            Ir al chat
           </Button>
         </Link>
       </Authenticated>
@@ -27,7 +27,7 @@ export default function NavbarAuthButtons() {
         <div className="flex items-center space-x-4">
           <Link
             href="/sign-in"
-            className="text-gray-600 hover:text-accent font-medium text-sm transition-colors"
+            className="text-gray-600 hover:text-accent font-medium text-sm transition-colors dark:text-white"
           >
             Iniciar sesión
           </Link>

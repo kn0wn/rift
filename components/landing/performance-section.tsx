@@ -5,6 +5,7 @@ import {
 } from "@/components/ui/icons/landing-icons";
 
 import { GlobeIcon } from "@/components/ui/icons/svg-icons";
+import { MockChatDemo } from "./mock-chat-demo";
 
 export default function PerformanceSection() {
   return (
@@ -21,29 +22,15 @@ export default function PerformanceSection() {
             </h4>
           </div>
           <div className="flex flex-col">
-            <p className="text-[rgb(92,92,92)] mb-3">
-              Desde la creacion de LOOP, sabiamos que la velocidad era un factor
+            <p className="text-landing-text-secondary mb-5">
+              Desde la creacion de RIFT, sabiamos que la velocidad era un factor
               clave para la eficiencia de los equipos. Por eso, hemos
               desarrollado una plataforma que permite a los equipos trabajar más
               rápido y eficientemente.
             </p>
-            <p className="text-[rgb(92,92,92)] mb-6">
-              Las respuestas mediante nuestra plataforma son mas rapidas en
-              muchas ocaciones que las respuestas en la pagina oficial de
-              chatgpt, gemeini, y otras plataformas de IA. Todo esto gracias a
-              nuestra arquitectura optimizada y nuestra experiencia en el
-              desarrollo de soluciones de IA.
-            </p>
 
             <div className="flex flex-col items-center justify-center gap-7 w-full mb-8">
-              {/*<iframe
-                src="http://192.168.0.160:3000/chat/"
-                width="100%"
-                height="600px"
-              ></iframe>*/}
-              <span className="text-xs leading-4 text-[rgb(160,160,160)]">
-                Prueba a enviar un mensaje
-              </span>
+              <MockChatDemo />
             </div>
 
             <div className="flex flex-col gap-2 w-full mt-4">
@@ -52,7 +39,7 @@ export default function PerformanceSection() {
               </h4>
             </div>
 
-            <p className="text-[rgb(92,92,92)] m-0 mb-8">
+            <p className="text-landing-text-secondary m-0 mb-8">
               Acceso a todos los modelos de IA disponibles en el mercado, desde
               ChatGPT, Gemini, Grok, Anthropic, DeepSeek, Mistral, y muchos
               otros modelos especiales.
@@ -68,7 +55,7 @@ export default function PerformanceSection() {
                   <h4 className="tracking-[-0.5px] font-semibold text-xl leading-7 m-0">
                     Una Sola Suscripción
                   </h4>
-                  <p className="text-[rgb(92,92,92)] m-0">
+                  <p className="text-landing-text-secondary m-0">
                     Accede a todos los modelos de IA con una sola suscripción.
                     No necesitas múltiples cuentas ni pagos separados.
                   </p>
@@ -83,7 +70,7 @@ export default function PerformanceSection() {
                   <h4 className="tracking-[-0.5px] font-semibold text-xl leading-7 m-0">
                     Elige entre decenas de modelos
                   </h4>
-                  <p className="text-[rgb(92,92,92)] m-0">
+                  <p className="text-landing-text-secondary m-0">
                     Selecciona el modelo más adecuado para cada tarea desde
                     nuestra amplia gama de opciones disponibles.
                   </p>
@@ -98,7 +85,7 @@ export default function PerformanceSection() {
                   <h4 className="tracking-[-0.5px] font-semibold text-xl leading-7 m-0">
                     Sin limitaciones de empresa
                   </h4>
-                  <p className="text-[rgb(92,92,92)] m-0">
+                  <p className="text-landing-text-secondary m-0">
                     No te limitamos a usar únicamente una empresa de IA. Combina
                     lo mejor de cada proveedor en una sola plataforma.
                   </p>
@@ -113,7 +100,7 @@ export default function PerformanceSection() {
                   <h4 className="tracking-[-0.5px] font-semibold text-xl leading-7 m-0">
                     Mejores resultados, más rapidez y más seguridad
                   </h4>
-                  <p className="text-[rgb(92,92,92)] m-0">
+                  <p className="text-landing-text-secondary m-0">
                     Obtén respuestas más precisas, rápidas y seguras combinando
                     la potencia de múltiples modelos de IA.
                   </p>

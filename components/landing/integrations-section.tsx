@@ -2,44 +2,39 @@ import { Google, Microsoft, Okta, Scim } from "@/components/ui/icons/svg-icons";
 
 export default function IntegrationsSection() {
   return (
-    <section>
-      <div className=" gap-8 flex flex-col">
+    <section className="" id="integrations">
+      <div className="gap-8 flex flex-col">
         <div className="gap-2 w-full flex flex-col -mb-4">
-          <span className="transition-opacity duration-150 ease-out text-orange-500 font-semibold gap-1.5 items-center flex">
+          <span className="transition-opacity duration-150 ease-out text-orange-400 font-semibold gap-1.5 items-center flex">
             Integraciones
           </span>
           <h4 className="text-4xl leading-[54.4px] tracking-[-0.5px] font-bold m-0">
-            Conecta a LOOP con tu organizacion
+            Conecta RIFT con tu organización
           </h4>
         </div>
+        <div className="flex flex-col">
+          <p className="text-landing-text-secondary mb-5">
+            Implementación instantánea sin fricción. Sincroniza usuarios y grupos automáticamente con las herramientas que ya utilizas.
+          </p>
 
-        <p className="text-[rgb(92,92,92)]">
-          En cuestion de minutos puedes conectar a los usuarios de tu
-          organizacion en LOOP para que tengan acceso a la plataforma sin
-          necesidad de crear invitaciones manuales, estar lidiando con base de
-          datos y tener que dar de baja a los usuarios que ya no son parte de tu
-          organización.
-        </p>
-        <p className="text-[rgb(92,92,92)] mb-6">
-          Contamos con mas de 30 Integraciones y opcion para activar registros
-          de actividad avanzados para tu organizacion (Okta, Azure AD, Google
-          Workspace SCIM, SIEM, Directory Sync, JIT, SSO: SAML 2.0, OIDC, entre
-          otras)
-        </p>
-        <div className="w-full">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 items-center justify-items-center">
-            <div className="flex items-center justify-center p-2">
-              <Google className="h-8 w-auto" />
+          <div className="w-full max-w-5xl mx-auto">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center justify-items-center">
+              <div className="w-full h-24 flex items-center justify-center p-4 bg-white dark:bg-card border border-border rounded-2xl shadow-sm hover:shadow-md transition-all grayscale hover:grayscale-0">
+                <Google className="h-8 w-auto" />
+              </div>
+              <div className="w-full h-24 flex items-center justify-center p-4 bg-white dark:bg-card border border-border rounded-2xl shadow-sm hover:shadow-md transition-all grayscale hover:grayscale-0">
+                <Microsoft className="h-8 w-auto" />
+              </div>
+              <div className="w-full h-24 flex items-center justify-center p-4 bg-white dark:bg-card border border-border rounded-2xl shadow-sm hover:shadow-md transition-all grayscale hover:grayscale-0">
+                <Okta className="h-8 w-auto dark:invert" />
+              </div>
+              <div className="w-full h-24 flex items-center justify-center p-4 bg-white dark:bg-card border border-border rounded-2xl shadow-sm hover:shadow-md transition-all grayscale hover:grayscale-0">
+                <Scim className="h-8 w-auto text-gray-700 dark:text-gray-300" />
+              </div>
             </div>
-            <div className="flex items-center justify-center p-2">
-              <Microsoft className="h-8 w-auto" />
-            </div>
-            <div className="flex items-center justify-center p-2">
-              <Okta className="h-8 w-auto" />
-            </div>
-            <div className="flex items-center justify-center p-2">
-              <Scim className="h-8 w-auto text-gray-700" />
-            </div>
+            <p className="text-center text-sm text-muted-foreground mt-8">
+              Soporte para SCIM, JIT, Directory Sync, SSO (SAML/OIDC) y logs de auditoría avanzados.
+            </p>
           </div>
         </div>
       </div>

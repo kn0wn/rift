@@ -14,16 +14,16 @@ export default function KnowledgeCenterSection() {
           </h4>
         </div>
 
-        <p className="text-[rgb(92,92,92)]">
+        <p className="text-landing-text-secondary">
           La Inteligencia artificial suele tener una fama de ser una herramienta
           compleja y difícil de dominar. Sin embargo, nosotros creemos que todos
           los usuarios se pueden beneficiar de conocer como
           funciona y sus conceptos generales, De esta forma, los usuarios pueden
-          generar "Prompt", conocer las limitaciones y aprender como sacar mayor
+          generar "Prompts", conocer las limitaciones y aprender como sacar mayor
           provecho a la IA;
         </p>
         <p className="text-[rgb(92,92,92)] mb-6">
-          Por esto, incluimos materiales, videos y explicaciones del
+          Por esto, esamos generando materiales, videos y explicaciones del
           funcionamiento de la IA como parte de tu subscripcion
         </p>
         <div className="w-full">

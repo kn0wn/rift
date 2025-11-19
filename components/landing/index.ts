@@ -1,11 +1,10 @@
-export { default as PricingSection } from "./pricing-section";
 export { default as HeroSection } from "./hero-section";
 export { default as IntegrationsSection } from "./integrations-section";
 export { default as KnowledgeCenterSection } from "./knowledge-center-section";
 export { default as ModelsShowcase } from "./models-showcase";
 export { default as ArchitectureSection } from "./architecture-section";
 export { default as Navbar } from "./navbar";
-export { default as WhatIsLoopSection } from "./what-is-loop-section";
+export { default as WhatIsRIFTSection } from "./what-is-rift-section";
 export { default as PerformanceSection } from "./performance-section";
 export { default as Footer } from "./footer";
 export { default as CTASection } from "./cta-section";

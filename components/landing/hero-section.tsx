@@ -1,6 +1,5 @@
-import Link from "next/link";
 import Image from "next/image";
-import { Button } from "@/components/ai/ui/button";
+import HeroAuthButton from "./hero-auth-button";
 
 export default function HeroSection() {
   return (
@@ -10,23 +9,16 @@ export default function HeroSection() {
           <div>
             <h1 className="text-5xl md:text-6xl lg:text-7xl leading-tight tracking-tight font-bold">
               <span className="inline-flex items-center flex-wrap gap-2">
-                Un chat seguro para IA,
-                <span className="text-amber-600 px-2 py-1 bg-amber-100 rounded-md inline-block">
-                  Increiblemente Rapido
+                La mejor manera para usar
+                <span className="text-amber-600 px-2 py-1 bg-amber-100 dark:bg-amber-900/60 rounded-md inline-block">
+                  Inteligencia Artificial
                 </span>
               </span>
             </h1>
           </div>
 
           <div className="flex gap-3 mt-6">
-            <Button asChild variant="accent" size="lg">
-              <Link href="/sign-up">Suscribirse</Link>
-            </Button>
-            <Button asChild variant="outline" size="lg">
-              <Link href="#demo">
-                Probar demo
-              </Link>
-            </Button>
+            <HeroAuthButton />
           </div>
 
           <div className="flex flex-col gap-4 mt-16">

@@ -12,7 +12,7 @@ export default function CTASection() {
         </h2>
         
         <p className="text-lg sm:text-xl md:text-2xl leading-6 sm:leading-7 md:leading-8 text-white/90 max-w-3xl mx-auto mb-8 sm:mb-10 md:mb-12">
-          Prueba LOOP gratis. No se requiere tarjeta de crédito.
+          Prueba RIFT gratis. No se requiere tarjeta de crédito.
         </p>
 
         {/* Buttons */}
@@ -20,12 +20,6 @@ export default function CTASection() {
           <Link href="/sign-up" className="w-full sm:w-auto">
             <button className="flex items-center justify-center gap-2 h-11 sm:h-12 px-6 sm:px-8 py-3 sm:py-6 bg-white text-blue-600 font-medium text-base sm:text-lg leading-6 sm:leading-7 rounded-full whitespace-nowrap transition-all duration-150 ease-in-out hover:bg-gray-50 w-full">
               Suscribirse
-            </button>
-          </Link>
-
-          <Link href="#demo" className="w-full sm:w-auto">
-            <button className="flex items-center justify-center gap-2 h-11 sm:h-12 px-6 sm:px-8 py-3 sm:py-6 bg-white text-blue-600 font-medium text-base sm:text-lg leading-6 sm:leading-7 rounded-full whitespace-nowrap transition-all duration-150 ease-in-out hover:bg-gray-50 w-full">
-              Probar demo
             </button>
           </Link>
         </div>

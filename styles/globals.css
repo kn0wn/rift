@@ -52,6 +52,11 @@
   --color-popover-main-s: var(--popover-main-s);
   --color-popover-secondary: var(--popover-secondary);
   --color-popover-text: var(--popover-text);
+
+  /* Landing page custom colors */
+  --color-landing-accent: var(--landing-accent);
+  --color-landing-text-secondary: var(--landing-text-secondary);
+  --color-landing-text-muted: var(--landing-text-muted);
 }
 
 :root {
@@ -105,6 +110,11 @@
   --surface-overlay: rgba(255, 255, 255, 0.8); /* #ffffff80 */
   --surface-hover: oklch(0.97 0 0); /* #f7f7f7 */
   --foreground: oklch(0.145 0 0);
+
+  /* Landing page custom colors */
+  --landing-accent: rgb(1, 202, 69); /* Green accent color */
+  --landing-text-secondary: rgb(92, 92, 92); /* Secondary text gray */
+  --landing-text-muted: rgb(160, 160, 160); /* Muted text gray */
 }
 
 .dark {
@@ -155,6 +165,11 @@
   --surface-overlay: rgba(0, 0, 0, 0.8);
   --surface-hover: oklch(0.15 0 0);
   --foreground: oklch(0.9 0 0);
+
+  /* Landing page custom colors - dark mode */
+  --landing-accent: rgb(1, 202, 69); /* Green accent color (same in dark mode) */
+  --landing-text-secondary: oklch(0.65 0 0); /* Adjusted for dark mode */
+  --landing-text-muted: oklch(0.5 0 0); /* Adjusted for dark mode */
 }
 
 @layer base {
