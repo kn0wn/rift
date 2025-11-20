@@ -325,20 +325,19 @@ export function MembersList({ members, organizationId, currentUserId }: MembersL
             if (!open) resetInviteState()
           }}>
             <DialogTrigger asChild>
-              <Button className="gap-2 rounded-md border border-border/60 bg-white/90 shadow-sm shadow-black/5 dark:bg-popover-secondary/75 dark:shadow-black/30 hover:bg-black/[0.04] dark:hover:bg-hover/30">
-                <PlusIcon className="size-4" />
-                <span className="hidden sm:inline">Invitar Miembro</span>
+              <Button className="cursor-pointer gap-2 rounded-md border border-border/60 bg-white/90 shadow-sm shadow-black/5 dark:bg-popover-secondary/75 dark:shadow-black/30 hover:bg-black/[0.04] dark:hover:bg-hover/30">
+                <span className="hidden sm:inline">Invitar Miembros</span>
                 <span className="sm:hidden">Invitar</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl rounded-2xl border border-border/50 bg-popover-main shadow-2xl">
+            <DialogContent className="max-w-3xl rounded-2xl border border-border/50 bg-white/95 dark:bg-popover-main shadow-2xl dark:shadow-2xl">
               {isSuccess ? (
                  <div className="flex flex-col items-center justify-center py-10 px-4 space-y-6 text-center animate-in fade-in zoom-in-95 duration-300">
                     <div className="rounded-full bg-green-100 p-3 dark:bg-green-900/30">
                       <CheckCircledIcon className="size-12 text-green-600 dark:text-green-400" />
                     </div>
                     <div className="space-y-2">
-                      <DialogTitle className="text-2xl font-bold text-popover-text">
+                      <DialogTitle className="text-2xl font-bold text-foreground dark:text-popover-text">
                         ¡Invitaciones enviadas!
                       </DialogTitle>
                       <DialogDescription className="text-base text-muted-foreground max-w-md">
@@ -346,10 +345,10 @@ export function MembersList({ members, organizationId, currentUserId }: MembersL
                       </DialogDescription>
                     </div>
                     <div className="flex items-center gap-4 pt-4">
-                      <Button onClick={resetInviteState} className="rounded-lg font-medium">
+                      <Button onClick={resetInviteState} className="cursor-pointer rounded-lg font-medium">
                         Invitar a más
                       </Button>
-                      <Button onClick={closeInviteDialog} className="rounded-lg font-medium min-w-[100px]">
+                      <Button onClick={closeInviteDialog} className="cursor-pointer rounded-lg font-medium min-w-[100px]">
                         Cerrar
                       </Button>
                     </div>
@@ -357,7 +356,7 @@ export function MembersList({ members, organizationId, currentUserId }: MembersL
               ) : (
               <div className="space-y-6 p-2">
                 <DialogHeader className="space-y-2">
-                  <DialogTitle className="text-2xl font-bold text-popover-text">
+                  <DialogTitle className="text-2xl font-bold text-foreground dark:text-popover-text">
                     Invitar a nuevos miembros
                   </DialogTitle>
                   <DialogDescription className="text-base text-muted-foreground leading-relaxed">
@@ -367,10 +366,10 @@ export function MembersList({ members, organizationId, currentUserId }: MembersL
                 
                 <form onSubmit={handleInvite} className="space-y-4">
                   <div className="grid grid-cols-[1fr_200px] gap-4 mb-2">
-                     <label className="text-sm font-medium text-popover-text">
+                     <label className="text-sm font-medium text-foreground dark:text-popover-text">
                         Correo electrónico
                       </label>
-                      <label className="text-sm font-medium text-popover-text">
+                      <label className="text-sm font-medium text-foreground dark:text-popover-text">
                         Rol
                       </label>
                   </div>
@@ -384,20 +383,20 @@ export function MembersList({ members, organizationId, currentUserId }: MembersL
                           value={invitation.email}
                           onChange={(e) => handleInvitationChange(index, "email", e.target.value)}
                           required={index === 0} // Only first one required initially
-                          className="bg-popover-main/50 border-border/60 focus:border-primary/50"
+                          className="bg-white/50 dark:bg-popover-main/50 border-border/60 focus:border-primary/50"
                         />
                         <Select 
                           value={invitation.role} 
                           onValueChange={(value) => handleInvitationChange(index, "role", value)}
                         >
-                          <SelectTrigger className="bg-popover-main/50 border-border/60 focus:border-primary/50 w-full">
+                          <SelectTrigger className="cursor-pointer border border-border/60 bg-white/50 dark:bg-popover-main/50 focus:border-primary/50 w-full">
                             <SelectValue placeholder="Selecciona un rol" />
                           </SelectTrigger>
                           <SelectContent 
                             className="min-w-[190px] rounded-2xl border border-border/60 bg-white/95 p-1.5 shadow-xl shadow-black/10 backdrop-blur-sm dark:bg-popover-secondary/85"
                           >
-                            <SelectItem value="member" className="rounded-xl px-3 py-2.5 mb-1 text-sm font-medium text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-hover/40">Miembro</SelectItem>
-                            <SelectItem value="admin" className="rounded-xl px-3 py-2.5 mb-1 text-sm font-medium text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-hover/40">Administrador</SelectItem>
+                            <SelectItem value="member" className="cursor-pointer rounded-xl px-3 py-2 mb-1 text-sm font-medium text-foreground/80 hover:bg-black/5] dark:hover:bg-hover/40">Miembro</SelectItem>
+                            <SelectItem value="admin" className="cursor-pointer rounded-xl px-3 py-2 text-sm font-medium text-foreground/80 hover:bg-black/5 dark:hover:bg-hover/40">Administrador</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -409,8 +408,7 @@ export function MembersList({ members, organizationId, currentUserId }: MembersL
                       type="button"
                       onClick={handleAddInvitation}
                       disabled={invitations.length >= 10}
-                      className="rounded-lg font-medium gap-2 min-w-[150px]"
-                      variant="outline"
+                      className="cursor-pointer rounded-lg font-medium gap-2 min-w-[150px]"
                     >
                       <PlusIcon className="size-4" />
                       Añadir más
@@ -428,7 +426,7 @@ export function MembersList({ members, organizationId, currentUserId }: MembersL
                       <Button 
                         type="submit" 
                         disabled={isInviting}
-                        className="rounded-lg font-medium gap-2 min-w-[150px]"
+                        className="cursor-pointer rounded-lg font-medium gap-2 min-w-[150px]"
                       >
                         {isInviting ? (
                           <>
@@ -452,10 +450,10 @@ export function MembersList({ members, organizationId, currentUserId }: MembersL
 
       {/* Update Role Dialog */}
       <Dialog open={isUpdateRoleOpen} onOpenChange={setIsUpdateRoleOpen}>
-        <DialogContent className="max-w-md rounded-2xl border border-border/50 bg-popover-main shadow-2xl">
+        <DialogContent className="max-w-md rounded-2xl border border-border/50 bg-white/95 dark:bg-popover-main shadow-2xl">
           <div className="space-y-6 p-2">
             <DialogHeader className="space-y-2">
-              <DialogTitle className="text-2xl font-bold text-popover-text">
+              <DialogTitle className="text-2xl font-bold text-foreground dark:text-popover-text">
                 Actualizar rol
               </DialogTitle>
               <DialogDescription className="text-base text-muted-foreground leading-relaxed">
@@ -465,18 +463,18 @@ export function MembersList({ members, organizationId, currentUserId }: MembersL
             
             <form onSubmit={handleUpdateRole} className="space-y-6">
               <div className="space-y-3">
-                 <label className="text-sm font-medium text-popover-text">
+                 <label className="text-sm font-medium text-foreground dark:text-popover-text">
                     Rol
                   </label>
                   <Select value={newRole} onValueChange={setNewRole}>
-                    <SelectTrigger className="bg-popover-main/50 border-border/60 focus:border-primary/50 w-full mt-2">
+                    <SelectTrigger className="cursor-pointer border border-border/60 bg-white/50 dark:bg-popover-main/50 focus:border-primary/50 w-full mt-2">
                       <SelectValue placeholder="Selecciona un rol" />
                     </SelectTrigger>
                     <SelectContent 
                       className="min-w-[190px] rounded-2xl border border-border/60 bg-white/95 p-1.5 shadow-xl shadow-black/10 backdrop-blur-sm dark:bg-popover-secondary/85"
                     >
-                      <SelectItem value="member" className="rounded-xl px-3 py-2.5 mb-1 text-sm font-medium text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-hover/40">Miembro</SelectItem>
-                      <SelectItem value="admin" className="rounded-xl px-3 py-2.5 mb-1 text-sm font-medium text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-hover/40">Administrador</SelectItem>
+                      <SelectItem value="member" className="cursor-pointer rounded-xl px-3 py-2 mb-1 text-sm font-medium text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-hover/40">Miembro</SelectItem>
+                      <SelectItem value="admin" className="cursor-pointer rounded-xl px-3 py-2 text-sm font-medium text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-hover/40">Administrador</SelectItem>
                     </SelectContent>
                   </Select>
               </div>
@@ -489,13 +487,13 @@ export function MembersList({ members, organizationId, currentUserId }: MembersL
               )}
               
               <div className="flex justify-end pt-2 gap-2">
-                <Button type="button" onClick={() => setIsUpdateRoleOpen(false)} className="rounded-lg">
+                <Button type="button" onClick={() => setIsUpdateRoleOpen(false)} className="cursor-pointer rounded-lg">
                   Cancelar
                 </Button>
                 <Button 
                   type="submit" 
                   disabled={isUpdating}
-                  className="rounded-lg font-medium gap-2 min-w-[120px]"
+                  className="cursor-pointer rounded-lg font-medium gap-2 min-w-[120px]"
                 >
                   {isUpdating ? (
                     <>
@@ -515,10 +513,10 @@ export function MembersList({ members, organizationId, currentUserId }: MembersL
 
       {/* Remove Member Dialog */}
       <Dialog open={isRemoveOpen} onOpenChange={setIsRemoveOpen}>
-        <DialogContent className="max-w-md rounded-2xl border border-border/50 bg-popover-main shadow-2xl">
+        <DialogContent className="max-w-md rounded-2xl border border-border/50 bg-white/95 dark:bg-popover-main shadow-2xl">
           <div className="space-y-6 p-2">
             <DialogHeader className="space-y-2">
-              <DialogTitle className="text-2xl font-bold text-destructive">
+              <DialogTitle className="text-2xl font-bold text-destructive dark:text-destructive">
                 Eliminar miembro
               </DialogTitle>
               <DialogDescription className="text-base text-muted-foreground leading-relaxed">
@@ -534,14 +532,14 @@ export function MembersList({ members, organizationId, currentUserId }: MembersL
             )}
 
             <div className="flex justify-end pt-4 gap-2">
-              <Button type="button" onClick={() => setIsRemoveOpen(false)} className="rounded-lg">
+              <Button type="button" onClick={() => setIsRemoveOpen(false)} className="cursor-pointer rounded-lg">
                 Cancelar
               </Button>
               <Button 
                 variant="destructive"
                 onClick={handleRemoveMember}
                 disabled={isRemoving}
-                className="rounded-lg font-medium gap-2 min-w-[120px]"
+                className="cursor-pointer rounded-lg font-medium gap-2 min-w-[120px]"
               >
                 {isRemoving ? (
                   <>
@@ -642,7 +640,6 @@ export function MembersList({ members, organizationId, currentUserId }: MembersL
                         {name}
                         {isCurrentUser && <span className="ml-2 text-xs text-muted-foreground">(Tú)</span>}
                       </span>
-                      <span className="text-xs text-muted-foreground">#{member.userId.slice(-6)}</span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -669,7 +666,7 @@ export function MembersList({ members, organizationId, currentUserId }: MembersL
                           variant="ghost"
                           size="icon"
                           disabled={isCurrentUser}
-                          className="text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-hover/40 disabled:opacity-50"
+                          className="cursor-pointer text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-hover/40 disabled:opacity-50"
                         >
                           <span className="sr-only">Abrir acciones del miembro</span>
                           <DotsHorizontalIcon className="size-4" />
@@ -680,14 +677,14 @@ export function MembersList({ members, organizationId, currentUserId }: MembersL
                         className="min-w-[190px] rounded-2xl border border-border/60 bg-white/95 p-1.5 shadow-xl shadow-black/10 backdrop-blur-sm dark:bg-popover-secondary/85"
                       >
                         <DropdownMenuItem 
-                          className="rounded-xl px-3 py-2 text-sm font-medium text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-hover/40"
+                          className="cursor-pointer rounded-xl px-3 py-2 text-sm font-medium text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-hover/40"
                           onClick={() => openUpdateRoleDialog(member)}
                         >
                           Actualizar rol
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           variant="destructive"
-                          className="rounded-xl px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 focus:text-destructive"
+                          className="cursor-pointer rounded-xl px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 focus:text-destructive"
                           onClick={() => openRemoveDialog(member)}
                         >
                           Eliminar miembro
