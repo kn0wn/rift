@@ -7,10 +7,14 @@ export const autumn = new Autumn(components.autumn, {
 		const user = await ctx.auth.getUserIdentity();
 		if (!user) return null
 
+		const name = user.name || 
+			(user.givenName && user.familyName ? `${user.givenName} ${user.familyName}` : null) || 
+			user.givenName;
+
 		return {
 			customerId: user.subject as string,
 			customerData: {
-				name: user.name as string,
+				name: name as string,
 				email: user.email as string,
 			},
 		};

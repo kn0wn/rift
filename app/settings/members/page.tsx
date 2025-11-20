@@ -1,4 +1,4 @@
-import { MembersWidget } from "@/components/settings/widgets/MembersWidget";
+import { MembersList } from "@/components/settings/MembersList";
 import { Box, Card, Flex, Heading, Text } from "@radix-ui/themes";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { workos } from "@/app/api/workos";
@@ -6,6 +6,7 @@ import { hasPermission } from "@/lib/permissions";
 import "./table.css";
 import { getAuditLogPortalLink } from "@/actions/getAuditLogPortalLink";
 import { SettingsSection } from "@/components/settings";
+import { getOrganizationMembers } from "@/actions/getOrganizationMembers";
 
 export default async function MembersPage() {
   const { user, organizationId } = await withAuth({
@@ -43,15 +44,7 @@ export default async function MembersPage() {
     );
   }
 
-  // Show section header immediately, load WorkOS widget asynchronously
-  const authTokenPromise = workos.widgets.getToken({
-    organizationId,
-    userId: user.id,
-    scopes: ["widgets:users-table:manage"],
-  }).catch((error) => {
-    console.error("Error al obtener el token:", error);
-    return null;
-  });
+  const members = await getOrganizationMembers(organizationId);
 
   const canViewAuditLogs = await hasPermission("AUDIT_LOGS");
   let auditLogsLink: string | null = null;
@@ -65,7 +58,15 @@ export default async function MembersPage() {
 
   return (
     <div className="pt-12 pb-12 pl-12 pr-12 flex flex-col max-w-4xl min-w-[520px] w-full min-h-full box-border">
-      <MembersWidget authTokenPromise={authTokenPromise} />
+      <Box className="mb-6">
+        <Heading size="6" mb="2">Gestión de Miembros</Heading>
+        <Text color="gray" size="2">Gestiona los miembros de tu organización.</Text>
+      </Box>
+      
+      <div className="w-full">
+        <MembersList members={members} organizationId={organizationId} currentUserId={user.id} />
+      </div>
+
       {canViewAuditLogs && (
         <SettingsSection
           title="Audit Logs"

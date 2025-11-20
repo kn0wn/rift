@@ -1,0 +1,714 @@
+"use client"
+
+import { useMemo, useState } from "react"
+import { CaretDownIcon, CaretSortIcon, CaretUpIcon, DotsHorizontalIcon, MagnifyingGlassIcon, PlusIcon, CheckCircledIcon, ExclamationTriangleIcon, ReloadIcon } from "@radix-ui/react-icons"
+import { OrganizationMembership, User } from "@workos-inc/node"
+import { inviteUser } from "@/actions/inviteUser"
+import { updateRole } from "@/actions/updateRole"
+import { removeMember } from "@/actions/removeMember"
+import { useRouter } from "next/navigation"
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ai/ui/avatar"
+import { Badge } from "@/components/ai/ui/badge"
+import { Button } from "@/components/ai/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ai/ui/select"
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ai/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ai/ui/dropdown-menu"
+import { Input } from "@/components/ai/ui/input"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ai/ui/table"
+import { cn } from "@/lib/utils"
+
+export interface OrganizationMembershipWithUser extends OrganizationMembership {
+  user: User | null
+}
+
+interface MembersListProps {
+  members: OrganizationMembershipWithUser[]
+  organizationId: string
+  currentUserId: string
+}
+
+type SortField = "name" | "email" | "role" | "lastSignInAt"
+type SortDirection = "asc" | "desc"
+
+interface Invitation {
+  email: string
+  role: string
+}
+
+export function MembersList({ members, organizationId, currentUserId }: MembersListProps) {
+  const router = useRouter()
+  const [searchQuery, setSearchQuery] = useState("")
+  const [sortField, setSortField] = useState<SortField>("name")
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
+  const [isInviteOpen, setIsInviteOpen] = useState(false)
+  
+  // State for invite dialog
+  const [invitations, setInvitations] = useState<Invitation[]>([
+    { email: "", role: "member" }
+  ])
+  const [isInviting, setIsInviting] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
+  const [inviteError, setInviteError] = useState<string | null>(null)
+
+  // State for update role dialog
+  const [isUpdateRoleOpen, setIsUpdateRoleOpen] = useState(false)
+  const [memberToUpdate, setMemberToUpdate] = useState<OrganizationMembershipWithUser | null>(null)
+  const [newRole, setNewRole] = useState("member")
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [updateError, setUpdateError] = useState<string | null>(null)
+
+  // State for remove member dialog
+  const [isRemoveOpen, setIsRemoveOpen] = useState(false)
+  const [memberToRemove, setMemberToRemove] = useState<OrganizationMembershipWithUser | null>(null)
+  const [isRemoving, setIsRemoving] = useState(false)
+  const [removeError, setRemoveError] = useState<string | null>(null)
+
+  const handleAddInvitation = () => {
+    if (invitations.length < 10) {
+      setInvitations([...invitations, { email: "", role: "member" }])
+    }
+  }
+
+  const handleInvitationChange = (index: number, field: keyof Invitation, value: string) => {
+    const newInvitations = [...invitations]
+    newInvitations[index] = { ...newInvitations[index], [field]: value }
+    setInvitations(newInvitations)
+  }
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsInviting(true)
+    setInviteError(null)
+    
+    try {
+      const results = await Promise.all(
+        invitations
+          .filter(inv => inv.email.trim() !== "")
+          .map(inv => inviteUser(organizationId, inv.email, inv.role))
+      )
+
+      const failures = results.filter(r => !r.success)
+      
+      if (failures.length === 0) {
+        setIsSuccess(true)
+        router.refresh()
+      } else {
+        const firstError = failures[0].error
+        if (firstError && firstError.includes("Email already invited")) {
+           setInviteError("El correo electrónico ya ha sido invitado.")
+        } else {
+           setInviteError(`Error al enviar la invitación: ${firstError || "Error desconocido"}`)
+        }
+      }
+    } catch (error) {
+      console.error(error)
+      setInviteError("Ocurrió un error inesperado al procesar las invitaciones.")
+    } finally {
+      setIsInviting(false)
+    }
+  }
+  
+  const resetInviteState = () => {
+    setIsSuccess(false)
+    setInviteError(null)
+    setInvitations([{ email: "", role: "member" }])
+  }
+
+  const closeInviteDialog = () => {
+    setIsInviteOpen(false)
+    resetInviteState()
+  }
+
+  const openUpdateRoleDialog = (member: OrganizationMembershipWithUser) => {
+    setMemberToUpdate(member)
+    const roleSlug = typeof member.role === "object" ? member.role?.slug : member.role
+    setNewRole(roleSlug || "member")
+    setUpdateError(null)
+    setIsUpdateRoleOpen(true)
+  }
+
+  const handleUpdateRole = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!memberToUpdate) return
+
+    setIsUpdating(true)
+    setUpdateError(null)
+    try {
+      const result = await updateRole(memberToUpdate.id, newRole)
+      if (result.success) {
+        setIsUpdateRoleOpen(false)
+        router.refresh()
+      } else {
+        setUpdateError("Error al actualizar el rol: " + result.error)
+      }
+    } catch (error) {
+      console.error(error)
+      setUpdateError("Ocurrió un error inesperado")
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const openRemoveDialog = (member: OrganizationMembershipWithUser) => {
+    setMemberToRemove(member)
+    setRemoveError(null)
+    setIsRemoveOpen(true)
+  }
+
+  const handleRemoveMember = async () => {
+    if (!memberToRemove) return
+
+    setIsRemoving(true)
+    setRemoveError(null)
+    try {
+      const result = await removeMember(memberToRemove.id)
+      if (result.success) {
+        setIsRemoveOpen(false)
+        router.refresh()
+      } else {
+        setRemoveError("Error al eliminar el miembro: " + result.error)
+      }
+    } catch (error) {
+      console.error(error)
+      setRemoveError("Ocurrió un error inesperado")
+    } finally {
+      setIsRemoving(false)
+    }
+  }
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
+      setSortField(field)
+      setSortDirection("asc")
+    }
+  }
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) return <CaretSortIcon className="size-4 text-muted-foreground" />
+    return sortDirection === "asc" ? (
+      <CaretUpIcon className="size-4 text-primary" />
+    ) : (
+      <CaretDownIcon className="size-4 text-primary" />
+    )
+  }
+
+  const processedMembers = useMemo(() => {
+    const query = searchQuery.toLowerCase()
+
+    const filtered = members.filter((member) => {
+      const user = member.user
+      const name =
+        user?.firstName && user?.lastName
+          ? `${user.firstName} ${user.lastName}`
+          : user?.firstName || user?.lastName || "Nombre Desconocido"
+      const email = user?.email || ""
+
+      return name.toLowerCase().includes(query) || email.toLowerCase().includes(query)
+    })
+
+    return filtered.sort((a, b) => {
+      const userA = a.user
+      const userB = b.user
+
+      const nameA =
+        userA?.firstName && userA?.lastName
+          ? `${userA.firstName} ${userA.lastName}`
+          : userA?.firstName || userA?.lastName || "Nombre Desconocido"
+      const nameB =
+        userB?.firstName && userB?.lastName
+          ? `${userB.firstName} ${userB.lastName}`
+          : userB?.firstName || userB?.lastName || "Nombre Desconocido"
+
+      const emailA = userA?.email || ""
+      const emailB = userB?.email || ""
+
+      const roleA = typeof a.role === "object" ? a.role?.slug : a.role
+      const roleB = typeof b.role === "object" ? b.role?.slug : b.role
+
+      const dateA = userA?.lastSignInAt ? new Date(userA.lastSignInAt).getTime() : 0
+      const dateB = userB?.lastSignInAt ? new Date(userB.lastSignInAt).getTime() : 0
+
+      let comparison = 0
+      switch (sortField) {
+        case "name":
+          comparison = nameA.localeCompare(nameB)
+          break
+        case "email":
+          comparison = emailA.localeCompare(emailB)
+          break
+        case "role":
+          comparison = (roleA || "").localeCompare(roleB || "")
+          break
+        case "lastSignInAt":
+          comparison = dateA - dateB
+          break
+      }
+
+      return sortDirection === "asc" ? comparison : -comparison
+    })
+  }, [members, searchQuery, sortField, sortDirection])
+
+  const renderDate = (date?: string | null) => {
+    if (!date) return "Nunca"
+    try {
+      return new Date(date).toLocaleDateString("es-ES", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    } catch {
+      return "Nunca"
+    }
+  }
+
+  const rolePillStyles: Record<string, string> = {
+    owner:
+      "bg-[#F3E8FF] text-[#4C1D95] border border-[#E4C7FF]/70 dark:bg-[#2B0F49] dark:text-[#E8D7FF] dark:border-[#5B21B6]/70",
+    admin:
+      "bg-[#E0ECFF] text-[#1D4ED8] border border-[#C3DAFF]/70 dark:bg-[#102347] dark:text-[#C3DAFF] dark:border-[#3B82F6]/50",
+    manager:
+      "bg-[#DEF7EC] text-[#047857] border border-[#ACEAD3]/70 dark:bg-[#0E3A2F] dark:text-[#BBF7D0] dark:border-[#10B981]/60",
+    member:
+      "bg-[#F5F5F7] text-[#3F3F46] border border-[#E4E4E7]/70 dark:bg-[#27272A] dark:text-[#E4E4E7] dark:border-[#52525B]/70",
+    guest:
+      "bg-[#FFF1DA] text-[#A8550B] border border-[#FFD4A8]/70 dark:bg-[#3B2411] dark:text-[#FFD9B0] dark:border-[#F97316]/60",
+    default:
+      "bg-muted/60 text-muted-foreground border border-border/70 dark:bg-[#1F1F22] dark:text-[#D4D4D8] dark:border-[#3F3F46]/60",
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-transparent border-none">
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">
+            {processedMembers.length} {processedMembers.length === 1 ? "miembro" : "miembros"}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="relative w-full max-w-xs">
+            <div className="pointer-events-none absolute inset-0 rounded-md border border-border/60 bg-white/90 shadow-sm shadow-black/5 dark:bg-popover-secondary/75 dark:shadow-black/30" />
+            <MagnifyingGlassIcon className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 z-[1] size-4 -translate-y-1/2" />
+            <Input
+              placeholder="Buscar miembros..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="relative z-[1] border-none bg-transparent pl-9 focus:outline-none focus:ring-0"
+            />
+          </div>
+          <Dialog open={isInviteOpen} onOpenChange={(open) => {
+            setIsInviteOpen(open)
+            if (!open) resetInviteState()
+          }}>
+            <DialogTrigger asChild>
+              <Button className="gap-2 rounded-md border border-border/60 bg-white/90 shadow-sm shadow-black/5 dark:bg-popover-secondary/75 dark:shadow-black/30 hover:bg-black/[0.04] dark:hover:bg-hover/30">
+                <PlusIcon className="size-4" />
+                <span className="hidden sm:inline">Invitar Miembro</span>
+                <span className="sm:hidden">Invitar</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl rounded-2xl border border-border/50 bg-popover-main shadow-2xl">
+              {isSuccess ? (
+                 <div className="flex flex-col items-center justify-center py-10 px-4 space-y-6 text-center animate-in fade-in zoom-in-95 duration-300">
+                    <div className="rounded-full bg-green-100 p-3 dark:bg-green-900/30">
+                      <CheckCircledIcon className="size-12 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div className="space-y-2">
+                      <DialogTitle className="text-2xl font-bold text-popover-text">
+                        ¡Invitaciones enviadas!
+                      </DialogTitle>
+                      <DialogDescription className="text-base text-muted-foreground max-w-md">
+                        Hemos enviado las invitaciones correctamente a los correos electrónicos proporcionados.
+                      </DialogDescription>
+                    </div>
+                    <div className="flex items-center gap-4 pt-4">
+                      <Button onClick={resetInviteState} className="rounded-lg font-medium">
+                        Invitar a más
+                      </Button>
+                      <Button onClick={closeInviteDialog} className="rounded-lg font-medium min-w-[100px]">
+                        Cerrar
+                      </Button>
+                    </div>
+                 </div>
+              ) : (
+              <div className="space-y-6 p-2">
+                <DialogHeader className="space-y-2">
+                  <DialogTitle className="text-2xl font-bold text-popover-text">
+                    Invitar a nuevos miembros
+                  </DialogTitle>
+                  <DialogDescription className="text-base text-muted-foreground leading-relaxed">
+                    Escribe el correo y selecciona el rol para cada nuevo miembro.
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <form onSubmit={handleInvite} className="space-y-4">
+                  <div className="grid grid-cols-[1fr_200px] gap-4 mb-2">
+                     <label className="text-sm font-medium text-popover-text">
+                        Correo electrónico
+                      </label>
+                      <label className="text-sm font-medium text-popover-text">
+                        Rol
+                      </label>
+                  </div>
+                  
+                  <div className="space-y-3 max-h-[60vh] overflow-y-auto p-1">
+                    {invitations.map((invitation, index) => (
+                      <div key={index} className="grid grid-cols-[1fr_200px] gap-4 items-start">
+                        <Input
+                          placeholder="usuario@ejemplo.com"
+                          type="email"
+                          value={invitation.email}
+                          onChange={(e) => handleInvitationChange(index, "email", e.target.value)}
+                          required={index === 0} // Only first one required initially
+                          className="bg-popover-main/50 border-border/60 focus:border-primary/50"
+                        />
+                        <Select 
+                          value={invitation.role} 
+                          onValueChange={(value) => handleInvitationChange(index, "role", value)}
+                        >
+                          <SelectTrigger className="bg-popover-main/50 border-border/60 focus:border-primary/50 w-full">
+                            <SelectValue placeholder="Selecciona un rol" />
+                          </SelectTrigger>
+                          <SelectContent 
+                            className="min-w-[190px] rounded-2xl border border-border/60 bg-white/95 p-1.5 shadow-xl shadow-black/10 backdrop-blur-sm dark:bg-popover-secondary/85"
+                          >
+                            <SelectItem value="member" className="rounded-xl px-3 py-2.5 mb-1 text-sm font-medium text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-hover/40">Miembro</SelectItem>
+                            <SelectItem value="admin" className="rounded-xl px-3 py-2.5 mb-1 text-sm font-medium text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-hover/40">Administrador</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-2">
+                    <Button
+                      type="button"
+                      onClick={handleAddInvitation}
+                      disabled={invitations.length >= 10}
+                      className="rounded-lg font-medium gap-2 min-w-[150px]"
+                      variant="outline"
+                    >
+                      <PlusIcon className="size-4" />
+                      Añadir más
+                    </Button>
+                  </div>
+                  
+                  <div className="pt-4 border-t border-border/30 space-y-3">
+                    {inviteError && (
+                      <div className="flex items-center gap-2 text-sm text-destructive">
+                        <ExclamationTriangleIcon className="size-4 shrink-0" />
+                        <span>{inviteError}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-end">
+                      <Button 
+                        type="submit" 
+                        disabled={isInviting}
+                        className="rounded-lg font-medium gap-2 min-w-[150px]"
+                      >
+                        {isInviting ? (
+                          <>
+                            Enviando
+                          </>
+                        ) : (
+                          <>
+                            Enviar Invitaciones
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+              )}
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {/* Update Role Dialog */}
+      <Dialog open={isUpdateRoleOpen} onOpenChange={setIsUpdateRoleOpen}>
+        <DialogContent className="max-w-md rounded-2xl border border-border/50 bg-popover-main shadow-2xl">
+          <div className="space-y-6 p-2">
+            <DialogHeader className="space-y-2">
+              <DialogTitle className="text-2xl font-bold text-popover-text">
+                Actualizar rol
+              </DialogTitle>
+              <DialogDescription className="text-base text-muted-foreground leading-relaxed">
+                Selecciona el nuevo rol para {memberToUpdate?.user ? `${memberToUpdate.user.firstName} ${memberToUpdate.user.lastName}` : "este miembro"}.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <form onSubmit={handleUpdateRole} className="space-y-6">
+              <div className="space-y-3">
+                 <label className="text-sm font-medium text-popover-text">
+                    Rol
+                  </label>
+                  <Select value={newRole} onValueChange={setNewRole}>
+                    <SelectTrigger className="bg-popover-main/50 border-border/60 focus:border-primary/50 w-full mt-2">
+                      <SelectValue placeholder="Selecciona un rol" />
+                    </SelectTrigger>
+                    <SelectContent 
+                      className="min-w-[190px] rounded-2xl border border-border/60 bg-white/95 p-1.5 shadow-xl shadow-black/10 backdrop-blur-sm dark:bg-popover-secondary/85"
+                    >
+                      <SelectItem value="member" className="rounded-xl px-3 py-2.5 mb-1 text-sm font-medium text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-hover/40">Miembro</SelectItem>
+                      <SelectItem value="admin" className="rounded-xl px-3 py-2.5 mb-1 text-sm font-medium text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-hover/40">Administrador</SelectItem>
+                    </SelectContent>
+                  </Select>
+              </div>
+              
+              {updateError && (
+                <div className="flex items-center gap-2 text-sm text-destructive">
+                  <ExclamationTriangleIcon className="size-4 shrink-0" />
+                  <span>{updateError}</span>
+                </div>
+              )}
+              
+              <div className="flex justify-end pt-2 gap-2">
+                <Button type="button" onClick={() => setIsUpdateRoleOpen(false)} className="rounded-lg">
+                  Cancelar
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isUpdating}
+                  className="rounded-lg font-medium gap-2 min-w-[120px]"
+                >
+                  {isUpdating ? (
+                    <>
+                      Actualizando
+                    </>
+                  ) : (
+                    <>
+                      Actualizar
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Member Dialog */}
+      <Dialog open={isRemoveOpen} onOpenChange={setIsRemoveOpen}>
+        <DialogContent className="max-w-md rounded-2xl border border-border/50 bg-popover-main shadow-2xl">
+          <div className="space-y-6 p-2">
+            <DialogHeader className="space-y-2">
+              <DialogTitle className="text-2xl font-bold text-destructive">
+                Eliminar miembro
+              </DialogTitle>
+              <DialogDescription className="text-base text-muted-foreground leading-relaxed">
+                ¿Estás seguro que deseas eliminar a {memberToRemove?.user ? `${memberToRemove.user.firstName} ${memberToRemove.user.lastName}` : "este miembro"} de la organización? Esta acción no se puede deshacer.
+              </DialogDescription>
+            </DialogHeader>
+            
+            {removeError && (
+              <div className="flex items-center gap-2 text-sm text-destructive">
+                <ExclamationTriangleIcon className="size-4 shrink-0" />
+                <span>{removeError}</span>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-4 gap-2">
+              <Button type="button" onClick={() => setIsRemoveOpen(false)} className="rounded-lg">
+                Cancelar
+              </Button>
+              <Button 
+                variant="destructive"
+                onClick={handleRemoveMember}
+                disabled={isRemoving}
+                className="rounded-lg font-medium gap-2 min-w-[120px]"
+              >
+                {isRemoving ? (
+                  <>
+                    Eliminando
+                  </>
+                ) : (
+                  <>
+                    Eliminar
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <div className="rounded-2xl border border-border/60 bg-white/95 shadow-lg shadow-black/5 backdrop-blur-sm dark:bg-popover-secondary/80 dark:shadow-black/30 overflow-hidden">
+        <Table className="min-w-full">
+          <TableHeader>
+            <TableRow className="text-muted-foreground border-b border-border/50 bg-gradient-to-r from-white/90 via-white/70 to-white/40 dark:from-transparent dark:via-transparent dark:to-transparent">
+              <TableHead className="w-0 pr-0">
+                <span className="sr-only">Avatar</span>
+              </TableHead>
+              <TableHead
+                className="group cursor-pointer select-none"
+                onClick={() => handleSort("name")}
+              >
+                <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide">
+                  Usuario
+                  {getSortIcon("name")}
+                </span>
+              </TableHead>
+              <TableHead
+                className="group cursor-pointer select-none"
+                onClick={() => handleSort("email")}
+              >
+                <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide">
+                  Correo
+                  {getSortIcon("email")}
+                </span>
+              </TableHead>
+              <TableHead
+                className="group cursor-pointer select-none"
+                onClick={() => handleSort("role")}
+              >
+                <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide">
+                  Rol
+                  {getSortIcon("role")}
+                </span>
+              </TableHead>
+              <TableHead
+                className="group cursor-pointer select-none"
+                onClick={() => handleSort("lastSignInAt")}
+              >
+                <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide">
+                  Última Actividad
+                  {getSortIcon("lastSignInAt")}
+                </span>
+              </TableHead>
+              <TableHead className="w-12" />
+            </TableRow>
+          </TableHeader>
+
+          <TableBody>
+            {processedMembers.map((member, index) => {
+              const user = member.user
+              const name =
+                user?.firstName && user?.lastName
+                  ? `${user.firstName} ${user.lastName}`
+                  : user?.firstName || user?.lastName || "Nombre Desconocido"
+              const email = user?.email || "Sin correo"
+              const profilePictureUrl = user?.profilePictureUrl
+              const roleSlug = typeof member.role === "object" ? member.role?.slug : member.role
+              const role = roleSlug || "Miembro"
+              const lastSignInAt = renderDate(user?.lastSignInAt)
+              const isCurrentUser = member.userId === currentUserId
+
+              return (
+                <TableRow
+                  key={member.id}
+                  className={cn(
+                    "border-border/50 transition",
+                    index % 2 === 0 ? "bg-black/0 dark:bg-transparent" : "bg-black/[0.015] dark:bg-transparent",
+                    "hover:bg-black/[0.04] dark:hover:bg-hover/30",
+                  )}
+                >
+                  <TableCell className="pr-0">
+                    <Avatar className="shadow-sm shadow-black/5 ring-1 ring-border/80">
+                      <AvatarImage src={profilePictureUrl || undefined} alt={name} />
+                      <AvatarFallback className="bg-muted text-xs font-semibold uppercase text-muted-foreground dark:bg-black/40">
+                        {name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-foreground">
+                        {name}
+                        {isCurrentUser && <span className="ml-2 text-xs text-muted-foreground">(Tú)</span>}
+                      </span>
+                      <span className="text-xs text-muted-foreground">#{member.userId.slice(-6)}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm text-muted-foreground">{email}</span>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "rounded-full px-3 py-1 text-[11px] font-medium uppercase",
+                        rolePillStyles[(roleSlug ?? "default").toLowerCase()] ?? rolePillStyles.default,
+                      )}
+                    >
+                      {role}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm text-muted-foreground">{lastSignInAt}</span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={isCurrentUser}
+                          className="text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-hover/40 disabled:opacity-50"
+                        >
+                          <span className="sr-only">Abrir acciones del miembro</span>
+                          <DotsHorizontalIcon className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="end"
+                        className="min-w-[190px] rounded-2xl border border-border/60 bg-white/95 p-1.5 shadow-xl shadow-black/10 backdrop-blur-sm dark:bg-popover-secondary/85"
+                      >
+                        <DropdownMenuItem 
+                          className="rounded-xl px-3 py-2 text-sm font-medium text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-hover/40"
+                          onClick={() => openUpdateRoleDialog(member)}
+                        >
+                          Actualizar rol
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          variant="destructive"
+                          className="rounded-xl px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 focus:text-destructive"
+                          onClick={() => openRemoveDialog(member)}
+                        >
+                          Eliminar miembro
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+
+            {processedMembers.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="py-12 text-center text-sm text-muted-foreground">
+                  No hay miembros que coincidan con tu búsqueda.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  )
+}

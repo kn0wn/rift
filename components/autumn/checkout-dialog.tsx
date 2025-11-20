@@ -343,6 +343,7 @@ const PrepaidItem = ({
 				productId: checkoutResult.product.id,
 				options: newOptions,
 				dialog: CheckoutDialog,
+				successUrl: window.location.origin,
 			});
 
 			if (error) {
