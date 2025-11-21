@@ -48,6 +48,7 @@ interface MembersListProps {
   invitations?: WorkOSInvitation[]
   organizationId: string
   currentUserId: string
+  seatQuantity?: number | null
 }
 
 type SortField = "name" | "email" | "role" | "status"
@@ -58,12 +59,16 @@ interface InvitationFormData {
   role: string
 }
 
-export function MembersList({ members, invitations = [], organizationId, currentUserId }: MembersListProps) {
+export function MembersList({ members, invitations = [], organizationId, currentUserId, seatQuantity }: MembersListProps) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [sortField, setSortField] = useState<SortField>("name")
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
   const [isInviteOpen, setIsInviteOpen] = useState(false)
+  
+  const currentMemberCount = members.length + invitations.length;
+  const isLimitReached = typeof seatQuantity === 'number' && currentMemberCount >= seatQuantity;
+
   
   // State for invite dialog
   const [invitationForms, setInvitationForms] = useState<InvitationFormData[]>([
@@ -93,6 +98,13 @@ export function MembersList({ members, invitations = [], organizationId, current
   const [revokeError, setRevokeError] = useState<string | null>(null)
 
   const handleAddInvitation = () => {
+    const currentCount = members.length + invitations.length + invitationForms.length;
+    
+    if (typeof seatQuantity === 'number' && currentCount >= seatQuantity) {
+      // Don't add more if we reached the seat limit
+      return;
+    }
+
     if (invitationForms.length < 10) {
       setInvitationForms([...invitationForms, { email: "", role: "member" }])
     }
@@ -110,9 +122,22 @@ export function MembersList({ members, invitations = [], organizationId, current
     setInviteError(null)
     
     try {
+      const validInvitations = invitationForms.filter(inv => inv.email.trim() !== "")
+
+      // Client-side check before sending
+      if (typeof seatQuantity === 'number') {
+          const currentCount = members.length + invitations.length;
+          const availableSeats = seatQuantity - currentCount;
+          
+          if (validInvitations.length > availableSeats) {
+              setInviteError(`No puedes enviar ${validInvitations.length} invitaciones. Solo tienes ${availableSeats} asiento${availableSeats !== 1 ? 's' : ''} disponible${availableSeats !== 1 ? 's' : ''}.`);
+              setIsInviting(false);
+              return;
+          }
+      }
+
       const results = await Promise.all(
-        invitationForms
-          .filter(inv => inv.email.trim() !== "")
+        validInvitations
           .map(inv => inviteUser(organizationId, inv.email, inv.role))
       )
 
@@ -145,7 +170,9 @@ export function MembersList({ members, invitations = [], organizationId, current
 
   const closeInviteDialog = () => {
     setIsInviteOpen(false)
-    resetInviteState()
+    setTimeout(() => {
+      resetInviteState()
+    }, 200)
   }
 
   const openUpdateRoleDialog = (member: OrganizationMembershipWithUser) => {
@@ -391,30 +418,41 @@ export function MembersList({ members, invitations = [], organizationId, current
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-transparent border-none">
         <div>
           <p className="text-sm font-medium text-muted-foreground">
-            {processedData.length} {processedData.length === 1 ? "miembro" : "miembros"}
+            {typeof seatQuantity === 'number' 
+              ? `${currentMemberCount}/${seatQuantity} ${currentMemberCount === 1 ? "miembro" : "miembros"}`
+              : `${processedData.length} ${processedData.length === 1 ? "miembro" : "miembros"}`
+            }
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="relative w-full max-w-xs">
-            <div className="pointer-events-none absolute inset-0 rounded-md border border-border/60 bg-white/90 shadow-sm shadow-black/5 dark:bg-popover-secondary/75 dark:shadow-black/30" />
-            <MagnifyingGlassIcon className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 z-[1] size-4 -translate-y-1/2" />
-            <Input
-              placeholder="Buscar miembros..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="relative z-[1] border-none bg-transparent pl-9 focus:outline-none focus:ring-0"
-            />
-          </div>
-          <Dialog open={isInviteOpen} onOpenChange={(open) => {
-            setIsInviteOpen(open)
-            if (!open) resetInviteState()
-          }}>
-            <DialogTrigger asChild>
-              <Button className="cursor-pointer gap-2 rounded-md border border-border/60 bg-white/90 shadow-sm shadow-black/5 dark:bg-popover-secondary/75 dark:shadow-black/30 hover:bg-black/[0.04] dark:hover:bg-hover/30">
-                <span className="hidden sm:inline">Invitar Miembros</span>
-                <span className="sm:hidden">Invitar</span>
-              </Button>
-            </DialogTrigger>
+            <div className="relative w-full max-w-xs">
+              <div className="pointer-events-none absolute inset-0 rounded-md border border-border/60 bg-white/90 shadow-sm shadow-black/5 dark:bg-popover-secondary/75 dark:shadow-black/30" />
+              <MagnifyingGlassIcon className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 z-[1] size-4 -translate-y-1/2" />
+              <Input
+                placeholder="Buscar miembros..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="relative z-[1] border-none bg-transparent pl-9 focus:outline-none focus:ring-0"
+              />
+            </div>
+            <Dialog open={isInviteOpen} onOpenChange={(open) => {
+              if (isLimitReached && open) return
+              setIsInviteOpen(open)
+              if (!open) {
+                setTimeout(() => {
+                  resetInviteState()
+                }, 200)
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button 
+                  disabled={isLimitReached}
+                  className="cursor-pointer gap-2 rounded-md border border-border/60 bg-white/90 shadow-sm shadow-black/5 dark:bg-popover-secondary/75 dark:shadow-black/30 hover:bg-black/[0.04] dark:hover:bg-hover/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="hidden sm:inline">Invitar Miembros</span>
+                  <span className="sm:hidden">Invitar</span>
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-3xl rounded-2xl border border-border/50 bg-white/95 dark:bg-popover-main shadow-2xl dark:shadow-2xl">
               {isSuccess ? (
                  <div className="flex flex-col items-center justify-center py-10 px-4 space-y-6 text-center animate-in fade-in zoom-in-95 duration-300">
@@ -492,7 +530,10 @@ export function MembersList({ members, invitations = [], organizationId, current
                     <Button
                       type="button"
                       onClick={handleAddInvitation}
-                      disabled={invitationForms.length >= 10}
+                      disabled={
+                        invitationForms.length >= 10 || 
+                        (typeof seatQuantity === 'number' && (members.length + invitations.length + invitationForms.length) >= seatQuantity)
+                      }
                       className="cursor-pointer rounded-lg font-medium gap-2 min-w-[150px]"
                     >
                       <PlusIcon className="size-4" />
@@ -853,4 +894,3 @@ export function MembersList({ members, invitations = [], organizationId, current
     </div>
   )
 }
-

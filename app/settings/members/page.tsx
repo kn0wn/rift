@@ -8,6 +8,8 @@ import { getAuditLogPortalLink } from "@/actions/getAuditLogPortalLink";
 import { SettingsSection } from "@/components/settings";
 import { getOrganizationMembers, OrganizationMembershipWithUser } from "@/actions/getOrganizationMembers";
 import { Invitation } from "@workos-inc/node";
+import { fetchQuery } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
 
 export default async function MembersPage() {
   const { user, organizationId } = await withAuth({
@@ -34,11 +36,22 @@ export default async function MembersPage() {
 
   let members: OrganizationMembershipWithUser[] = [];
   let invitations: Invitation[] = [];
+  let seatQuantity: number | null = null;
 
   if (userHasPermission) {
-    const data = await getOrganizationMembers(organizationId);
+    const [data, seats] = await Promise.all([
+      getOrganizationMembers(organizationId),
+      fetchQuery(api.organizations.getOrganizationSeats, { 
+        workos_id: organizationId,
+        secret: process.env.CONVEX_SECRET_TOKEN!
+      }).catch((e) => {
+        console.error("Error fetching seat quantity:", e);
+        return null;
+      })
+    ]);
     members = data.members;
     invitations = data.invitations;
+    seatQuantity = seats;
   }
 
   let auditLogsLink: string | null = null;
@@ -75,7 +88,7 @@ export default async function MembersPage() {
       
       <div className="w-full">
         {userHasPermission ? (
-          <MembersList members={members} invitations={invitations} organizationId={organizationId} currentUserId={user.id} />
+          <MembersList members={members} invitations={invitations} organizationId={organizationId} currentUserId={user.id} seatQuantity={seatQuantity} />
         ) : (
           <Card>
             <Text>No tienes permisos para ver la lista de miembros.</Text>

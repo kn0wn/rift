@@ -10,6 +10,7 @@ import { Id } from "./_generated/dataModel";
 import { getAuthUserIdentity } from "./helpers/getUser";
 import { extractOrganizationIdFromJWT } from "./helpers/quota";
 import type Stripe from "stripe";
+import { serverSecretArg, ensureServerSecret } from "./helpers/auth";
 
 // Plan quota configuration // Could remove and use stripe metadata to fetch plan details
 const PLAN_QUOTAS = {
@@ -66,6 +67,18 @@ export const deleteOrganization = internalMutation({
   args: { id: v.id("organizations") },
   handler: async (ctx, args) => {
     return await ctx.db.delete(args.id);
+  },
+});
+
+export const getOrganizationSeats = query({
+  args: { workos_id: v.string(), ...serverSecretArg },
+  handler: async (ctx, args) => {
+    ensureServerSecret(args.secret);
+    const organization = await ctx.db
+      .query("organizations")
+      .withIndex("by_workos_id", (q) => q.eq("workos_id", args.workos_id))
+      .first();
+    return organization?.seatQuantity ?? null;
   },
 });
 

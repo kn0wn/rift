@@ -42,6 +42,15 @@ export async function getOrganizationMembers(organizationId: string): Promise<Or
   }
 }
 
+export async function getOrganizationMemberCount(organizationId: string): Promise<number> {
+  const [memberships, invitations] = await Promise.all([
+    getAllMemberships(organizationId),
+    getAllInvitations(organizationId)
+  ]);
+  const pendingInvitations = invitations.filter(inv => inv.state === 'pending');
+  return memberships.length + pendingInvitations.length;
+}
+
 async function getAllMemberships(organizationId: string) {
   let allMembers: OrganizationMembership[] = [];
   let after: string | undefined = undefined;
