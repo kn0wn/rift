@@ -19,7 +19,9 @@ export async function createStripePortalSession(stripeCustomerId: string) {
     }
 
     const headersList = await headers();
-    const origin = headersList.get("origin") || process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    const productionDomain = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+    const baseUrl = productionDomain ? `https://${productionDomain}` : "http://localhost:3000";
+    const origin = headersList.get("origin") || baseUrl;
 
     const session = await stripe.billingPortal.sessions.create({
       customer: stripeCustomerId,

@@ -4,6 +4,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 
 export const POST = async (req: NextRequest) => {
+  const productionDomain = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+  const baseUrl = productionDomain ? `https://${productionDomain}` : "http://localhost:3000";
+
   const {
     userId,
     orgName,
@@ -121,8 +124,8 @@ export const POST = async (req: NextRequest) => {
         },
       ],
       mode: 'subscription',
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/chat`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/`,
+      success_url: `${baseUrl}/chat`,
+      cancel_url: `${baseUrl}/`,
     });
 
     return NextResponse.json({ url: session.url });
