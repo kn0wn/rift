@@ -1,7 +1,8 @@
 import { v } from "convex/values";
-import { AuthOrgMutation } from "./helpers/authenticated";
+import { AuthMutation } from "./helpers/authenticated";
+import { extractOrganizationIdFromJWT } from "./helpers/quota";
 
-export const report = AuthOrgMutation({
+export const report = AuthMutation({
   args: {
     title: v.string(),
     description: v.string(),
@@ -12,7 +13,8 @@ export const report = AuthOrgMutation({
   returns: v.object({ ok: v.literal(true) }),
   handler: async (ctx, args) => {
     const userId = ctx.identity.subject;
-    const orgId = ctx.orgId;
+    // Extract orgId from JWT if available, but allow it to be null
+    const orgId = extractOrganizationIdFromJWT(ctx.identity) || null;
 
     const user = await ctx.db
       .query("users")
@@ -23,7 +25,7 @@ export const report = AuthOrgMutation({
     const now = Date.now();
     await ctx.db.insert("bugs", {
       userId,
-      orgId,
+      orgId: orgId || undefined,
       userEmail,
       title: args.title,
       description: args.description,

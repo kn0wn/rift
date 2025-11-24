@@ -180,7 +180,7 @@ export default defineSchema({
 
   bugs: defineTable({
     userId: v.string(),
-    orgId: v.string(),
+    orgId: v.optional(v.string()),
     userEmail: v.string(),
     title: v.string(),
     description: v.string(),

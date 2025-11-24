@@ -26,8 +26,7 @@ function QuotaCard({ type, data }: { type: "standard" | "premium"; data: QuotaDa
       <div className="border border-gray-200 dark:border-border bg-white dark:bg-popover-secondary rounded-lg p-4">
         <div className="space-y-2">
           <h3 className="font-medium text-gray-900 dark:text-white">{title}</h3>
-          <p className="text-sm text-gray-500 dark:text-text-muted">Cuota no configurada</p>
-          <p className="text-sm text-muted-foreground">Contacta al administrador para configurar límites.</p>
+          <p className="text-sm text-gray-500 dark:text-text-muted">No tienes una suscripción activa</p>
         </div>
       </div>
     );
@@ -104,6 +103,21 @@ export function QuotaClient({
     _valueJSON?: QuotaInfo;
   })?._valueJSON ?? null;
 
+  // Helper to get unconfigured quota structure when no org exists
+  const getUnconfiguredQuota = (): NonNullable<QuotaInfo> => ({
+    standard: {
+      currentUsage: 0,
+      limit: 0,
+      quotaConfigured: false,
+    },
+    premium: {
+      currentUsage: 0,
+      limit: 0,
+      quotaConfigured: false,
+    },
+    nextResetDate: undefined,
+  });
+
   const renderQuotaView = (info: NonNullable<QuotaInfo>) => {
     return (
       <div className="space-y-6">
@@ -151,22 +165,16 @@ export function QuotaClient({
     // Safe to call only when authenticated via wrapper
     const liveInfo = usePreloadedQuery(preloaded);
 
-    if (liveInfo === null) {
-      return (
-        <div className="text-center py-12 text-muted-foreground">
-          No se pudo cargar la información de cuotas.
-        </div>
-      );
-    }
-
-    return renderQuotaView(liveInfo);
+    // If null (no org), show unconfigured quota UI
+    const quotaInfo = liveInfo ?? getUnconfiguredQuota();
+    return renderQuotaView(quotaInfo);
   };
 
   return (
     <div className="space-y-0">
       <AuthLoading>
         {snapshot ? renderQuotaView(snapshot) : (
-          <div className="text-center py-12 text-muted-foreground">Cargando...</div>
+          renderQuotaView(getUnconfiguredQuota())
         )}
       </AuthLoading>
 
@@ -178,9 +186,7 @@ export function QuotaClient({
         {snapshot ? (
           renderQuotaView(snapshot)
         ) : (
-          <div className="text-center py-12 text-muted-foreground">
-            No estás autenticado. Por favor, inicia sesión.
-          </div>
+          renderQuotaView(getUnconfiguredQuota())
         )}
       </Unauthenticated>
     </div>

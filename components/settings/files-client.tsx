@@ -257,14 +257,6 @@ export function FilesClient() {
     },
   ];
 
-  if (!visibleAttachments || visibleAttachments.length === 0) {
-    return (
-      <div className="text-center py-12 text-muted-foreground">
-        No has subido ningún archivo adjunto aún.
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-2">
       {/* Selected Bar - Outside table, right-aligned with padding below */}
@@ -298,6 +290,7 @@ export function FilesClient() {
             getRowId={(row) => (row as any)._id}
             onRowSelectionChange={(selection) => setSelectedIds(Object.keys(selection) as Id<"attachments">[])}
             clearSelectionSignal={clearSelectionSignal}
+            emptyStateMessage="No has subido ningún archivo adjunto aún."
             className=""
           />
         </div>

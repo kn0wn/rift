@@ -135,19 +135,22 @@ export const getUserQuotaInfo = AuthQuery({
 
 export const getUserFullQuotaInfo = AuthOrgQuery({
   args: {},
-  returns: v.object({
-    standard: v.object({
-      currentUsage: v.number(),
-      limit: v.number(),
-      quotaConfigured: v.boolean(),
+  returns: v.union(
+    v.object({
+      standard: v.object({
+        currentUsage: v.number(),
+        limit: v.number(),
+        quotaConfigured: v.boolean(),
+      }),
+      premium: v.object({
+        currentUsage: v.number(),
+        limit: v.number(),
+        quotaConfigured: v.boolean(),
+      }),
+      nextResetDate: v.optional(v.number()),
     }),
-    premium: v.object({
-      currentUsage: v.number(),
-      limit: v.number(),
-      quotaConfigured: v.boolean(),
-    }),
-    nextResetDate: v.optional(v.number()),
-  }),
+    v.null(),
+  ),
   handler: async (ctx) => {
     const userWorkosId = ctx.identity.subject;
     const orgWorkosId = ctx.orgId;
@@ -158,7 +161,7 @@ export const getUserFullQuotaInfo = AuthOrgQuery({
       .unique();
 
     if (!user) {
-      throw new Error("User not found");
+      return null;
     }
 
     const organization = await ctx.db
@@ -166,8 +169,21 @@ export const getUserFullQuotaInfo = AuthOrgQuery({
       .withIndex("by_workos_id", (q) => q.eq("workos_id", orgWorkosId))
       .first();
 
+    // If organization doesn't exist, return unconfigured quota structure
     if (!organization) {
-      throw new Error("Organization not found");
+      return {
+        standard: {
+          currentUsage: 0,
+          limit: 0,
+          quotaConfigured: false,
+        },
+        premium: {
+          currentUsage: 0,
+          limit: 0,
+          quotaConfigured: false,
+        },
+        nextResetDate: undefined,
+      };
     }
 
     const billingCycle = await getOrganizationBillingCycle(ctx, orgWorkosId);

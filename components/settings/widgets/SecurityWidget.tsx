@@ -1,28 +1,31 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Flex } from "@radix-ui/themes";
 import { WorkOsWidgets, UserSessions, UserSecurity } from "@workos-inc/widgets";
 
 interface SecurityWidgetProps {
-  authTokenPromise: Promise<string | null>;
+  accessToken: string | null;
   userId: string;
 }
 
-export function SecurityWidget({ authTokenPromise, userId }: SecurityWidgetProps) {
-  const [authToken, setAuthToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    authTokenPromise.then((token) => {
-      setAuthToken(token);
-      setLoading(false);
-    });
-  }, [authTokenPromise]);
-
-  if (loading || !authToken) {
-    return null; // Show nothing while loading or if no token
+export function SecurityWidget({ accessToken, userId }: SecurityWidgetProps) {
+  if (!accessToken) {
+    return (
+      <div className="border border-gray-200 dark:border-border bg-white dark:bg-popover-secondary rounded-lg p-6">
+        <div className="text-center space-y-2">
+          <p className="text-sm font-medium text-gray-900 dark:text-white">
+            No se pudo cargar la configuración de seguridad
+          </p>
+          <p className="text-sm text-gray-500 dark:text-text-muted">
+            Por favor, intenta recargar la página.
+          </p>
+        </div>
+      </div>
+    );
   }
+
+  // Create the access token function in the client component
+  const getAccessToken = () => Promise.resolve(accessToken);
 
   return (
     <WorkOsWidgets
@@ -35,7 +38,7 @@ export function SecurityWidget({ authTokenPromise, userId }: SecurityWidgetProps
       }}
     >
       <Flex direction="column" gap="6" width="100%">
-        <UserSecurity authToken={authToken} />
+        <UserSecurity authToken={getAccessToken} />
         <div className="flex flex-col">
           <div className="flex flex-col mb-5">
             <div className="flex items-center">
@@ -50,7 +53,7 @@ export function SecurityWidget({ authTokenPromise, userId }: SecurityWidgetProps
           </div>
 
           <UserSessions
-            authToken={authToken}
+            authToken={getAccessToken}
             currentSessionId={userId}
           />
         </div>

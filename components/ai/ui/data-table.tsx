@@ -39,6 +39,7 @@ interface DataTableProps<TData, TValue> {
   onRowSelectionChange?: (selection: Record<string, boolean>) => void;
   getRowId?: (row: TData) => string;
   clearSelectionSignal?: number;
+  emptyStateMessage?: string;
 }
 
 export function DataTable<TData, TValue>({
@@ -54,6 +55,7 @@ export function DataTable<TData, TValue>({
   onRowSelectionChange,
   getRowId,
   clearSelectionSignal,
+  emptyStateMessage = "Sin resultados.",
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -200,7 +202,7 @@ export function DataTable<TData, TValue>({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  Sin resultados.
+                  {emptyStateMessage}
                 </TableCell>
               </TableRow>
             )}
