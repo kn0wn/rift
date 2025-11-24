@@ -36,7 +36,8 @@ export default defineSchema({
     standardQuotaLimit: v.optional(v.number()),
     premiumQuotaLimit: v.optional(v.number()),
     // Plan field based on Stripe price lookup key
-    plan: v.optional(v.union(v.literal("plus"), v.literal("pro"))),
+    plan: v.optional(v.union(v.literal("free"), v.literal("plus"), v.literal("pro"), v.literal("enterprise"))),
+    seatQuantity: v.optional(v.number()),
     // Stripe subscription data
     subscriptionId: v.optional(v.string()),
     subscriptionStatus: v.optional(
@@ -55,7 +56,6 @@ export default defineSchema({
     cancelAtPeriodEnd: v.optional(v.boolean()),
     paymentMethodBrand: v.optional(v.string()),
     paymentMethodLast4: v.optional(v.string()),
-    scheduledBillingJobId: v.optional(v.id("_scheduled_functions")),
   })
     .index("by_workos_id", ["workos_id"])
     .index("by_stripe_customer_id", ["stripeCustomerId"]),
@@ -179,7 +179,7 @@ export default defineSchema({
 
   bugs: defineTable({
     userId: v.string(),
-    orgId: v.string(),
+    orgId: v.optional(v.string()),
     userEmail: v.string(),
     title: v.string(),
     description: v.string(),

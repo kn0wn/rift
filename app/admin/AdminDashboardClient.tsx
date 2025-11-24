@@ -50,6 +50,15 @@ export default function AdminDashboardClient() {
   const [error, setError] = useState<string | null>(null);
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<string>("");
+  const [customStandardQuota, setCustomStandardQuota] = useState<number>(2000);
+  const [customPremiumQuota, setCustomPremiumQuota] = useState<number>(500);
+  const [seatQuantity, setSeatQuantity] = useState<number>(1);
+  const [enterpriseFeatures, setEnterpriseFeatures] = useState({
+    domainVerification: false,
+    directorySync: false,
+    sso: false,
+    auditLogs: false,
+  });
   const [isSetPlanDialogOpen, setIsSetPlanDialogOpen] = useState(false);
   const [isSettingPlan, setIsSettingPlan] = useState(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
@@ -93,7 +102,12 @@ export default function AdminDashboardClient() {
         },
         body: JSON.stringify({
           organizationId: selectedOrg._id,
+          workos_id: selectedOrg.workos_id,
           plan: selectedPlan,
+          customStandardQuotaLimit: selectedPlan === "enterprise" ? customStandardQuota : undefined,
+          customPremiumQuotaLimit: selectedPlan === "enterprise" ? customPremiumQuota : undefined,
+          seatQuantity: selectedPlan === "enterprise" ? seatQuantity : undefined,
+          features: selectedPlan === "enterprise" ? enterpriseFeatures : undefined,
         }),
       });
 
@@ -107,6 +121,15 @@ export default function AdminDashboardClient() {
       setIsSetPlanDialogOpen(false);
       setSelectedOrg(null);
       setSelectedPlan("");
+      setCustomStandardQuota(2000);
+      setCustomPremiumQuota(500);
+      setSeatQuantity(1);
+      setEnterpriseFeatures({
+        domainVerification: false,
+        directorySync: false,
+        sso: false,
+        auditLogs: false,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to set plan");
     } finally {
@@ -351,6 +374,15 @@ export default function AdminDashboardClient() {
         if (!open) {
           setSelectedOrg(null);
           setSelectedPlan("");
+          setCustomStandardQuota(2000);
+          setCustomPremiumQuota(500);
+          setSeatQuantity(1);
+          setEnterpriseFeatures({
+            domainVerification: false,
+            directorySync: false,
+            sso: false,
+            auditLogs: false,
+          });
         }
       }}>
         <DialogContent className="dark:bg-popover-main dark:text-popover-text dark:border-border">
@@ -360,7 +392,7 @@ export default function AdminDashboardClient() {
               Assign a subscription plan to this organization.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
+          <div className="py-4 space-y-4">
             <Select value={selectedPlan} onValueChange={setSelectedPlan}>
               <SelectTrigger className="dark:bg-popover-secondary/20 dark:text-popover-text dark:border-border/60">
                 <SelectValue placeholder="Select a plan" />
@@ -368,8 +400,98 @@ export default function AdminDashboardClient() {
               <SelectContent>
                 <SelectItem value="plus">Plus (1000 standard, 100 premium)</SelectItem>
                 <SelectItem value="pro">Pro (1500 standard, 300 premium)</SelectItem>
+                <SelectItem value="enterprise">Enterprise (Custom)</SelectItem>
               </SelectContent>
             </Select>
+
+            {selectedPlan === "enterprise" && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Standard Quota</label>
+                    <input
+                      type="number"
+                      value={customStandardQuota}
+                      onChange={(e) => setCustomStandardQuota(parseInt(e.target.value) || 0)}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-popover-secondary/20 dark:border-border/60"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Premium Quota</label>
+                    <input
+                      type="number"
+                      value={customPremiumQuota}
+                      onChange={(e) => setCustomPremiumQuota(parseInt(e.target.value) || 0)}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-popover-secondary/20 dark:border-border/60"
+                    />
+                  </div>
+                  <div className="col-span-2 space-y-2">
+                    <label className="text-sm font-medium">Seat Quantity</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={seatQuantity}
+                      onChange={(e) => setSeatQuantity(parseInt(e.target.value) || 1)}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-popover-secondary/20 dark:border-border/60"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3 border-t pt-4 dark:border-border/60">
+                  <h4 className="text-sm font-medium">Enterprise Features</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="domainVerification"
+                        checked={enterpriseFeatures.domainVerification}
+                        onChange={(e) => setEnterpriseFeatures(prev => ({ ...prev, domainVerification: e.target.checked }))}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary dark:bg-popover-secondary/20 dark:border-border/60"
+                      />
+                      <label htmlFor="domainVerification" className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        Domain Verification
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="directorySync"
+                        checked={enterpriseFeatures.directorySync}
+                        onChange={(e) => setEnterpriseFeatures(prev => ({ ...prev, directorySync: e.target.checked }))}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary dark:bg-popover-secondary/20 dark:border-border/60"
+                      />
+                      <label htmlFor="directorySync" className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        Directory Sync
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="sso"
+                        checked={enterpriseFeatures.sso}
+                        onChange={(e) => setEnterpriseFeatures(prev => ({ ...prev, sso: e.target.checked }))}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary dark:bg-popover-secondary/20 dark:border-border/60"
+                      />
+                      <label htmlFor="sso" className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        SSO
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="auditLogs"
+                        checked={enterpriseFeatures.auditLogs}
+                        onChange={(e) => setEnterpriseFeatures(prev => ({ ...prev, auditLogs: e.target.checked }))}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary dark:bg-popover-secondary/20 dark:border-border/60"
+                      />
+                      <label htmlFor="auditLogs" className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                        Audit Logs
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button

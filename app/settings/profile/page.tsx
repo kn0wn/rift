@@ -1,11 +1,10 @@
 import { SettingsSection, SettingsDivider } from "@/components/settings";
 import { withAuth } from "@workos-inc/authkit-nextjs";
-import { workos } from "@/app/api/workos";
 import { ProfileWidget } from "@/components/settings/widgets/ProfileWidget";
 import { AdvancedDebugWidget } from "@/components/settings/widgets/AdvancedDebugWidget";
 
 export default async function ProfilePage() {
-  const { user, organizationId, accessToken } = await withAuth({ ensureSignedIn: true });
+  const { user, accessToken } = await withAuth({ ensureSignedIn: true });
 
   // Process debug information
   let claimsForDebug: unknown = null;
@@ -24,18 +23,6 @@ export default async function ProfilePage() {
   const debugUser: string = JSON.stringify(user ?? {}, null, 2);
   const debugClaims: string = JSON.stringify(claimsForDebug ?? {}, null, 2);
 
-  // Show fallback content immediately, load WorkOS widget asynchronously
-  const authTokenPromise = organizationId 
-    ? workos.widgets.getToken({
-        organizationId,
-        userId: user.id,
-        scopes: ["widgets:users-table:manage"],
-      }).catch((error) => {
-        console.error("Error al obtener el token:", error);
-        return null;
-      })
-    : Promise.resolve(null);
-
   return (
     <div className="pt-12 pb-12 pl-12 pr-12 flex flex-col max-w-4xl min-w-[520px] w-full min-h-full box-border">
       {/* WorkOS User Profile Widget */}
@@ -43,7 +30,7 @@ export default async function ProfilePage() {
         title="Gestión de Perfil"
         description="Gestiona tu información personal y preferencias."
       >
-        <ProfileWidget authTokenPromise={authTokenPromise} />
+        <ProfileWidget accessToken={accessToken || null} />
       </SettingsSection>
 
       <SettingsDivider />

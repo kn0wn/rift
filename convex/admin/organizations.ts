@@ -7,6 +7,10 @@ import {
   
   // Plan configurations for admin dashboard
   const ADMIN_PLAN_CONFIGS = {
+    free: {
+      standardQuotaLimit: 20,
+      premiumQuotaLimit: 1,
+    },
     plus: {
       standardQuotaLimit: 1000,
       premiumQuotaLimit: 100,
@@ -28,11 +32,12 @@ import {
         _creationTime: v.number(),
         workos_id: v.string(),
         name: v.string(),
-        plan: v.optional(v.union(v.literal("plus"), v.literal("pro"))),
+        plan: v.optional(v.union(v.literal("free"), v.literal("plus"), v.literal("pro"), v.literal("enterprise"))),
         standardQuotaLimit: v.optional(v.number()),
         premiumQuotaLimit: v.optional(v.number()),
         billingCycleStart: v.optional(v.number()),
         billingCycleEnd: v.optional(v.number()),
+        seatQuantity: v.optional(v.number()),
         subscriptionStatus: v.optional(
           v.union(
             v.literal("active"),
@@ -46,8 +51,11 @@ import {
           ),
         ),
         stripeCustomerId: v.optional(v.string()),
+        paymentMethodBrand: v.optional(v.string()),
+        paymentMethodLast4: v.optional(v.string()),
+        priceId: v.optional(v.string()),
+        subscriptionId: v.optional(v.string()),
         cancelAtPeriodEnd: v.optional(v.boolean()),
-        scheduledBillingJobId: v.optional(v.id("_scheduled_functions")),
       }),
     ),
     handler: async (ctx) => {
@@ -63,7 +71,10 @@ import {
   export const setOrganizationPlan = internalMutation({
     args: {
       organizationId: v.id("organizations"),
-      plan: v.union(v.literal("plus"), v.literal("pro")),
+      plan: v.union(v.literal("free"), v.literal("plus"), v.literal("pro"), v.literal("enterprise")),
+      customStandardQuotaLimit: v.optional(v.number()),
+      customPremiumQuotaLimit: v.optional(v.number()),
+      seatQuantity: v.optional(v.number()),
     },
     returns: v.null(),
     handler: async (ctx, args) => {
@@ -73,29 +84,27 @@ import {
         throw new Error(`Organization not found: ${args.organizationId}`);
       }
   
-      const planConfig = ADMIN_PLAN_CONFIGS[args.plan];
-      const now = Date.now();
-      const thirtyDaysFromNow = now + (30 * 24 * 60 * 60 * 1000); // 30 days in milliseconds
-  
+      let standardQuotaLimit: number;
+      let premiumQuotaLimit: number;
+
+      if (args.plan === "enterprise") {
+        if (args.customStandardQuotaLimit === undefined || args.customPremiumQuotaLimit === undefined) {
+             throw new Error("Custom quotas required for enterprise plan");
+        }
+        standardQuotaLimit = args.customStandardQuotaLimit;
+        premiumQuotaLimit = args.customPremiumQuotaLimit;
+      } else {
+        const planConfig = ADMIN_PLAN_CONFIGS[args.plan];
+        standardQuotaLimit = planConfig.standardQuotaLimit;
+        premiumQuotaLimit = planConfig.premiumQuotaLimit;
+      }
+
       await ctx.db.patch(args.organizationId, {
         plan: args.plan,
-        standardQuotaLimit: planConfig.standardQuotaLimit,
-        premiumQuotaLimit: planConfig.premiumQuotaLimit,
-        billingCycleStart: now,
-        billingCycleEnd: thirtyDaysFromNow,
+        standardQuotaLimit,
+        premiumQuotaLimit,
+        seatQuantity: args.seatQuantity,
         subscriptionStatus: "active", // Set as active when admin assigns plan
-      });
-
-      // Schedule the first billing cycle reset
-      const jobId = await ctx.scheduler.runAt(
-        thirtyDaysFromNow,
-        internal.organizations.resetOrganizationBillingCycle,
-        { organizationId: args.organizationId }
-      );
-      
-      // Store the job ID in the organization document
-      await ctx.db.patch(args.organizationId, {
-        scheduledBillingJobId: jobId,
       });
     },
   });
@@ -114,11 +123,12 @@ import {
         _creationTime: v.number(),
         workos_id: v.string(),
         name: v.string(),
-        plan: v.optional(v.union(v.literal("plus"), v.literal("pro"))),
+        plan: v.optional(v.union(v.literal("free"), v.literal("plus"), v.literal("pro"), v.literal("enterprise"))),
         standardQuotaLimit: v.optional(v.number()),
         premiumQuotaLimit: v.optional(v.number()),
         billingCycleStart: v.optional(v.number()),
         billingCycleEnd: v.optional(v.number()),
+        seatQuantity: v.optional(v.number()),
         subscriptionStatus: v.optional(
           v.union(
             v.literal("active"),
@@ -132,8 +142,11 @@ import {
           ),
         ),
         stripeCustomerId: v.optional(v.string()),
+        paymentMethodBrand: v.optional(v.string()),
+        paymentMethodLast4: v.optional(v.string()),
+        priceId: v.optional(v.string()),
+        subscriptionId: v.optional(v.string()),
         cancelAtPeriodEnd: v.optional(v.boolean()),
-        scheduledBillingJobId: v.optional(v.id("_scheduled_functions")),
       }),
       v.null(),
     ),
@@ -167,11 +180,6 @@ import {
         throw new Error(`Organization not found: ${args.organizationId}`);
       }
 
-      // Cancel any scheduled billing cycle reset
-      if (organization.scheduledBillingJobId) {
-        await ctx.scheduler.cancel(organization.scheduledBillingJobId);
-      }
-
       // Update organization with cancellation data
       await ctx.db.patch(args.organizationId, {
         subscriptionStatus: args.subscriptionStatus,
@@ -181,7 +189,6 @@ import {
         billingCycleStart: undefined,
         billingCycleEnd: undefined,
         cancelAtPeriodEnd: undefined,
-        scheduledBillingJobId: undefined,
       });
     },
   });
@@ -215,30 +222,9 @@ import {
         throw new Error(`Organization has no billing cycle end date: ${args.organizationId}`);
       }
 
-      // Cancel the existing billing cycle reset
-      if (organization.scheduledBillingJobId) {
-        await ctx.scheduler.cancel(organization.scheduledBillingJobId);
-      }
-
       // Set cancelAtPeriodEnd flag
       await ctx.db.patch(args.organizationId, {
         cancelAtPeriodEnd: true,
-        scheduledBillingJobId: undefined,
-      });
-
-      // Schedule cancellation at the end of the billing cycle
-      const cancellationJobId = await ctx.scheduler.runAt(
-        organization.billingCycleEnd,
-        internal.admin.organizations.executeCancellationAtCycleEnd,
-        { 
-          organizationId: args.organizationId,
-          subscriptionStatus: args.subscriptionStatus,
-        }
-      );
-
-      // Store the cancellation job ID
-      await ctx.db.patch(args.organizationId, {
-        scheduledBillingJobId: cancellationJobId,
       });
     },
   });

@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import { isAdmin, getCurrentUserEmail } from "@/lib/admin-auth";
 import AdminDashboardClient from "./AdminDashboardClient";
 
+// Force dynamic rendering since we need to access headers for authentication
+export const dynamic = 'force-dynamic';
+
 export default async function AdminPage() {
   // Check if user is admin
   const userIsAdmin = await isAdmin();

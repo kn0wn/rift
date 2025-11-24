@@ -9,6 +9,8 @@ import {
   incrementQuotaUsage,
 } from "./helpers/quota";
 import { ensureServerSecret } from "./helpers/auth";
+import { AuthMutation, AuthOrgQuery, AuthQuery } from "./helpers/authenticated";
+import { Id, Doc } from "./_generated/dataModel";
 
 export const createUser = internalMutation({
   args: { 
@@ -60,14 +62,12 @@ export const getByWorkOSId = internalQuery({
   },
 });
 
-export const getCurrentUser = query({
+export const getCurrentUser = AuthQuery({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-
     const user = await ctx.db
       .query("users")
-      .withIndex("by_workos_id", (q) => q.eq("workos_id", userId))
+      .withIndex("by_workos_id", (q) => q.eq("workos_id", ctx.identity.subject))
       .unique();
 
     return user;
@@ -113,14 +113,12 @@ export const resetQuota = internalMutation({
   },
 });
 
-export const getUserQuotaInfo = query({
+export const getUserQuotaInfo = AuthQuery({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-
     const user = await ctx.db
       .query("users")
-      .withIndex("by_workos_id", (q) => q.eq("workos_id", userId))
+      .withIndex("by_workos_id", (q) => q.eq("workos_id", ctx.identity.subject))
       .unique();
 
     if (!user) {
@@ -135,34 +133,27 @@ export const getUserQuotaInfo = query({
   },
 });
 
-export const getUserFullQuotaInfo = query({
+export const getUserFullQuotaInfo = AuthOrgQuery({
   args: {},
-  returns: v.object({
-    standard: v.object({
-      currentUsage: v.number(),
-      limit: v.number(),
-      quotaConfigured: v.boolean(),
+  returns: v.union(
+    v.object({
+      standard: v.object({
+        currentUsage: v.number(),
+        limit: v.number(),
+        quotaConfigured: v.boolean(),
+      }),
+      premium: v.object({
+        currentUsage: v.number(),
+        limit: v.number(),
+        quotaConfigured: v.boolean(),
+      }),
+      nextResetDate: v.optional(v.number()),
     }),
-    premium: v.object({
-      currentUsage: v.number(),
-      limit: v.number(),
-      quotaConfigured: v.boolean(),
-    }),
-    nextResetDate: v.optional(v.number()),
-  }),
+    v.null(),
+  ),
   handler: async (ctx) => {
-    const userWorkosId = await getAuthUserId(ctx);
-    const identity = await getAuthUserIdentity(ctx);
-
-    if (!identity || !identity.org_id) {
-      throw new Error("No organization found in auth identity");
-    }
-
-    const orgWorkosId = extractOrganizationIdFromJWT(identity);
-
-    if (!orgWorkosId) {
-      throw new Error("Could not extract organization ID");
-    }
+    const userWorkosId = ctx.identity.subject;
+    const orgWorkosId = ctx.orgId;
 
     const user = await ctx.db
       .query("users")
@@ -170,7 +161,7 @@ export const getUserFullQuotaInfo = query({
       .unique();
 
     if (!user) {
-      throw new Error("User not found");
+      return null;
     }
 
     const organization = await ctx.db
@@ -178,8 +169,21 @@ export const getUserFullQuotaInfo = query({
       .withIndex("by_workos_id", (q) => q.eq("workos_id", orgWorkosId))
       .first();
 
+    // If organization doesn't exist, return unconfigured quota structure
     if (!organization) {
-      throw new Error("Organization not found");
+      return {
+        standard: {
+          currentUsage: 0,
+          limit: 0,
+          quotaConfigured: false,
+        },
+        premium: {
+          currentUsage: 0,
+          limit: 0,
+          quotaConfigured: false,
+        },
+        nextResetDate: undefined,
+      };
     }
 
     const billingCycle = await getOrganizationBillingCycle(ctx, orgWorkosId);
@@ -216,10 +220,10 @@ export const getUserFullQuotaInfo = query({
   },
 });
 
-export const getUserAttachmentsPaginated = query({
+export const getUserAttachmentsPaginated = AuthQuery({
   args: { paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = ctx.identity.subject;
     return await ctx.db
       .query("attachments")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
@@ -232,12 +236,12 @@ export const getUserAttachmentsPaginated = query({
 // HARD DELETE: remove from R2 then delete Convex doc(s)
 import { internal } from "./_generated/api";
 
-export const deleteAttachment = mutation({
+export const deleteAttachment = AuthMutation({
   args: { attachmentId: v.id("attachments") },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    const attachment = await ctx.db.get(args.attachmentId);
+    const userId = ctx.identity.subject;
+    const attachment = (await ctx.db.get(args.attachmentId)) as Doc<"attachments"> | null;
     if (!attachment || attachment.userId !== userId) {
       throw new Error("Attachment not found or unauthorized");
     }
@@ -250,14 +254,14 @@ export const deleteAttachment = mutation({
   },
 });
 
-export const bulkDeleteAttachments = mutation({
+export const bulkDeleteAttachments = AuthMutation({
   args: { attachmentIds: v.array(v.id("attachments")) },
   returns: v.object({ deleted: v.number(), failed: v.number() }),
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = ctx.identity.subject;
     const MAX = 50;
     const ids = args.attachmentIds.slice(0, MAX);
-    const docs = await Promise.all(ids.map((id) => ctx.db.get(id)));
+    const docs = await Promise.all(ids.map((id: Id<"attachments">) => ctx.db.get(id)));
     const owned = docs.filter((d): d is NonNullable<typeof d> => !!d && d.userId === userId);
     if (owned.length === 0) {
       return { deleted: 0, failed: ids.length };

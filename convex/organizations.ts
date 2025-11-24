@@ -9,16 +9,23 @@ import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { getAuthUserIdentity } from "./helpers/getUser";
 import { extractOrganizationIdFromJWT } from "./helpers/quota";
+import { PermissionQuery, AuthOrgQuery } from "./helpers/authenticated";
+import type Stripe from "stripe";
+import { serverSecretArg, ensureServerSecret } from "./helpers/auth";
 
 // Plan quota configuration // Could remove and use stripe metadata to fetch plan details
 const PLAN_QUOTAS = {
+  free: {
+    standardQuotaLimit: 20,
+    premiumQuotaLimit: 1,
+  },
   plus: {
-    standardQuotaLimit: 500,
+    standardQuotaLimit: 1000,
     premiumQuotaLimit: 100,
   },
   pro: {
-    standardQuotaLimit: 1500,
-    premiumQuotaLimit: 300,
+    standardQuotaLimit: 2700,
+    premiumQuotaLimit: 270,
   },
 } as const;
 
@@ -28,6 +35,7 @@ type PlanType = keyof typeof PLAN_QUOTAS;
 function getPlanFromLookupKey(lookupKey: string | null): PlanType | null {
   if (!lookupKey) return null;
 
+  if (lookupKey === "free") return "free";
   if (lookupKey === "plus") return "plus";
   if (lookupKey === "pro") return "pro";
 
@@ -37,6 +45,16 @@ function getPlanFromLookupKey(lookupKey: string | null): PlanType | null {
 export const createOrganization = internalMutation({
   args: { workos_id: v.string(), name: v.string() },
   handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("organizations")
+      .withIndex("by_workos_id", (q) => q.eq("workos_id", args.workos_id))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { name: args.name });
+      return existing._id;
+    }
+
     return await ctx.db.insert("organizations", args);
   },
 });
@@ -50,9 +68,10 @@ export const updateOrganization = internalMutation({
       stripeCustomerId: v.optional(v.string()),
       billingCycleStart: v.optional(v.number()),
       billingCycleEnd: v.optional(v.number()),
-      plan: v.optional(v.union(v.literal("plus"), v.literal("pro"))),
+      plan: v.optional(v.union(v.literal("free"), v.literal("plus"), v.literal("pro"), v.literal("enterprise"))),
       standardQuotaLimit: v.optional(v.number()),
       premiumQuotaLimit: v.optional(v.number()),
+      seatQuantity: v.optional(v.number()),
     }),
   },
   handler: async (ctx, args) => {
@@ -64,6 +83,30 @@ export const deleteOrganization = internalMutation({
   args: { id: v.id("organizations") },
   handler: async (ctx, args) => {
     return await ctx.db.delete(args.id);
+  },
+});
+
+export const getOrganizationSeats = query({
+  args: { workos_id: v.string(), ...serverSecretArg },
+  handler: async (ctx, args) => {
+    ensureServerSecret(args.secret);
+    const organization = await ctx.db
+      .query("organizations")
+      .withIndex("by_workos_id", (q) => q.eq("workos_id", args.workos_id))
+      .first();
+    return organization?.seatQuantity ?? null;
+  },
+});
+
+export const getOrganizationPlan = query({
+  args: { workos_id: v.string(), ...serverSecretArg },
+  handler: async (ctx, args) => {
+    ensureServerSecret(args.secret);
+    const organization = await ctx.db
+      .query("organizations")
+      .withIndex("by_workos_id", (q) => q.eq("workos_id", args.workos_id))
+      .first();
+    return organization?.plan ?? null;
   },
 });
 
@@ -108,6 +151,7 @@ export const getOrganizationInfo = internalQuery({
       plan: organization.plan,
       standardQuotaLimit: organization.standardQuotaLimit,
       premiumQuotaLimit: organization.premiumQuotaLimit,
+      seatQuantity: organization.seatQuantity,
       billingCycleStart: organization.billingCycleStart,
       billingCycleEnd: organization.billingCycleEnd,
       hasBillingCycle: !!(
@@ -166,6 +210,7 @@ export const syncStripeSubscriptionData = internalMutation({
       cancelAtPeriodEnd: v.optional(v.boolean()),
       paymentMethodBrand: v.optional(v.union(v.string(), v.null())),
       paymentMethodLast4: v.optional(v.union(v.string(), v.null())),
+      seatQuantity: v.optional(v.union(v.number(), v.null())),
     }),
   },
   handler: async (ctx, args) => {
@@ -208,9 +253,10 @@ export const syncStripeSubscriptionData = internalMutation({
       paymentMethodLast4?: string;
       billingCycleStart?: number;
       billingCycleEnd?: number;
-      plan?: "plus" | "pro";
+      plan?: "free" | "plus" | "pro" | "enterprise";
       standardQuotaLimit?: number;
       premiumQuotaLimit?: number;
+      seatQuantity?: number;
     } = {
       subscriptionId: args.subscriptionData.subscriptionId,
       subscriptionStatus: args.subscriptionData.status as
@@ -226,9 +272,12 @@ export const syncStripeSubscriptionData = internalMutation({
       cancelAtPeriodEnd: args.subscriptionData.cancelAtPeriodEnd,
       paymentMethodBrand: args.subscriptionData.paymentMethodBrand || undefined,
       paymentMethodLast4: args.subscriptionData.paymentMethodLast4 || undefined,
-      // Update billing cycle fields (used by quota system)
       billingCycleStart: args.subscriptionData.billingCycleStart || undefined,
       billingCycleEnd: args.subscriptionData.billingCycleEnd || undefined,
+      seatQuantity:
+        typeof args.subscriptionData.seatQuantity === "number"
+          ? args.subscriptionData.seatQuantity
+          : undefined,
     };
 
     // Update plan and quotas only if plan changed
@@ -240,39 +289,6 @@ export const syncStripeSubscriptionData = internalMutation({
 
     await ctx.db.patch(organization._id, updateData);
     return organization._id;
-  },
-});
-
-export const resetOrganizationBillingCycle = internalMutation({
-  args: { organizationId: v.id("organizations") },
-  returns: v.id("_scheduled_functions"),
-  handler: async (ctx, args): Promise<Id<"_scheduled_functions">> => {
-    const organization = await ctx.db.get(args.organizationId);
-    if (!organization) {
-      throw new Error(`Organization not found: ${args.organizationId}`);
-    }
-    
-    const now = Date.now();
-    const thirtyDaysFromNow = now + (30 * 24 * 60 * 60 * 1000);
-    
-    await ctx.db.patch(args.organizationId, {
-      billingCycleStart: now,
-      billingCycleEnd: thirtyDaysFromNow,
-    });
-    
-    // Schedule next reset - creates perpetual cycle
-    const jobId: Id<"_scheduled_functions"> = await ctx.scheduler.runAt(
-      thirtyDaysFromNow,
-      internal.organizations.resetOrganizationBillingCycle,
-      { organizationId: args.organizationId }
-    );
-    
-    // Store the job ID in the organization document
-    await ctx.db.patch(args.organizationId, {
-      scheduledBillingJobId: jobId,
-    });
-    
-    return jobId;
   },
 });
 
@@ -298,9 +314,12 @@ export const syncStripeDataWithPeriod = internalAction({
     cancelAtPeriodEnd?: boolean;
     paymentMethodBrand?: string;
     paymentMethodLast4?: string;
+    seatQuantity?: number;
   }> => {
     const { default: Stripe } = await import("stripe");
     const stripe = new Stripe(process.env.STRIPE_API_KEY!);
+    const secondsToMillis = (value?: number | null) =>
+      typeof value === "number" ? value * 1000 : undefined;
 
     try {
       // Fetch latest subscription data from Stripe
@@ -316,21 +335,29 @@ export const syncStripeDataWithPeriod = internalAction({
       if (subscriptions.data.length === 0) {
         subscriptionData = {
           status: "none",
-          billingCycleStart: undefined,
-          billingCycleEnd: undefined,
+          billingCycleStart: args.billingPeriod?.start,
+          billingCycleEnd: args.billingPeriod?.end,
+          seatQuantity: null,
         };
       } else {
-        const subscription = subscriptions.data[0];
+        const subscription = subscriptions.data[0] as Stripe.Subscription;
         const price = subscription.items.data[0]?.price;
         const lookupKey = price?.lookup_key || null;
+        const firstItem = subscription.items.data[0];
+        const billingCycleStart =
+          args.billingPeriod?.start ??
+          secondsToMillis(firstItem?.current_period_start ?? null);
+        const billingCycleEnd =
+          args.billingPeriod?.end ??
+          secondsToMillis(firstItem?.current_period_end ?? null);
 
         subscriptionData = {
           subscriptionId: subscription.id,
           status: subscription.status,
           priceId: price?.id || null,
           lookupKey,
-          billingCycleStart: subscription.items.data[0]?.current_period_start,
-          billingCycleEnd: subscription.items.data[0]?.current_period_end,
+          billingCycleStart,
+          billingCycleEnd,
           cancelAtPeriodEnd: subscription.cancel_at_period_end,
           paymentMethodBrand:
             subscription.default_payment_method &&
@@ -350,6 +377,7 @@ export const syncStripeDataWithPeriod = internalAction({
                   }
                 ).card?.last4 || null
               : null,
+          seatQuantity: subscription.items.data[0]?.quantity ?? null,
         };
       }
 
@@ -367,6 +395,10 @@ export const syncStripeDataWithPeriod = internalAction({
         billingCycleEnd: subscriptionData.billingCycleEnd || undefined,
         paymentMethodBrand: subscriptionData.paymentMethodBrand || undefined,
         paymentMethodLast4: subscriptionData.paymentMethodLast4 || undefined,
+        seatQuantity:
+          typeof subscriptionData.seatQuantity === "number"
+            ? subscriptionData.seatQuantity
+            : undefined,
       };
     } catch (error) {
       console.error(
@@ -398,6 +430,7 @@ export const getSubscriptionData = internalQuery({
       plan: organization.plan,
       standardQuotaLimit: organization.standardQuotaLimit,
       premiumQuotaLimit: organization.premiumQuotaLimit,
+      seatQuantity: organization.seatQuantity,
       billingCycleStart: organization.billingCycleStart,
       billingCycleEnd: organization.billingCycleEnd,
       cancelAtPeriodEnd: organization.cancelAtPeriodEnd,
@@ -408,25 +441,13 @@ export const getSubscriptionData = internalQuery({
   },
 });
 
-export const getCurrentOrganizationPlan = query({
+export const getCurrentOrganizationPlan = AuthOrgQuery({
   args: {},
   handler: async (ctx) => {
     try {
-      const identity = await getAuthUserIdentity(ctx);
-
-      if (!identity) {
-        return null;
-      }
-
-      const orgId = extractOrganizationIdFromJWT(identity);
-
-      if (!orgId) {
-        return null;
-      }
-
       const organization = await ctx.db
         .query("organizations")
-        .withIndex("by_workos_id", (q) => q.eq("workos_id", orgId))
+        .withIndex("by_workos_id", (q) => q.eq("workos_id", ctx.orgId))
         .first();
 
       if (!organization) {
@@ -445,25 +466,13 @@ export const getCurrentOrganizationPlan = query({
 });
 
 // Get current organization information for display
-export const getCurrentOrganizationInfo = query({
+export const getCurrentOrganizationInfo = AuthOrgQuery({
   args: {},
   handler: async (ctx) => {
     try {
-      const identity = await getAuthUserIdentity(ctx);
-
-      if (!identity) {
-        return null;
-      }
-
-      const orgId = extractOrganizationIdFromJWT(identity);
-
-      if (!orgId) {
-        return null;
-      }
-
       const organization = await ctx.db
         .query("organizations")
-        .withIndex("by_workos_id", (q) => q.eq("workos_id", orgId))
+        .withIndex("by_workos_id", (q) => q.eq("workos_id", ctx.orgId))
         .first();
 
       if (!organization) {
@@ -482,24 +491,43 @@ export const getCurrentOrganizationInfo = query({
   },
 });
 
+export const getOrganizationBillingInfo = PermissionQuery({
+  args: {},
+  permissions: ["MANAGE_BILLING"],
+  handler: async (ctx) => {
+    const organization = await ctx.db
+      .query("organizations")
+      .withIndex("by_workos_id", (q) => q.eq("workos_id", ctx.orgId))
+      .first();
+
+    if (!organization) {
+      return null;
+    }
+
+    return {
+      subscriptionId: organization.subscriptionId,
+      subscriptionStatus: organization.subscriptionStatus || "none",
+      priceId: organization.priceId,
+      plan: organization.plan,
+      standardQuotaLimit: organization.standardQuotaLimit,
+      premiumQuotaLimit: organization.premiumQuotaLimit,
+      seatQuantity: organization.seatQuantity,
+      billingCycleStart: organization.billingCycleStart,
+      billingCycleEnd: organization.billingCycleEnd,
+      cancelAtPeriodEnd: organization.cancelAtPeriodEnd,
+      paymentMethodBrand: organization.paymentMethodBrand,
+      paymentMethodLast4: organization.paymentMethodLast4,
+      stripeCustomerId: organization.stripeCustomerId,
+      name: organization.name,
+    };
+  },
+});
 
 // Get total user count for organization
-export const getOrganizationUserCount = query({
+export const getOrganizationUserCount = AuthOrgQuery({
   args: {},
   handler: async (ctx) => {
     try {
-      const identity = await getAuthUserIdentity(ctx);
-
-      if (!identity) {
-        return null;
-      }
-
-      const orgId = extractOrganizationIdFromJWT(identity);
-
-      if (!orgId) {
-        return null;
-      }
-
       // Count users in the organization by checking all users with the same org_id
       // Note: This is a simple count based on the assumption that users belong to organizations
       // In a real WorkOS setup, you might need to query WorkOS API for accurate user counts
