@@ -1,11 +1,6 @@
-"use client";
-
-import { Button } from "@/components/ai/ui/button";
-import { Check, ShieldCheck } from "lucide-react";
-import Link from "next/link";
-import { useConvexAuth, useQuery } from "convex/react";
-import { useRouter } from "next/navigation";
-import { api } from "@/convex/_generated/api";
+import { landingPlans } from "@/components/landing/data/pricing";
+import type { PlanSlug } from "@/lib/pricing-context";
+import { PricingPlanButton } from "@/components/landing/pricing-plan-button";
 import {
   StandarIcon,
   PremiumIcon,
@@ -16,7 +11,7 @@ import {
   LogsIcon,
 } from "@/components/ui/icons/landing-icons";
 import { Scim, RedoIcon } from "@/components/ui/icons/svg-icons";
-import { landingPlans } from "@/components/landing/data/pricing";
+import { Check, ShieldCheck } from "lucide-react";
 
 const priceFormatters: Record<string, Intl.NumberFormat> = {};
 
@@ -49,28 +44,6 @@ function getFeatureIcon(feature: string) {
 }
 
 export default function PricingSection() {
-  const { isAuthenticated } = useConvexAuth();
-  const router = useRouter();
-
-  const organizationPlan = useQuery(api.organizations.getCurrentOrganizationPlan);
-  const subscriptionStatus = organizationPlan?.subscriptionStatus;
-  const currentPlan = organizationPlan?.plan;
-  const isEnterprise = currentPlan === "enterprise";
-  const hasActiveSubscription =
-    subscriptionStatus === "active" || subscriptionStatus === "trialing";
-
-  const handlePlanSelection = (planName: string) => {
-    const searchParams = new URLSearchParams({
-      plan: planName.toLowerCase(),
-    }).toString();
-
-    if (isAuthenticated) {
-      router.push(`/subscribe?${searchParams}`);
-    } else {
-      router.push(`/sign-up?${searchParams}`);
-    }
-  };
-
   return (
     <section
       className="flex w-full flex-col items-center scroll-mt-20 pt-24 md:pt-0"
@@ -111,96 +84,69 @@ export default function PricingSection() {
         {/* Content container */}
         <div className="max-lg:h-auto max-lg:flex-col relative flex w-full items-stretch justify-center gap-8 lg:gap-0 overflow-hidden">
           {landingPlans.map((plan, index) => {
-            const formattedPrice = plan.priceAmount !== null ? formatPrice(plan.priceAmount, plan.currency) : "Custom";
+            const formattedPrice =
+              plan.priceAmount !== null ? formatPrice(plan.priceAmount, plan.currency) : "Custom";
             const period = plan.billingPeriodLabel ? `/${plan.billingPeriodLabel}` : "";
+            const planSlug = plan.name.toLowerCase() as PlanSlug;
+
             return (
-            <div key={plan.name} className="contents">
-              {index > 0 && <VerticalDivider />}
-              <article
-                aria-labelledby={`plan-${plan.name.toLowerCase()}-title`}
-                className="relative z-[2] flex w-full flex-col items-center gap-6 px-6 py-12"
-              >
-                <GradientBackground id={plan.gradientId} />
+              <div key={plan.name} className="contents">
+                {index > 0 && <VerticalDivider />}
+                <article
+                  aria-labelledby={`plan-${plan.name.toLowerCase()}-title`}
+                  className="relative z-[2] flex w-full flex-col items-center gap-6 px-6 py-12"
+                >
+                  <GradientBackground id={plan.gradientId} />
 
-                {plan.popular && (
-                  <div className="absolute top-4 px-3 py-1 bg-[color(display-p3_0.1725490196_0.1764705882_0.1882352941/1)] text-white dark:bg-white dark:text-black text-xs font-bold rounded-full uppercase tracking-wide">
-                    Más Popular
-                  </div>
-                )}
-
-                <div className="flex flex-col items-center justify-center gap-2 text-center">
-                  <h3 id={`plan-${plan.name.toLowerCase()}-title`} className="text-2xl font-medium leading-6 tracking-tight text-[color(display-p3_0.1725490196_0.1764705882_0.1882352941/1)] dark:text-white">
-                    {plan.name}
-                  </h3>
-                  <div className="flex items-baseline justify-center text-[color(display-p3_0.1725490196_0.1764705882_0.1882352941/1)] dark:text-white">
-                    <span className="text-4xl font-bold tracking-tight">
-                      {formattedPrice}
-                    </span>
-                    {period && plan.priceAmount !== null && (
-                      <span className="ml-1 text-sm font-medium opacity-60">
-                        {period}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm leading-6 tracking-tight text-[color(display-p3_0.1725490196_0.1764705882_0.1882352941/0.6)] dark:text-zinc-400 max-w-[280px]">
-                    {plan.description}
-                  </p>
-                </div>
-
-                <ul className="flex-1 space-y-4 w-full max-w-[280px]" aria-label={`Características del plan ${plan.name}`}>
-                  {plan.features.map((feature) => {
-                    const Icon = getFeatureIcon(feature);
-                    return (
-                      <li
-                        key={feature}
-                        className="flex items-center text-[color(display-p3_0.1725490196_0.1764705882_0.1882352941/0.8)] dark:text-zinc-300"
-                      >
-                        <div className="mr-3 shrink-0">
-                          <Icon className="h-5 w-5 text-[color(display-p3_0.1725490196_0.1764705882_0.1882352941/1)] dark:text-white opacity-80" />
-                        </div>
-                        <span className="text-sm">{feature}</span>
-                      </li>
-                    );
-                  })}
-                </ul>
-
-                <footer className="w-full max-w-[280px] mt-auto">
-                  {plan.name !== "Enterprise" ? (
-                    <Button
-                      disabled={isEnterprise}
-                      onClick={() =>
-                        hasActiveSubscription
-                          ? router.push("/settings/billing")
-                          : handlePlanSelection(plan.name)
-                      }
-                      className="hover:bg-white hover:text-[color(display-p3_0.1725490196_0.1764705882_0.1882352941/1)] hover:shadow-[rgba(0,0,0,0.1)_0px_0px_0px_1px] relative flex w-full cursor-pointer select-none items-center justify-center whitespace-nowrap bg-white text-sm leading-4 tracking-normal duration-[0.17s] text-[color(display-p3_0.1725490196_0.1764705882_0.1882352941/1)] dark:bg-zinc-900 dark:text-white dark:hover:bg-zinc-800 shadow-[rgba(0,0,0,0.05)_0px_0px_0px_1px] rounded-[50px] h-10 border-none disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isEnterprise
-                        ? "Plan Enterprise Activo"
-                        : hasActiveSubscription
-                          ? currentPlan === plan.name.toLowerCase()
-                            ? "Plan Actual"
-                            : "Gestionar Suscripción"
-                          : plan.buttonText}
-                    </Button>
-                  ) : (
-                    <Button
-                      asChild={!isEnterprise}
-                      disabled={isEnterprise}
-                      className="hover:bg-white hover:text-[color(display-p3_0.1725490196_0.1764705882_0.1882352941/1)] hover:shadow-[rgba(0,0,0,0.1)_0px_0px_0px_1px] relative flex w-full cursor-pointer select-none items-center justify-center whitespace-nowrap bg-white text-sm leading-4 tracking-normal duration-[0.17s] text-[color(display-p3_0.1725490196_0.1764705882_0.1882352941/1)] dark:bg-zinc-900 dark:text-white dark:hover:bg-zinc-800 shadow-[rgba(0,0,0,0.05)_0px_0px_0px_1px] rounded-[50px] h-10 border-none disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isEnterprise ? (
-                        "Plan Enterprise Activo"
-                      ) : (
-                        <Link href={plan.href}>{plan.buttonText}</Link>
-                      )}
-                    </Button>
+                  {plan.popular && (
+                    <div className="absolute top-4 px-3 py-1 bg-[color(display-p3_0.1725490196_0.1764705882_0.1882352941/1)] text-white dark:bg-white dark:text-black text-xs font-bold rounded-full uppercase tracking-wide">
+                      Más Popular
+                    </div>
                   )}
-                </footer>
-              </article>
-          </div>
-          );
-        })}
+
+                  <div className="flex flex-col items-center justify-center gap-2 text-center">
+                    <h3 id={`plan-${plan.name.toLowerCase()}-title`} className="text-2xl font-medium leading-6 tracking-tight text-[color(display-p3_0.1725490196_0.1764705882_0.1882352941/1)] dark:text-white">
+                      {plan.name}
+                    </h3>
+                    <div className="flex items-baseline justify-center text-[color(display-p3_0.1725490196_0.1764705882_0.1882352941/1)] dark:text-white">
+                      <span className="text-4xl font-bold tracking-tight">
+                        {formattedPrice}
+                      </span>
+                      {period && plan.priceAmount !== null && (
+                        <span className="ml-1 text-sm font-medium opacity-60">
+                          {period}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm leading-6 tracking-tight text-[color(display-p3_0.1725490196_0.1764705882_0.1882352941/0.6)] dark:text-zinc-400 max-w-[280px]">
+                      {plan.description}
+                    </p>
+                  </div>
+
+                  <ul className="flex-1 space-y-4 w-full max-w-[280px]" aria-label={`Características del plan ${plan.name}`}>
+                    {plan.features.map((feature) => {
+                      const Icon = getFeatureIcon(feature);
+                      return (
+                        <li
+                          key={feature}
+                          className="flex items-center text-[color(display-p3_0.1725490196_0.1764705882_0.1882352941/0.8)] dark:text-zinc-300"
+                        >
+                          <div className="mr-3 shrink-0">
+                            <Icon className="h-5 w-5 text-[color(display-p3_0.1725490196_0.1764705882_0.1882352941/1)] dark:text-white opacity-80" />
+                          </div>
+                          <span className="text-sm">{feature}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+
+                  <footer className="w-full max-w-[280px] mt-auto">
+                    <PricingPlanButton plan={plan} slug={planSlug} />
+                  </footer>
+                </article>
+              </div>
+            );
+          })}
         </div>
 
         {/* Right border */}

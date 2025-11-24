@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Loader2, ShieldAlert } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -107,6 +107,8 @@ export function NoSubscriptionDialog({
     isAuthenticated ? {} : "skip",
   );
 
+  const idempotencyKey = useMemo(() => crypto.randomUUID(), []);
+
   const resolved = useMemo(() => {
     const defaultOrgName = orgName ?? organizationInfo?.name ?? billingInfo?.name ?? null;
     const defaultStripeCustomerId = stripeCustomerId ?? billingInfo?.stripeCustomerId ?? null;
@@ -120,11 +122,14 @@ export function NoSubscriptionDialog({
         ? canManageBilling
         : Boolean(billingInfo);
 
+    const defaultPlan = organizationInfo?.plan ?? billingInfo?.plan ?? null;
+
     return {
       orgName: defaultOrgName,
       stripeCustomerId: defaultStripeCustomerId,
       subscriptionStatus: defaultSubscriptionStatus,
       canManageBilling: defaultCanManageBilling,
+      plan: defaultPlan,
     };
   }, [
     billingInfo,
@@ -137,6 +142,7 @@ export function NoSubscriptionDialog({
 
   const orgLabel = resolved.orgName ?? "Tu organización";
   const isCanceled = resolved.subscriptionStatus === "canceled";
+  const isEnterprise = resolved.plan === "enterprise";
 
   const handleRenewPlan = async () => {
     if (isRenewing) return;
@@ -166,8 +172,8 @@ export function NoSubscriptionDialog({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg border-none bg-transparent p-0 shadow-none">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent showCloseButton={false} className="sm:max-w-lg border-none bg-transparent p-0 shadow-none">
         <div className="relative overflow-hidden rounded-3xl border border-zinc-200/80 bg-white/90 shadow-2xl dark:border-zinc-800/60 dark:bg-zinc-950/80">
           <GradientBackground />
 
@@ -181,13 +187,17 @@ export function NoSubscriptionDialog({
                   Suscripción requerida
                 </DialogTitle>
                 <DialogDescription className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-                  {resolved.canManageBilling
-                    ? `${orgLabel} no tiene una suscripción activa. ${
-                        isCanceled
-                          ? "Elige un nuevo plan para reactivar el acceso."
-                          : "Puedes reactivar el acceso desde aquí."
-                      }`
-                    : `${orgLabel} no tiene una suscripción activa. Pídele a un administrador con permiso de facturación que reactive el plan.`}
+                  {isEnterprise ? (
+                    "Por favor, contacta al soporte de Rift para reactivar tu suscripción Enterprise."
+                  ) : resolved.canManageBilling ? (
+                    `${orgLabel} no tiene una suscripción activa. ${
+                      isCanceled
+                        ? "Elige un nuevo plan para reactivar el acceso."
+                        : "Puedes reactivar el acceso desde aquí."
+                    }`
+                  ) : (
+                    `${orgLabel} no tiene una suscripción activa. Pídele a un administrador con permiso de facturación que reactive el plan.`
+                  )}
                 </DialogDescription>
               </div>
             </div>
@@ -207,19 +217,28 @@ export function NoSubscriptionDialog({
                 Cerrar
               </Button>
 
-              {resolved.canManageBilling ? (
+              {isEnterprise ? (
+                <Button
+                  asChild
+                  variant="outline"
+                  className="w-full justify-center rounded-2xl border-zinc-200 bg-white/80 text-zinc-900 hover:bg-white dark:border-zinc-800 dark:bg-transparent dark:text-white dark:hover:bg-zinc-900/60 sm:w-auto"
+                >
+                  <a href="mailto:enterprise@rift.mx">Contactar Soporte</a>
+                </Button>
+              ) : resolved.canManageBilling ? (
                 <>
                   <Button
                     asChild
                     variant="outline"
                     className="w-full justify-center rounded-2xl border-zinc-200 bg-white/80 text-zinc-900 hover:bg-white dark:border-zinc-800 dark:bg-transparent dark:text-white dark:hover:bg-zinc-900/60 sm:w-auto"
                   >
-                    <a href="/subscribe?plan=free">Cambiar a plan gratuito</a>
+                    <a href={`/subscribe?plan=free&cancel_existing_subscription=true&idempotency_key=${idempotencyKey}`}>Cambiar a plan gratuito</a>
                   </Button>
                   {isCanceled ? (
                     <Button
                       asChild
-                      className="w-full justify-center rounded-full bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 sm:w-auto"
+                      variant="outline"
+                      className="w-full justify-center rounded-2xl border-zinc-200 bg-white/80 text-zinc-900 hover:bg-white dark:border-zinc-800 dark:bg-transparent dark:text-white dark:hover:bg-zinc-900/60 sm:w-auto"
                     >
                       <a href="/#pricing">Ver planes</a>
                     </Button>
@@ -227,15 +246,15 @@ export function NoSubscriptionDialog({
                     <Button
                       onClick={handleRenewPlan}
                       disabled={isRenewing}
-                      className="w-full justify-center rounded-2xl bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 sm:w-auto"
+                      variant="outline"
+                      className="w-full justify-center rounded-2xl border-zinc-200 bg-white/80 text-zinc-900 hover:bg-white dark:border-zinc-800 dark:bg-transparent dark:text-white dark:hover:bg-zinc-900/60 sm:w-auto cursor-pointer"
                     >
                       {isRenewing ? (
                         <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Abriendo portal…
+                          Renovar Plan
                         </>
                       ) : (
-                        "Renovar plan"
+                        "Renovar Plan"
                       )}
                     </Button>
                   )}
@@ -243,7 +262,8 @@ export function NoSubscriptionDialog({
               ) : (
                 <Button
                   asChild
-                  className="w-full justify-center rounded-2xl bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 sm:w-auto"
+                  variant="outline"
+                  className="w-full justify-center rounded-2xl border-zinc-200 bg-white/80 text-zinc-900 hover:bg-white dark:border-zinc-800 dark:bg-transparent dark:text-white dark:hover:bg-zinc-900/60 sm:w-auto"
                 >
                   <a href="/#pricing">Ver planes</a>
                 </Button>

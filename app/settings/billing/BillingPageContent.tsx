@@ -163,7 +163,6 @@ export function BillingPageContent() {
                      Pago mensual actual
                   </p>
                   <div className="flex items-center text-gray-900 dark:text-white">
-                    <DollarSign className="w-4 h-4 mr-2 text-gray-400" />
                     <span className="text-lg font-semibold">
                       {formatPrice(totalPrice)}
                     </span>

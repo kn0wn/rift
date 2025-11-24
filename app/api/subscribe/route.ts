@@ -2,6 +2,7 @@ import { stripe } from '@/app/api/stripe';
 import { workos } from '@/app/api/workos';
 import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
+import { getPermissions, checkPermission, PERMISSIONS } from '@/lib/permissions';
 
 export const POST = async (req: NextRequest) => {
   const productionDomain = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
@@ -12,6 +13,8 @@ export const POST = async (req: NextRequest) => {
     orgName,
     subscriptionLevel,
     organizationId: providedOrgId,
+    cancelAllExistingSubscriptions,
+    idempotencyKey,
   } = await req.json();
 
   try {
@@ -117,12 +120,65 @@ export const POST = async (req: NextRequest) => {
 
     // Handle FREE plan subscription immediately
     if (subscriptionLevel === 'free') {
+        // If requested, cancel existing subscriptions
+        if (cancelAllExistingSubscriptions && customerId) {
+            // Check permissions before cancelling
+            const permissions = await getPermissions();
+            if (!checkPermission(permissions, "MANAGE_BILLING")) {
+                return NextResponse.json(
+                    { error: "Unauthorized: You do not have permission to manage billing." },
+                    { status: 403 }
+                );
+            }
+
+            try {
+                const existingSubscriptions = await stripe.subscriptions.list({
+                    customer: customerId,
+                    limit: 100,
+                });
+
+                for (const sub of existingSubscriptions.data) {
+                    if (sub.status !== 'canceled') {
+                        await stripe.subscriptions.cancel(sub.id);
+                    }
+                }
+            } catch (error: any) {
+                // Ignore 'resource_missing' error as it means subscription was already cancelled/deleted
+                if (error?.code !== 'resource_missing') {
+                    console.error("Error canceling existing subscriptions:", error);
+                }
+                // Continue to create the free subscription even if cancellation failed
+                // to ensure the user regains access
+            }
+        }
+
+        // Check if there is already an active subscription for this price to avoid duplicates
+        // This handles race conditions where multiple requests might try to create the subscription simultaneously
+        const existingSubscriptions = await stripe.subscriptions.list({
+            customer: customerId,
+            price: priceId,
+            status: 'active',
+            limit: 1,
+        });
+
+        if (existingSubscriptions.data.length > 0) {
+            const subscription = existingSubscriptions.data[0];
+            return NextResponse.json({ 
+                success: true, 
+                organizationId: targetOrganizationId,
+                subscriptionId: subscription.id,
+                url: `${baseUrl}/chat`
+            });
+        }
+
         const subscription = await stripe.subscriptions.create({
             customer: customerId,
             items: [{ price: priceId }],
             payment_behavior: 'default_incomplete',
             payment_settings: { save_default_payment_method: 'on_subscription' },
             expand: ['latest_invoice.payment_intent'],
+        }, {
+            idempotencyKey: idempotencyKey ? `sub_create_${idempotencyKey}` : undefined,
         });
 
         // If subscription is active (free plan usually is immediately active), return success
@@ -130,7 +186,8 @@ export const POST = async (req: NextRequest) => {
         return NextResponse.json({ 
             success: true, 
             organizationId: targetOrganizationId,
-            subscriptionId: subscription.id 
+            subscriptionId: subscription.id,
+            url: `${baseUrl}/chat`
         });
     }
 

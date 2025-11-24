@@ -1,8 +1,3 @@
-'use client';
-
-import React, { useMemo } from 'react';
-import Link from 'next/link';
-import { ArrowRightIcon } from "lucide-react";
 import { MODELS } from "@/lib/ai/ai-providers";
 import { AnthropicIcon } from "@/components/ui/icons/anthropic-icon";
 import { TablerBrandOpenai } from "@/components/ui/icons/openai-icon";
@@ -12,7 +7,6 @@ import { DeepSeekIcon } from "@/components/ui/icons/deepseek-icon";
 import { LogosMistralAiIcon } from "@/components/ui/icons/mistral-icon";
 import { MoonshotIcon } from "@/components/ui/icons/moonshot-icon";
 import { ZaiIcon } from "@/components/ui/icons/zai-icon";
-import { Button } from "@/components/ai/ui/button";
 import { cn } from "@/lib/utils";
 
 const MarqueeCard = ({ model }: { model: typeof MODELS[0] }) => {
@@ -25,7 +19,7 @@ const MarqueeCard = ({ model }: { model: typeof MODELS[0] }) => {
     deepseek: DeepSeekIcon,
     mistral: LogosMistralAiIcon,
     moonshot: MoonshotIcon,
-    moonshotai: MoonshotIcon, // Add the 'moonshotai' key to match the provider string in config
+    moonshotai: MoonshotIcon,
     zai: ZaiIcon,
   } as const;
 
@@ -139,18 +133,6 @@ const MarqueeRow = ({
           <MarqueeCard key={`${model.id}-duplicate-${i}`} model={model} />
         ))}
       </div>
-      
-      <style jsx>{`
-        @keyframes marquee {
-          from { transform: translate3d(0, 0, 0); }
-          to { transform: translate3d(-100%, 0, 0); }
-        }
-        .animate-marquee {
-          animation-name: marquee;
-          animation-timing-function: linear;
-          animation-iteration-count: infinite;
-        }
-      `}</style>
     </div>
   );
 };
@@ -188,9 +170,7 @@ function seededShuffle<T>(array: T[], seed: number): T[] {
 }
 
 export function ModelsMarquee() {
-  // Use useMemo to ensure stable shuffle across re-renders but it will run on every client
-  // Since we want server/client consistency, we use a fixed seed.
-  const shuffledModels = useMemo(() => seededShuffle(MODELS, 12345), []);
+  const shuffledModels = seededShuffle(MODELS, 12345);
 
   // Split models into 3 rows
   const chunkSize = Math.ceil(shuffledModels.length / 3);

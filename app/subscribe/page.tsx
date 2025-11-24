@@ -105,6 +105,8 @@ function SubscribePageContent() {
   const { user, organizationId, switchToOrganization } = useAuth();
   const searchParams = useSearchParams();
   const planParam = searchParams.get("plan");
+  const cancelAllExistingSubscriptions = searchParams.get("cancel_existing_subscription") === "true";
+  const idempotencyKey = searchParams.get("idempotency_key");
   const router = useRouter();
   
   const [orgName, setOrgName] = useState("");
@@ -133,6 +135,8 @@ function SubscribePageContent() {
                     userId: user.id,
                     organizationId,
                     subscriptionLevel: planParam.toLowerCase(),
+                    cancelAllExistingSubscriptions: cancelAllExistingSubscriptions,
+                    idempotencyKey,
                 }),
             });
 
@@ -196,6 +200,7 @@ function SubscribePageContent() {
             body: JSON.stringify({
                 userId: user.id,
                 orgName, 
+                organizationId: undefined, // Explicitly undefined for new org
                 subscriptionLevel: planParam.toLowerCase(),
             }),
         });

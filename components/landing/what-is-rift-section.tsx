@@ -1,7 +1,3 @@
-"use client";
-
-import ScrollRiveAnimation from "./scroll-rive-animation";
-
 export default function WhatIsRIFTSection() {
   return (
     <section id="about" aria-labelledby="about-heading" className="scroll-mt-20 pt-24 md:pt-0">
@@ -20,16 +16,6 @@ export default function WhatIsRIFTSection() {
           modelos, permitiendo al usuario crecer, tener mejores resultados y mejorar su experiencia.
         </p>
       </div>
-
-      {/* Full-width animation container */}
-      {/* <div className="relative md:block hidden">
-        <ScrollRiveAnimation
-          src="https://xasvboifh2.ufs.sh/f/Eq6vxXhJeSPAqrrZ5gi0ZPwa4nG7Tv3DL26zopCgE918fchM"
-          stateMachineName="State Machine 1"
-          inputName="scroll"
-          className="flex items-center justify-center pointer-events-none"
-        />
-      </div> */}
     </section>
   );
 }
