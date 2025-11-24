@@ -128,7 +128,7 @@ export const POST = async (req: NextRequest) => {
       cancel_url: `${baseUrl}/`,
     });
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: session.url, organizationId: targetOrganizationId });
 
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'An error occurred';

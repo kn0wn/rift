@@ -19,7 +19,6 @@ export async function GET(request: NextRequest) {
           returnPathname = `${returnPathname}${separator}plan=${state.plan}`;
       }
     } catch (e) {
-      // Ignore error, use default
     }
   }
 

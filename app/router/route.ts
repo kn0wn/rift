@@ -11,6 +11,15 @@ export const GET = async (request: NextRequest) => {
       return NextResponse.redirect(new URL("/", request.url));
     }
 
+    const searchParams = request.nextUrl.searchParams;
+    const plan = searchParams.get("plan");
+
+    if (plan) {
+      const subscribeUrl = new URL("/subscribe", request.url);
+      subscribeUrl.searchParams.set("plan", plan);
+      return NextResponse.redirect(subscribeUrl);
+    }
+
     if (session.organizationId) {
       try {
         await logUserLoggedIn();

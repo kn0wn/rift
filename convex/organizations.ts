@@ -40,6 +40,16 @@ function getPlanFromLookupKey(lookupKey: string | null): PlanType | null {
 export const createOrganization = internalMutation({
   args: { workos_id: v.string(), name: v.string() },
   handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("organizations")
+      .withIndex("by_workos_id", (q) => q.eq("workos_id", args.workos_id))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { name: args.name });
+      return existing._id;
+    }
+
     return await ctx.db.insert("organizations", args);
   },
 });

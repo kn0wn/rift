@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 // ============================================================================
 // PERMISSION CONSTANTS
 // ============================================================================
@@ -103,21 +105,12 @@ export async function hasPermission(permissionKey: PermissionKey): Promise<boole
 // ============================================================================
 
 /**
- * Request-scoped cache for permission sets to avoid duplicate JWT parsing.
- * For checking multiple permissions in the same request.
- */
-let cachedPermissionSet: Promise<Set<string>> | null = null;
-
-/**
  * Gets the current user's permission set with request-scoped caching.
  * Subsequent calls in the same request will return the cached result.
  */
-export function getPermissionSet(): Promise<Set<string>> {
-  if (!cachedPermissionSet) {
-    cachedPermissionSet = getPermissions();
-  }
-  return cachedPermissionSet;
-}
+export const getPermissionSet = cache(async (): Promise<Set<string>> => {
+  return getPermissions();
+});
 
 /**
  * Batched permission check for multiple permissions in a single call.
@@ -155,7 +148,6 @@ export async function hasPermissions(
  * 
  */
 export function __resetPermissionCacheForTests() {
-  cachedPermissionSet = null;
 }
 
 
