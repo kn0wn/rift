@@ -56,7 +56,6 @@ export default defineSchema({
     cancelAtPeriodEnd: v.optional(v.boolean()),
     paymentMethodBrand: v.optional(v.string()),
     paymentMethodLast4: v.optional(v.string()),
-    scheduledBillingJobId: v.optional(v.id("_scheduled_functions")),
   })
     .index("by_workos_id", ["workos_id"])
     .index("by_stripe_customer_id", ["stripeCustomerId"]),

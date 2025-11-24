@@ -272,7 +272,6 @@ export const syncStripeSubscriptionData = internalMutation({
       cancelAtPeriodEnd: args.subscriptionData.cancelAtPeriodEnd,
       paymentMethodBrand: args.subscriptionData.paymentMethodBrand || undefined,
       paymentMethodLast4: args.subscriptionData.paymentMethodLast4 || undefined,
-      // Update billing cycle fields (used by quota system)
       billingCycleStart: args.subscriptionData.billingCycleStart || undefined,
       billingCycleEnd: args.subscriptionData.billingCycleEnd || undefined,
       seatQuantity:
@@ -290,39 +289,6 @@ export const syncStripeSubscriptionData = internalMutation({
 
     await ctx.db.patch(organization._id, updateData);
     return organization._id;
-  },
-});
-
-export const resetOrganizationBillingCycle = internalMutation({
-  args: { organizationId: v.id("organizations") },
-  returns: v.id("_scheduled_functions"),
-  handler: async (ctx, args): Promise<Id<"_scheduled_functions">> => {
-    const organization = await ctx.db.get(args.organizationId);
-    if (!organization) {
-      throw new Error(`Organization not found: ${args.organizationId}`);
-    }
-    
-    const now = Date.now();
-    const thirtyDaysFromNow = now + (30 * 24 * 60 * 60 * 1000);
-    
-    await ctx.db.patch(args.organizationId, {
-      billingCycleStart: now,
-      billingCycleEnd: thirtyDaysFromNow,
-    });
-    
-    // Schedule next reset - creates perpetual cycle
-    const jobId: Id<"_scheduled_functions"> = await ctx.scheduler.runAt(
-      thirtyDaysFromNow,
-      internal.organizations.resetOrganizationBillingCycle,
-      { organizationId: args.organizationId }
-    );
-    
-    // Store the job ID in the organization document
-    await ctx.db.patch(args.organizationId, {
-      scheduledBillingJobId: jobId,
-    });
-    
-    return jobId;
   },
 });
 

@@ -46,7 +46,7 @@ interface MembersListProps {
   currentUserId: string
   seatQuantity?: number | null
   totalMemberCount: number
-  plan?: "plus" | "pro" | "enterprise" | null
+  plan?: "free" | "plus" | "pro" | "enterprise" | null
 }
 
 interface InvitationFormData {

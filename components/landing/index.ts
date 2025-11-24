@@ -9,5 +9,4 @@ export { default as PerformanceSection } from "./performance-section";
 export { default as Footer } from "./footer";
 export { default as CTASection } from "./cta-section";
 export { default as ScrollRiveAnimation } from "./scroll-rive-animation";
-export { default as EnhancedScrollRiveAnimation } from "./enhanced-scroll-rive-animation";
 export { default as PricingSection } from "./pricing-section";

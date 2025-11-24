@@ -483,7 +483,7 @@ http.route({
 
     try {
       const body = await request.json();
-      const { organizationId, plan } = body ?? {};
+      const { organizationId, plan, customStandardQuotaLimit, customPremiumQuotaLimit, seatQuantity } = body ?? {};
       
       if (!organizationId || !plan) {
         return new Response(JSON.stringify({ error: "Missing organizationId or plan" }), {
@@ -492,8 +492,8 @@ http.route({
         });
       }
 
-      if (plan !== "plus" && plan !== "pro") {
-        return new Response(JSON.stringify({ error: "Invalid plan. Must be 'plus' or 'pro'" }), {
+      if (plan !== "plus" && plan !== "pro" && plan !== "enterprise") {
+        return new Response(JSON.stringify({ error: "Invalid plan. Must be 'plus', 'pro' or 'enterprise'" }), {
           status: 400,
           headers: { "Content-Type": "application/json" },
         });
@@ -502,6 +502,9 @@ http.route({
       await ctx.runMutation(internal.admin.organizations.setOrganizationPlan, {
         organizationId,
         plan,
+        customStandardQuotaLimit,
+        customPremiumQuotaLimit,
+        seatQuantity,
       });
 
       return new Response(JSON.stringify({ status: "success" }), {

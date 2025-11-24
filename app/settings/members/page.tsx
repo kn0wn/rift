@@ -10,7 +10,7 @@ import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 
 export default async function MembersPage() {
-  const { user, organizationId } = await withAuth({
+  const { user, accessToken, organizationId } = await withAuth({
     ensureSignedIn: true,
   });
 
@@ -32,10 +32,22 @@ export default async function MembersPage() {
   const userHasPermission = await hasPermission("WIDGETS_USERS_TABLE_MANAGE");
   const canViewAuditLogs = await hasPermission("AUDIT_LOGS");
 
+  // Check organization plan for enterprise features
+  const planInfo = await fetchQuery(
+    api.organizations.getCurrentOrganizationPlan,
+    {},
+    { token: accessToken }
+  ).catch((e) => {
+    console.error("Error fetching organization plan:", e);
+    return null;
+  });
+
+  const isEnterprise = planInfo?.plan === "enterprise";
+
   let initialData: PaginatedOrganizationData = { members: [], invitations: [], nextCursor: null, prevCursor: null };
   let seatQuantity: number | null = null;
   let totalMemberCount: number = 0;
-  let plan: "plus" | "pro" | "enterprise" | null = null;
+  let plan: "free" | "plus" | "pro" | "enterprise" | null = null;
 
   if (userHasPermission) {
     const [data, seats, count, planResult] = await Promise.all([
@@ -66,7 +78,7 @@ export default async function MembersPage() {
   }
 
   let auditLogsLink: string | null = null;
-  if (canViewAuditLogs) {
+  if (canViewAuditLogs && isEnterprise) {
     try {
       auditLogsLink = await getAuditLogPortalLink(organizationId);
     } catch (e) {
@@ -120,8 +132,8 @@ export default async function MembersPage() {
           description="Accede al historial de eventos de tu organización."
           className="mt-8"
         >
-          <div className="flex items-center justify-between">
-            {auditLogsLink ? (
+          {isEnterprise && auditLogsLink ? (
+            <div className="flex items-center justify-between">
               <a
                 href={auditLogsLink}
                 target="_blank"
@@ -130,10 +142,20 @@ export default async function MembersPage() {
               >
                 Abrir Audit Logs
               </a>
-            ) : (
-              <Text size="2" color="gray">No disponible</Text>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="p-6 bg-white dark:bg-popover-secondary rounded-lg border border-gray-200 dark:border-border shadow-sm">
+              <p className="text-sm text-gray-500 dark:text-text-muted mb-4">
+                Si estás interesado en esta funcionalidad, contacta al soporte de Rift.
+              </p>
+              <a
+                href="mailto:features@rift.mx"
+                className="inline-flex h-9 items-center rounded-md bg-accent px-3 text-sm font-medium text-white hover:bg-accent-strong transition-colors cursor-pointer"
+              >
+                Contactar Soporte
+              </a>
+            </div>
+          )}
         </SettingsSection>
       )}
     </div>
