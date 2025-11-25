@@ -21,6 +21,7 @@ import {
   BarChart3,
   File,
   Bug,
+  TrendingUp,
 } from "lucide-react";
 interface SettingsNavItem {
   title: string;
@@ -153,6 +154,11 @@ const settingsSections: SettingsSection[] = [
         title: "Dominio y SSO",
         href: "/settings/domain-sso",
         icon: Building2,
+      },
+      {
+        title: "Analytics",
+        href: "/settings/insights",
+        icon: TrendingUp,
       },
       {
         title: "Suscripción",

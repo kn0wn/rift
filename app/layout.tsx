@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "@/styles/globals.css";
 import { ConvexClientProvider } from "@/components/ConvexClientProvider";
-import { ThemeColorUpdater } from "@/components/theme-color-updater";
 import { ThemeProvider } from "next-themes";
 import { Providers } from "./providers";
 import { cookies } from "next/headers";
@@ -100,7 +99,6 @@ export default async function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <ThemeColorUpdater />
             <Providers initialModel={initialModel}>{children}</Providers>
           </ThemeProvider>
         </ConvexClientProvider>
