@@ -181,22 +181,19 @@ export function BenchmarksTable() {
   const customScenarioCost = useMemo(() => {
     const calculateCustomCost = (modelId: string, isPremium: boolean, multiplier: number) => {
       if (modelId === 'average') {
-        // Get the average cost for the selected scenario (already adjusted with default multipliers)
+        // Get the average cost for the selected scenario (raw costs without multipliers)
         let avg: number;
         if (customScenario === 'average') {
           // Average across all three scenarios
           const overall = isPremium ? statistics.premium.overall : statistics.nonPremium.overall;
-          const defaultMultiplier = isPremium ? 100 : 1000;
-          const baseCost = overall / defaultMultiplier;
-          return baseCost * multiplier;
+          // Statistics contain raw costs, so multiply directly by user's multiplier
+          return overall * multiplier;
         } else {
           avg = isPremium 
             ? statistics.premium[customScenario === 'small' ? 'small' : customScenario === 'medium' ? 'medium' : 'worse']
             : statistics.nonPremium[customScenario === 'small' ? 'small' : customScenario === 'medium' ? 'medium' : 'worse'];
-          // Convert back to base cost, then apply custom multiplier
-          const defaultMultiplier = isPremium ? 100 : 1000;
-          const baseCost = avg / defaultMultiplier;
-          return baseCost * multiplier;
+          // Statistics contain raw costs, so multiply directly by user's multiplier
+          return avg * multiplier;
         }
       }
       
@@ -408,19 +405,19 @@ export function BenchmarksTable() {
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Overall Average:</span>
-              <span className="font-mono font-semibold">{formatPrice(statistics.premium.overall)}</span>
+              <span className="font-mono font-semibold">{formatPrice(statistics.premium.overall * 100)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Light:</span>
-              <span className="font-mono">{formatPrice(statistics.premium.small)}</span>
+              <span className="font-mono">{formatPrice(statistics.premium.small * 100)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Standard:</span>
-              <span className="font-mono">{formatPrice(statistics.premium.medium)}</span>
+              <span className="font-mono">{formatPrice(statistics.premium.medium * 100)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Worse:</span>
-              <span className="font-mono">{formatPrice(statistics.premium.worse)}</span>
+              <span className="font-mono">{formatPrice(statistics.premium.worse * 100)}</span>
             </div>
           </div>
         </div>
@@ -433,19 +430,19 @@ export function BenchmarksTable() {
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Overall Average:</span>
-              <span className="font-mono font-semibold">{formatPrice(statistics.nonPremium.overall)}</span>
+              <span className="font-mono font-semibold">{formatPrice(statistics.nonPremium.overall * 1000)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Light:</span>
-              <span className="font-mono">{formatPrice(statistics.nonPremium.small)}</span>
+              <span className="font-mono">{formatPrice(statistics.nonPremium.small * 1000)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Standard:</span>
-              <span className="font-mono">{formatPrice(statistics.nonPremium.medium)}</span>
+              <span className="font-mono">{formatPrice(statistics.nonPremium.medium * 1000)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Worse:</span>
-              <span className="font-mono">{formatPrice(statistics.nonPremium.worse)}</span>
+              <span className="font-mono">{formatPrice(statistics.nonPremium.worse * 1000)}</span>
             </div>
           </div>
         </div>

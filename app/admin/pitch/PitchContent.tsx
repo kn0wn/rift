@@ -1,8 +1,5 @@
 "use client";
 
-import { Navbar } from "@/components/landing";
-import { Footer } from "@/components/landing";
-import { Button } from "@/components/ai/ui/button";
 import { Building2, GraduationCap, Rocket, Check } from "lucide-react";
 import Image from "next/image";
 import {
@@ -34,7 +31,7 @@ function getFeatureIcon(feature: string) {
   return Check;
 }
 
-export default function PitchPage() {
+export default function PitchContent() {
   return (
     <div className="min-h-screen bg-background selection:bg-amber-100 selection:text-amber-900 dark:selection:bg-amber-900 dark:selection:text-amber-50">
 
@@ -735,3 +732,4 @@ function GradientBackground({ id }: { id: string }) {
     </svg>
   );
 }
+
