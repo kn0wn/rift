@@ -5,7 +5,7 @@ import { ConvexClientProvider } from "@/components/ConvexClientProvider";
 import { ThemeProvider } from "next-themes";
 import { Providers } from "./providers";
 import { cookies } from "next/headers";
-
+import { Toaster } from "@/components/ai/ui/sonner";
 const inter = Inter({
   weight: ["400"],
   subsets: ["latin"],
@@ -109,6 +109,7 @@ export default async function RootLayout({
             <Providers initialModel={initialModel}>{children}</Providers>
           </ThemeProvider>
         </ConvexClientProvider>
+        <Toaster />
       </body>
     </html>
   );

@@ -27,14 +27,14 @@ export default function NavbarAuthButtons() {
         <div className="hidden md:flex items-center space-x-4">
           <Link
             href="/sign-in"
-            className="text-gray-600 hover:text-accent font-medium text-sm transition-colors dark:text-white"
+            className="text-gray-600 hover:text-accent font-medium text-sm transition-colors dark:text-white cursor-pointer"
           >
             Iniciar sesión
           </Link>
           <Link href="/sign-up">
             <Button
               size="sm"
-              className="bg-accent hover:bg-accent/90 text-white px-4 py-2 rounded-lg font-medium text-sm"
+              className="bg-accent hover:bg-accent/90 text-white px-4 py-2 rounded-lg font-medium text-sm cursor-pointer"
             >
               Registrarse
             </Button>

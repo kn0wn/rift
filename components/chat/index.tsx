@@ -67,7 +67,8 @@ function ChatInterfaceInternal({
   const setQuotaError = useChatUIStore((s) => s.setQuotaError);
   const setShowNoSubscriptionDialog = useChatUIStore((s) => s.setShowNoSubscriptionDialog);
   const handleSearchToggle = useChatUIStore((s) => s.handleSearchToggle);
-  const setFileUploadError = useChatUIStore((s) => s.setFileUploadError);
+  const triggerError = useChatUIStore((s) => s.triggerError);
+  const setChatError = useChatUIStore((s) => s.setChatError);
   const responseStyle = useChatUIStore((s) => s.responseStyle);
   const setResponseStyle = useChatUIStore((s) => s.setResponseStyle);
   const [isDragActive, setIsDragActive] = useState(false);
@@ -77,7 +78,7 @@ function ChatInterfaceInternal({
   const handleProcessFiles = useCallback(async (fileArray: File[]) => {
     if (!fileArray || fileArray.length === 0) return;
 
-    setFileUploadError(null);
+    setChatError(null);
 
     const state = useChatUIStore.getState();
     const existingCount = state.uploadedAttachments.length + state.uploadingFiles.length;
@@ -102,13 +103,12 @@ function ChatInterfaceInternal({
       setUploadedAttachments((prev: any[]) => [...prev, ...uploadResult.right]);
     } else {
       const message = describeUploadError(uploadResult.left);
-      toast.error(message);
-      setFileUploadError(message);
+      triggerError(message);
       setSelectedFiles((prev: File[]) => prev.filter((file) => !fileArray.includes(file)));
     }
 
     setUploadingFiles((prev: any[]) => prev.filter((uf) => !fileArray.includes(uf.file)));
-  }, [setSelectedFiles, setUploadingFiles, setUploadedAttachments, setFileUploadError]);
+  }, [setSelectedFiles, setUploadingFiles, setUploadedAttachments, setChatError, triggerError]);
 
   // Apply model change effects
   const prevModelRef = useRef(selectedModel);
@@ -285,7 +285,7 @@ function ChatInterfaceInternal({
             !error.message.includes("aborted") &&
             !error.message.includes("cancelled")
           ) {
-            toast.error("An error occurred. Please try again.");
+            triggerError("An error occurred. Please try again.");
           }
         }
       },
@@ -363,6 +363,22 @@ function ChatInterfaceInternal({
     regenerate: async ({ messageId }: { messageId: string }) => {
       if (regenerateRef.current) {
         await regenerateRef.current({ messageId });
+      }
+    },
+    onError: (error) => {
+      // Extract error message from cause if available
+      const causeMessage = error.cause instanceof Error 
+        ? error.cause.message 
+        : typeof error.cause === "string" 
+          ? error.cause 
+          : null;
+      
+      const displayMessage = causeMessage || error.message;
+      
+      if (error._tag === "RegenerationError") {
+        triggerError(`Failed to regenerate: ${displayMessage}`);
+      } else if (error._tag === "EditError") {
+        triggerError(`Failed to edit: ${displayMessage}`);
       }
     },
   });
@@ -608,7 +624,7 @@ function ChatInterfaceInternal({
         setIsSendingMessage(false);
       } catch (error) {
         console.error("Failed to send message:", error);
-        toast.error("Failed to send message. Please try again.");
+        triggerError("Failed to send message. Please try again.");
         setInput(messageContent);
         // Clear optimistic messages on error
         setMessages([]);
@@ -750,7 +766,7 @@ function ChatInterfaceInternal({
                       handleRegenerateAfterUser(messageId, renderedMessages);
                     } catch (e) {
                       console.error("Edit message failed", e);
-                      toast.error("Failed to edit message.");
+                      triggerError("Failed to edit message.");
                     }
                   }}
                 />

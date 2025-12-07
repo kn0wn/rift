@@ -19,8 +19,8 @@ import {
   PromptInputTools,
   PromptInputFileUpload,
   PromptInputFilePreview,
-  PromptInputError,
 } from "@/components/ai/prompt-input";
+import { ChatErrorAlert } from "./chat-error-alert";
 import { ModelSelector } from "@/components/ai/model-selector";
 import { ResponseStyleSelector } from "@/components/ai/response-style-selector";
 import type { FileAttachment } from "@/lib/file-utils";
@@ -70,13 +70,13 @@ export const ChatInputArea = React.memo(function ChatInputArea({
   const setResponseStyle = useChatUIStore((s) => s.setResponseStyle);
   const setQuotaError = useChatUIStore((s) => s.setQuotaError);
   const setShowNoSubscriptionDialog = useChatUIStore((s) => s.setShowNoSubscriptionDialog);
-  const fileUploadError = useChatUIStore((s) => s.fileUploadError);
-  const setFileUploadError = useChatUIStore((s) => s.setFileUploadError);
+  const triggerError = useChatUIStore((s) => s.triggerError);
+  const setChatError = useChatUIStore((s) => s.setChatError);
   const runUpload = useCallback(
     async (fileArray: File[]) => {
       if (!fileArray || fileArray.length === 0) return;
 
-      setFileUploadError(null);
+      setChatError(null);
 
       const state = useChatUIStore.getState();
       const existingCount = state.uploadedAttachments.length + state.uploadingFiles.length;
@@ -101,14 +101,13 @@ export const ChatInputArea = React.memo(function ChatInputArea({
         setUploadedAttachments((prev) => [...prev, ...uploadResult.right]);
       } else {
         const message = describeUploadError(uploadResult.left);
-        toast.error(message);
-        setFileUploadError(message);
+        triggerError(message);
         setSelectedFiles((prev) => prev.filter((file) => !fileArray.includes(file)));
       }
 
       setUploadingFiles((prev) => prev.filter((uf) => !fileArray.includes(uf.file)));
     },
-    [setFileUploadError, setSelectedFiles, setUploadingFiles, setUploadedAttachments],
+    [triggerError, setSelectedFiles, setUploadingFiles, setUploadedAttachments, setChatError],
   );
   // Memoize files array transformation
   const files = useMemo(() => {
@@ -195,10 +194,7 @@ export const ChatInputArea = React.memo(function ChatInputArea({
           </div>
         )}
         <PromptInput onSubmit={onSubmit}>
-          <PromptInputError 
-            error={fileUploadError} 
-            onDismiss={() => setFileUploadError(null)}
-          />
+          <ChatErrorAlert />
           <PromptInputFilePreview
             files={files}
             onRemoveFile={(index) => {
@@ -211,7 +207,7 @@ export const ChatInputArea = React.memo(function ChatInputArea({
               }
               setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
               // Clear error when user removes files
-              setFileUploadError(null);
+              setChatError(null);
             }}
             disabled={disableInput}
           />
@@ -219,7 +215,7 @@ export const ChatInputArea = React.memo(function ChatInputArea({
             onChange={(e) => {
               setInput(e.target.value);
               // Clear error when user starts typing
-              if (fileUploadError) setFileUploadError(null);
+              setChatError(null);
             }}
             value={input}
             disabled={disableInput || isUploading}
@@ -248,12 +244,11 @@ export const ChatInputArea = React.memo(function ChatInputArea({
                   const currentTotalFiles = uploadedAttachments.length + uploadingFiles.length;
                   if (currentTotalFiles >= MAX_TOTAL_FILES) {
                     const errorMsg = `Máximo de ${MAX_TOTAL_FILES} archivos permitidos por mensaje`;
-                    toast.error(errorMsg);
-                    setFileUploadError(errorMsg);
+                    triggerError(errorMsg);
                     return;
                   }
                   // Clear error when opening file dialog
-                  setFileUploadError(null);
+                  setChatError(null);
                   fileInputRef.current?.click();
                 }}
                 aria-label="Agregar archivos adjuntos"
