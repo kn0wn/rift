@@ -5,6 +5,9 @@ import { fetchMutation } from "convex/nextjs";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { api } from "@/convex/_generated/api";
 
+
+export const maxDuration = 80;
+
 // ============================================================================
 // Configuration
 // ============================================================================

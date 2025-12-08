@@ -29,6 +29,8 @@ import {
   type ResponseStyle,
 } from "@/lib/ai/response-styles";
 
+export const maxDuration = 500;
+
 import {
   ValidationError,
   AuthenticationError,
