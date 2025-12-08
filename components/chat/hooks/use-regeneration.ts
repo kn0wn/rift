@@ -3,7 +3,7 @@
 import { useCallback, useRef } from "react";
 import type { UIMessage } from "@ai-sdk-tools/store";
 import type { RefObject } from "react";
-import { Effect, Fiber, Schedule } from "effect";
+import { Data, Effect, Fiber, Schedule } from "effect";
 
 type Role = "user" | "assistant" | "system";
 
@@ -11,41 +11,23 @@ type Role = "user" | "assistant" | "system";
 // Error Types
 // ============================================================================
 
-export type RegenerationError = {
-  readonly _tag: "RegenerationError";
+/**
+ * Error during message regeneration.
+ */
+export class RegenerationError extends Data.TaggedError("RegenerationError")<{
   readonly message: string;
   readonly messageId: string;
   readonly cause?: unknown;
-};
+}> {}
 
-export type EditError = {
-  readonly _tag: "EditError";
+/**
+ * Error during message editing.
+ */
+export class EditError extends Data.TaggedError("EditError")<{
   readonly message: string;
   readonly messageId: string;
   readonly cause?: unknown;
-};
-
-const makeRegenerationError = (
-  messageId: string,
-  message: string,
-  cause?: unknown
-): RegenerationError => ({
-  _tag: "RegenerationError",
-  message,
-  messageId,
-  cause,
-});
-
-const makeEditError = (
-  messageId: string,
-  message: string,
-  cause?: unknown
-): EditError => ({
-  _tag: "EditError",
-  message,
-  messageId,
-  cause,
-});
+}> {}
 
 // ============================================================================
 // Retry Schedule - exponential backoff with jitter
@@ -95,7 +77,12 @@ export function useRegeneration({
     (messageId: string): Effect.Effect<void, RegenerationError> =>
       Effect.tryPromise({
         try: () => Promise.resolve(regenerate({ messageId })),
-        catch: (error) => makeRegenerationError(messageId, "Regeneration failed", error),
+        catch: (error) =>
+          new RegenerationError({
+            message: "Regeneration failed",
+            messageId,
+            cause: error,
+          }),
       }).pipe(
         Effect.retry(retrySchedule),
         Effect.catchAll((error) =>
@@ -190,7 +177,12 @@ export function useRegeneration({
         // Persist edit first
         yield* Effect.tryPromise({
           try: () => persistEdit(messageId, newContent),
-          catch: (error) => makeEditError(messageId, "Failed to persist edit", error),
+          catch: (error) =>
+            new EditError({
+              message: "Failed to persist edit",
+              messageId,
+              cause: error,
+            }),
         });
 
         // Setup regeneration state
@@ -205,7 +197,11 @@ export function useRegeneration({
         yield* Effect.tryPromise({
           try: () => Promise.resolve(regenerate({ messageId })),
           catch: (error) =>
-            makeRegenerationError(messageId, "Regeneration after edit failed", error),
+            new RegenerationError({
+              message: "Regeneration after edit failed",
+              messageId,
+              cause: error,
+            }),
         }).pipe(Effect.retry(retrySchedule));
       }).pipe(
         Effect.tapError((error) =>

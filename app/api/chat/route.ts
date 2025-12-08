@@ -81,6 +81,30 @@ const generateRequestId = (): string => {
 };
 
 // ============================================================================
+// App Attribution Headers
+// ============================================================================
+
+const defaultSiteUrl = "https://rift.mx";
+
+const getAttributionHeaders = (): Record<string, string> => {
+  const deploymentDomain =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+    process.env.VERCEL_URL;
+
+  const referer = deploymentDomain
+    ? deploymentDomain.startsWith("http")
+      ? deploymentDomain
+      : `https://${deploymentDomain}`
+    : defaultSiteUrl;
+
+  return {
+    "http-referer": referer,
+    "x-title": "Rift",
+  };
+};
+
+// ============================================================================
 // Response Helpers
 // ============================================================================
 
@@ -103,7 +127,8 @@ const jsonResponse = (
 const errorToResponse = (
   error: ChatRouteError,
   start: number,
-  requestId: string
+  requestId: string,
+  logContext: LogContext
 ): Response => {
   const baseHeaders = {
     "Content-Type": "application/json",
@@ -111,24 +136,24 @@ const errorToResponse = (
     "X-Request-ID": requestId,
   };
 
-  const makeResponse = (body: object, status: number) =>
-    new Response(JSON.stringify({ ...body, requestId }), {
+  const makeResponse = (body: object, status: number, errorCode: string) =>
+    new Response(JSON.stringify({ ...body, errorCode, requestId }), {
       status,
       headers: baseHeaders,
     });
 
   switch (error._tag) {
     case "ValidationError":
-      return makeResponse({ error: error.message, field: error.field }, 400);
+      return makeResponse({ error: error.message, field: error.field }, 400, "VALIDATION_ERROR");
 
     case "RegenerateError":
-      return makeResponse({ error: error.message }, 400);
+      return makeResponse({ error: error.message }, 400, "REGENERATE_ERROR");
 
     case "AuthenticationError":
-      return makeResponse({ error: error.message }, 401);
+      return makeResponse({ error: error.message }, 401, "AUTH_ERROR");
 
     case "NoOrganizationError":
-      return makeResponse({ error: error.message }, 403);
+      return makeResponse({ error: error.message }, 403, "NO_ORGANIZATION");
 
     case "NoSubscriptionError":
       return makeResponse(
@@ -137,7 +162,8 @@ const errorToResponse = (
           message: error.message,
           quotaType: error.quotaType,
         },
-        403
+        403,
+        "NO_SUBSCRIPTION"
       );
 
     case "QuotaExceededError":
@@ -152,48 +178,88 @@ const errorToResponse = (
           },
           otherQuotaInfo: error.otherQuotaInfo,
         },
-        429
+        429,
+        "QUOTA_EXCEEDED"
       );
 
     case "AbortError":
-      return new Response("Aborted", { 
+      return new Response(JSON.stringify({ errorCode: "ABORTED", requestId }), {
         status: 499,
-        headers: { "X-Request-ID": requestId },
+        headers: baseHeaders,
       });
 
     case "ModelError":
+      logger.error(`Model error: ${error.message}`, logContext, { 
+        modelId: error.modelId,
+        cause: error.cause 
+      });
       return makeResponse(
         { error: error.message, modelId: error.modelId },
-        400
+        400,
+        "MODEL_ERROR"
       );
 
     case "ToolError":
-      return makeResponse({ error: "Tool initialization failed" }, 500);
+      logger.error(`Tool error: ${error.message}`, logContext, { cause: error.cause });
+      return makeResponse(
+        { error: "Tool initialization failed" },
+        500,
+        "TOOL_ERROR"
+      );
 
     case "TimeoutError":
       return makeResponse(
         { error: error.message, timeoutMs: error.timeoutMs },
-        504
+        504,
+        "TIMEOUT"
       );
 
     case "ProviderError":
-      const providerStatus = error.errorType === "rate_limit" ? 429 
-        : error.errorType === "content_policy" ? 400
-        : error.errorType === "token_limit" ? 400
-        : 502;
+      const providerStatus =
+        error.errorType === "rate_limit"
+          ? 429
+          : error.errorType === "content_policy"
+            ? 400
+            : error.errorType === "token_limit"
+              ? 400
+              : 502;
+      
+      // Log provider errors appropriately
+      if (providerStatus >= 500) {
+        logger.error(`Provider error: ${error.message}`, logContext, { 
+          errorType: error.errorType,
+          cause: error.cause 
+        });
+      } else {
+        logger.warn(`Provider error: ${error.message}`, logContext, {
+          errorType: error.errorType
+        });
+      }
+
       return makeResponse(
-        { 
-          error: error.message, 
+        {
+          error: error.message,
           errorType: error.errorType,
           retryable: error.retryable,
         },
-        providerStatus
+        providerStatus,
+        "PROVIDER_ERROR"
       );
 
     case "StreamError":
+      logger.error(`Stream error: ${error.message}`, logContext, { cause: error.cause });
+      return makeResponse({ error: error.message }, 500, "STREAM_ERROR");
+
     case "DatabaseError":
+      logger.error(`Database error: ${error.message}`, logContext, { 
+        operation: error.operation,
+        cause: error.cause 
+      });
+      return makeResponse({ error: error.message }, 500, "DATABASE_ERROR");
+
     default:
-      return makeResponse({ error: "Internal server error" }, 500);
+      logger.error(`Unknown error type`, logContext, { error });
+      return makeResponse({ error: "Internal server error" }, 500, "INTERNAL_ERROR");
   }
 };
 
@@ -505,23 +571,31 @@ const handleChatRequest = (req: Request, requestId: string) =>
           .filter((part) => part.attachmentId)
           .map((part) => part.attachmentId! as Id<"attachments">);
 
-        yield* dbQueue.enqueue(
-          sendUserMessage({
-            userId: auth.userId,
-            orgId: auth.orgId,
+        // Run synchronously to ensure user message is saved before AI generation starts
+        yield* sendUserMessage({
+          userId: auth.userId,
+          orgId: auth.orgId,
               threadId,
               content: userText || "",
               model: modelId,
               messageId: lastUser.id,
               quotaType,
               attachmentIds: attachmentIds.length > 0 ? attachmentIds : undefined,
-          }),
-          `sendUserMessage:${idempotencyKey}`
-          );
+        }).pipe(
+          Effect.tapError((error) =>
+            Effect.sync(() => {
+              logger.error(`Failed to save user message: ${idempotencyKey}`, logContext, error);
+            })
+          )
+        );
       } else {
-        yield* dbQueue.enqueue(
-          incrementUserQuota(auth.userId, auth.orgId, quotaType),
-          `incrementUserQuota:${idempotencyKey}`
+        // Run synchronously for regeneration quota increment
+        yield* incrementUserQuota(auth.userId, auth.orgId, quotaType).pipe(
+          Effect.tapError((error) =>
+            Effect.sync(() => {
+              logger.error(`Failed to increment quota: ${idempotencyKey}`, logContext, error);
+            })
+          )
         );
       }
     }
@@ -535,8 +609,8 @@ const handleChatRequest = (req: Request, requestId: string) =>
       pendingUpdate: { content: "", reasoning: "" },
     });
 
-    // Finalization helper with retry
-    const finalizeWithRetry = (args: {
+    // Finalization helper
+    const finalize = (args: {
       ok: boolean;
       finalContent?: string;
       finalReasoning?: string;
@@ -549,7 +623,7 @@ const handleChatRequest = (req: Request, requestId: string) =>
       }).pipe(
         Effect.catchAll((error) =>
           Effect.sync(() => {
-            console.error("Failed to finalize message:", error);
+            logger.error("Failed to finalize message", logContext, error);
           })
         )
       );
@@ -662,7 +736,9 @@ CODE FORMATTING:
           }),
           "startAssistantMessage"
         );
-        Effect.runPromise(startEffect).catch(console.error);
+        Effect.runPromise(startEffect).catch((err) => 
+          logger.error("Failed to enqueue startAssistantMessage", logContext, err)
+        );
 
         // Flush pending updates to database
         const flushUpdate = async () => {
@@ -692,7 +768,9 @@ CODE FORMATTING:
               }),
               "appendMessageDelta"
             );
-            Effect.runPromise(appendEffect).catch(console.error);
+            Effect.runPromise(appendEffect).catch((err) => 
+              logger.error("Failed to enqueue appendMessageDelta", logContext, err)
+            );
           }
         };
 
@@ -721,7 +799,7 @@ CODE FORMATTING:
 
             const finalState = await Effect.runPromise(Ref.get(stateRef));
             await Effect.runPromise(
-              finalizeWithRetry({
+              finalize({
                 ok: true,
                 finalContent: finalState.content.length > 0 ? finalState.content : undefined,
                 finalReasoning: finalState.reasoning || undefined,
@@ -762,6 +840,7 @@ CODE FORMATTING:
             ),
             tools: toolSet,
             system: systemPrompt,
+            headers: getAttributionHeaders(),
             stopWhen: stepCountIs(50),
             experimental_transform: smoothStream({
               delayInMs: 5,
@@ -837,7 +916,9 @@ CODE FORMATTING:
                         }),
                         "addSourcesToMessage"
                       )
-                    ).catch(console.error);
+                    ).catch((err) => 
+                      logger.error("Failed to enqueue addSourcesToMessage", logContext, err)
+                    );
                   }
                 }
               }
@@ -860,7 +941,7 @@ CODE FORMATTING:
               const success = finalState.content.length > 0;
 
               await Effect.runPromise(
-                finalizeWithRetry({
+                finalize({
                 ok: success,
                   finalContent: success ? finalState.content : undefined,
                   finalReasoning: finalState.reasoning || undefined,
@@ -890,13 +971,6 @@ CODE FORMATTING:
             onError: async (error) => {
               const state = await Effect.runPromise(Ref.get(stateRef));
               if (state.isComplete) return;
-              
-              const errorObj = error.error as Error;
-              const isAbort = errorObj.name === "AbortError" || req.signal?.aborted;
-              
-              if (isAbort) {
-                return;
-              }
 
               await Effect.runPromise(
                 Ref.update(stateRef, (s) => ({ ...s, isComplete: true }))
@@ -904,6 +978,24 @@ CODE FORMATTING:
 
               cleanup();
               
+              const errorObj = error.error as Error;
+              const isAbort = errorObj.name === "AbortError" || req.signal?.aborted;
+              
+              if (isAbort) {
+                // Finalize as successful abort
+                const finalState = await Effect.runPromise(Ref.get(stateRef));
+                await Effect.runPromise(
+                  finalize({
+                    ok: true,
+                    finalContent: finalState.content.length > 0 ? finalState.content : undefined,
+                    finalReasoning: finalState.reasoning || undefined,
+                  })
+                ).catch((err) => logger.error("Failed to finalize on abort", logContext, err));
+                
+                logger.info("Stream aborted", logContext, { contentLength: finalState.content.length });
+                return;
+              }
+
               // Classify the provider error for better debugging
               const classifiedError = classifyProviderError(errorObj);
               
@@ -915,14 +1007,14 @@ CODE FORMATTING:
               });
 
               await Effect.runPromise(
-                finalizeWithRetry({
+                finalize({
                 ok: false,
                 error: {
                     type: classifiedError.errorType,
                     message: classifiedError.message,
                 },
                 })
-              );
+              ).catch((err) => logger.error("Failed to finalize on error", logContext, err));
 
               try {
                 // Provide user-friendly error message based on error type
@@ -949,6 +1041,19 @@ CODE FORMATTING:
           );
         } catch (error) {
           cleanup();
+          
+          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          logger.error("Stream execution error", logContext, error);
+          
+          await Effect.runPromise(
+            finalize({
+              ok: false,
+              error: { type: "execution_error", message: errorMessage },
+            })
+          ).catch((finalizeErr) => 
+            logger.error("Failed to finalize on error", logContext, finalizeErr)
+          );
+          
           throw error;
         }
       },
@@ -986,17 +1091,17 @@ export async function POST(req: Request): Promise<Response> {
       )
     ),
     Effect.catchTags({
-      ValidationError: (e: ValidationError) => Effect.succeed(errorToResponse(e, start, requestId)),
-      RegenerateError: (e: RegenerateError) => Effect.succeed(errorToResponse(e, start, requestId)),
-      AuthenticationError: (e: AuthenticationError) => Effect.succeed(errorToResponse(e, start, requestId)),
-      NoOrganizationError: (e: NoOrganizationError) => Effect.succeed(errorToResponse(e, start, requestId)),
-      NoSubscriptionError: (e: NoSubscriptionError) => Effect.succeed(errorToResponse(e, start, requestId)),
-      QuotaExceededError: (e: QuotaExceededError) => Effect.succeed(errorToResponse(e, start, requestId)),
-      AbortError: (e: AbortError) => Effect.succeed(errorToResponse(e, start, requestId)),
-      DatabaseError: (e: DatabaseError) => Effect.succeed(errorToResponse(e, start, requestId)),
-      ModelError: (e: ModelError) => Effect.succeed(errorToResponse(e, start, requestId)),
-      ToolError: (e: ToolError) => Effect.succeed(errorToResponse(e, start, requestId)),
-      TimeoutError: (e: TimeoutError) => Effect.succeed(errorToResponse(e, start, requestId)),
+      ValidationError: (e: ValidationError) => Effect.succeed(errorToResponse(e, start, requestId, logContext)),
+      RegenerateError: (e: RegenerateError) => Effect.succeed(errorToResponse(e, start, requestId, logContext)),
+      AuthenticationError: (e: AuthenticationError) => Effect.succeed(errorToResponse(e, start, requestId, logContext)),
+      NoOrganizationError: (e: NoOrganizationError) => Effect.succeed(errorToResponse(e, start, requestId, logContext)),
+      NoSubscriptionError: (e: NoSubscriptionError) => Effect.succeed(errorToResponse(e, start, requestId, logContext)),
+      QuotaExceededError: (e: QuotaExceededError) => Effect.succeed(errorToResponse(e, start, requestId, logContext)),
+      AbortError: (e: AbortError) => Effect.succeed(errorToResponse(e, start, requestId, logContext)),
+      DatabaseError: (e: DatabaseError) => Effect.succeed(errorToResponse(e, start, requestId, logContext)),
+      ModelError: (e: ModelError) => Effect.succeed(errorToResponse(e, start, requestId, logContext)),
+      ToolError: (e: ToolError) => Effect.succeed(errorToResponse(e, start, requestId, logContext)),
+      TimeoutError: (e: TimeoutError) => Effect.succeed(errorToResponse(e, start, requestId, logContext)),
     }),
     Effect.catchAll((error: unknown) => {
       logger.error("Unhandled error in chat route", logContext, error);

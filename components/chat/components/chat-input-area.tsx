@@ -23,17 +23,15 @@ import {
 import { ChatErrorAlert } from "./chat-error-alert";
 import { ModelSelector } from "@/components/ai/model-selector";
 import { ResponseStyleSelector } from "@/components/ai/response-style-selector";
-import type { FileAttachment } from "@/lib/file-utils";
 import React from "react";
 import { useChatStatus } from "@ai-sdk-tools/store";
 import { useChatUIStore } from "../ui-store";
 import {
-  describeUploadError,
   uploadFilesEffect,
+  describeUploadError,
   MAX_TOTAL_FILES,
   MAX_FILE_SIZE_BYTES,
 } from "@/lib/file-utils";
-import { toast } from "sonner";
 import { Effect } from "effect";
 
 interface ChatInputAreaProps {
@@ -79,35 +77,47 @@ export const ChatInputArea = React.memo(function ChatInputArea({
       setChatError(null);
 
       const state = useChatUIStore.getState();
-      const existingCount = state.uploadedAttachments.length + state.uploadingFiles.length;
+      const existingCount =
+        state.uploadedAttachments.length + state.uploadingFiles.length;
 
+      // Optimistically show files as uploading
       setSelectedFiles((prev) => [...prev, ...fileArray]);
       setUploadingFiles((prev) => [
         ...prev,
         ...fileArray.map((file) => ({ file, isUploading: true })),
       ]);
 
-      const uploadResult = await Effect.runPromise(
+      const result = await Effect.runPromise(
         Effect.either(
           uploadFilesEffect(fileArray, {
             alreadyAttached: existingCount,
             maxTotalFiles: MAX_TOTAL_FILES,
             maxSizeBytes: MAX_FILE_SIZE_BYTES,
-          }),
-        ),
+          })
+        )
       );
 
-      if (uploadResult._tag === "Right") {
-        setUploadedAttachments((prev) => [...prev, ...uploadResult.right]);
+      if (result._tag === "Right") {
+        setUploadedAttachments((prev) => [...prev, ...result.right]);
       } else {
-        const message = describeUploadError(uploadResult.left);
-        triggerError(message);
-        setSelectedFiles((prev) => prev.filter((file) => !fileArray.includes(file)));
+        triggerError(describeUploadError(result.left));
+        setSelectedFiles((prev) =>
+          prev.filter((file) => !fileArray.includes(file))
+        );
       }
 
-      setUploadingFiles((prev) => prev.filter((uf) => !fileArray.includes(uf.file)));
+      // Clean up uploading state
+      setUploadingFiles((prev) =>
+        prev.filter((uf) => !fileArray.includes(uf.file))
+      );
     },
-    [triggerError, setSelectedFiles, setUploadingFiles, setUploadedAttachments, setChatError],
+    [
+      triggerError,
+      setSelectedFiles,
+      setUploadingFiles,
+      setUploadedAttachments,
+      setChatError,
+    ]
   );
   // Memoize files array transformation
   const files = useMemo(() => {

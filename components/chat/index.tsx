@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { generateUUID } from "@/lib/utils";
 import { useModel } from "@/contexts/model-context";
 import { useInitialMessage } from "@/contexts/initial-message-context";
-import { toast } from "sonner";
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useRegeneration, filterHiddenForRender } from "./hooks/use-regeneration";
 import { ToolType, getDefaultTools } from "@/lib/ai/model-tools";
@@ -31,12 +30,28 @@ import { ChatInputArea } from "./components/chat-input-area";
 import type { ChatInterfaceProps } from "./types";
 import { ChatStoreProvider, useChatStateInstance } from "@/lib/stores/hooks";
 import {
-  describeUploadError,
   uploadFilesEffect,
+  describeUploadError,
   MAX_TOTAL_FILES,
   MAX_FILE_SIZE_BYTES,
 } from "@/lib/file-utils";
 import { Effect } from "effect";
+
+// Effect services and error types
+import {
+  updateResponseStyleEffect,
+  updateMessageContentEffect,
+  parseServerError,
+  isQuotaError,
+  isNoSubscriptionError,
+  isAbortError,
+  shouldShowErrorToast,
+} from "./services";
+import {
+  type ChatError,
+  getErrorMessage,
+  MessageSubmitError,
+} from "./errors";
 
 // Internal component that uses the store
 function ChatInterfaceInternal({
@@ -75,40 +90,55 @@ function ChatInterfaceInternal({
   const dragCounterRef = useRef(0);
 
   // Centralized file processing for drag-and-drop uploads
-  const handleProcessFiles = useCallback(async (fileArray: File[]) => {
-    if (!fileArray || fileArray.length === 0) return;
+  const handleProcessFiles = useCallback(
+    async (fileArray: File[]) => {
+      if (!fileArray || fileArray.length === 0) return;
 
-    setChatError(null);
+      setChatError(null);
 
-    const state = useChatUIStore.getState();
-    const existingCount = state.uploadedAttachments.length + state.uploadingFiles.length;
+      const state = useChatUIStore.getState();
+      const existingCount =
+        state.uploadedAttachments.length + state.uploadingFiles.length;
 
-    setSelectedFiles((prev: File[]) => [...prev, ...fileArray]);
-    setUploadingFiles((prev: any[]) => [
-      ...prev,
-      ...fileArray.map((file) => ({ file, isUploading: true })),
-    ]);
+      // Optimistically show files as uploading
+      setSelectedFiles((prev: File[]) => [...prev, ...fileArray]);
+      setUploadingFiles((prev: any[]) => [
+        ...prev,
+        ...fileArray.map((file) => ({ file, isUploading: true })),
+      ]);
 
-    const uploadResult = await Effect.runPromise(
-      Effect.either(
-        uploadFilesEffect(fileArray, {
-          alreadyAttached: existingCount,
-          maxTotalFiles: MAX_TOTAL_FILES,
-          maxSizeBytes: MAX_FILE_SIZE_BYTES,
-        }),
-      ),
-    );
+      const result = await Effect.runPromise(
+        Effect.either(
+          uploadFilesEffect(fileArray, {
+            alreadyAttached: existingCount,
+            maxTotalFiles: MAX_TOTAL_FILES,
+            maxSizeBytes: MAX_FILE_SIZE_BYTES,
+          })
+        )
+      );
 
-    if (uploadResult._tag === "Right") {
-      setUploadedAttachments((prev: any[]) => [...prev, ...uploadResult.right]);
-    } else {
-      const message = describeUploadError(uploadResult.left);
-      triggerError(message);
-      setSelectedFiles((prev: File[]) => prev.filter((file) => !fileArray.includes(file)));
-    }
+      if (result._tag === "Right") {
+        setUploadedAttachments((prev: any[]) => [...prev, ...result.right]);
+      } else {
+        triggerError(describeUploadError(result.left));
+        setSelectedFiles((prev: File[]) =>
+          prev.filter((file) => !fileArray.includes(file))
+        );
+      }
 
-    setUploadingFiles((prev: any[]) => prev.filter((uf) => !fileArray.includes(uf.file)));
-  }, [setSelectedFiles, setUploadingFiles, setUploadedAttachments, setChatError, triggerError]);
+      // Clean up uploading state
+      setUploadingFiles((prev: any[]) =>
+        prev.filter((uf) => !fileArray.includes(uf.file))
+      );
+    },
+    [
+      setSelectedFiles,
+      setUploadingFiles,
+      setUploadedAttachments,
+      setChatError,
+      triggerError,
+    ]
+  );
 
   // Apply model change effects
   const prevModelRef = useRef(selectedModel);
@@ -216,78 +246,50 @@ function ChatInterfaceInternal({
       onError(error: Error) {
         console.error("Chat error:", error);
 
-        // Check if this is a no subscription error
-        if (error.message.includes("No subscription")) {
-          try {
-            // Parse JSON error response
-            const jsonMatch = error.message.match(/\{.*\}/);
-            if (jsonMatch) {
-              const errorResponse = JSON.parse(jsonMatch[0]);
-              if (errorResponse.error === "No subscription") {
-                setShowNoSubscriptionDialog(true);
-                setQuotaError(null); // Clear any existing quota error
-                return;
-              }
-            }
-          } catch {
-            // If parsing fails, still show the dialog
+        // Parse server error
+        const handleError = Effect.gen(function* () {
+          const parsedError = yield* parseServerError(error);
+
+          // Handle based on error type
+          if (isNoSubscriptionError(parsedError)) {
             setShowNoSubscriptionDialog(true);
             setQuotaError(null);
             return;
           }
-        }
 
-        // Check if this is a quota exceeded error and parse JSON response
-        if (
-          error.message.includes("quota exceeded") ||
-          error.message.includes("Message quota exceeded")
-        ) {
-          try {
-            // Parse JSON error response
-            const jsonMatch = error.message.match(/\{.*\}/);
-            if (jsonMatch) {
-              const errorResponse = JSON.parse(jsonMatch[0]);
-              if (
-                errorResponse.error === "Quota exceeded" &&
-                errorResponse.quotaInfo &&
-                errorResponse.otherQuotaInfo
-              ) {
-                setQuotaError({
-                  type: errorResponse.quotaType || "standard",
-                  message: errorResponse.message,
-                  currentUsage: errorResponse.quotaInfo.currentUsage,
-                  limit: errorResponse.quotaInfo.limit,
-                  otherTypeUsage: errorResponse.otherQuotaInfo.currentUsage,
-                  otherTypeLimit: errorResponse.otherQuotaInfo.limit,
-                });
-                setShowNoSubscriptionDialog(false); // Clear dialog if showing
-              }
-            }
-          } catch {
-            // If parsing fails, show generic quota error
+          if (isQuotaError(parsedError)) {
             setQuotaError({
-              type: "standard",
-              message: "Message quota exceeded",
-              currentUsage: 0,
-              limit: 0,
-              otherTypeUsage: 0,
-              otherTypeLimit: 0,
+              type: parsedError.quotaType,
+              message: parsedError.message,
+              currentUsage: parsedError.currentUsage,
+              limit: parsedError.limit,
+              otherTypeUsage: parsedError.otherTypeUsage,
+              otherTypeLimit: parsedError.otherTypeLimit,
             });
             setShowNoSubscriptionDialog(false);
+            return;
           }
-        } else {
-          // Clear quota error and dialog for non-quota errors
+
+          if (isAbortError(parsedError)) {
+            // Don't show error for user-cancelled operations
+            return;
+          }
+
+          // Clear quota error and dialog for other errors
           setQuotaError(null);
           setShowNoSubscriptionDialog(false);
 
-          // Don't show error toast for aborted requests (user stopped generation)
-          if (
-            !error.message.includes("aborted") &&
-            !error.message.includes("cancelled")
-          ) {
-            triggerError("An error occurred. Please try again.");
+          // Show error toast if appropriate
+          if (shouldShowErrorToast(parsedError)) {
+            triggerError(getErrorMessage(parsedError));
           }
-        }
+        });
+
+        Effect.runPromise(handleError).catch((e) => {
+          // Fallback error handling
+          console.error("Error parsing failed:", e);
+          triggerError("An error occurred. Please try again.");
+        });
       },
       transport: new DefaultChatTransport({
         api: "/api/chat",
@@ -507,7 +509,7 @@ function ChatInterfaceInternal({
       prevResponseStyleRef.current = responseStyle;
       return;
     }
-    
+
     if (
       isThread &&
       isAuthenticated &&
@@ -517,14 +519,30 @@ function ChatInterfaceInternal({
     ) {
       // Only update if thread exists and style changed from what's in DB
       prevResponseStyleRef.current = responseStyle;
-      updateThreadResponseStyle({
+
+      const program = updateResponseStyleEffect({
+        updateFn: (params) => updateThreadResponseStyle(params),
         threadId: id,
         responseStyle,
-      }).catch((error) => {
-        console.error("Failed to update thread response style:", error);
-      });
+      }).pipe(
+        Effect.tapError((error) =>
+          Effect.sync(() => {
+            console.error("Failed to update thread response style:", error);
+          })
+        ),
+        Effect.catchAll(() => Effect.void)
+      );
+
+      Effect.runPromise(program);
     }
-  }, [responseStyle, isThread, isAuthenticated, threadInfo, id, updateThreadResponseStyle]);
+  }, [
+    responseStyle,
+    isThread,
+    isAuthenticated,
+    threadInfo,
+    id,
+    updateThreadResponseStyle,
+  ]);
 
   // Cleanup effect when thread ID changes
   useEffect(() => {
@@ -541,13 +559,25 @@ function ChatInterfaceInternal({
   const handleSubmit = useCallback(
     async (e?: React.FormEvent) => {
       e?.preventDefault();
-      const { input, uploadedAttachments, uploadingFiles } = useChatUIStore.getState();
+      const state = useChatUIStore.getState();
+      const {
+        input,
+        uploadedAttachments,
+        uploadingFiles,
+        isSendingMessage,
+      } = state;
+      const isGenerating =
+        status === "streaming" || status === "submitted" || isSendingMessage;
+
       // Prevent sending when input is disabled, unauthenticated, or while auth is (re)loading
       if (
         disableInput ||
         authLoading ||
         !isAuthenticated ||
-        (!input.trim() && uploadedAttachments.length === 0 && uploadingFiles.length === 0)
+        isGenerating ||
+        (!input.trim() &&
+          uploadedAttachments.length === 0 &&
+          uploadingFiles.length === 0)
       )
         return;
 
@@ -559,7 +589,10 @@ function ChatInterfaceInternal({
         if (regenerateAnchorRef.current) {
           regenerateAnchorRef.current = null;
         }
-        if (hiddenIdsRef.current && typeof hiddenIdsRef.current.clear === "function") {
+        if (
+          hiddenIdsRef.current &&
+          typeof hiddenIdsRef.current.clear === "function"
+        ) {
           hiddenIdsRef.current.clear();
         }
       } catch {}
@@ -567,36 +600,36 @@ function ChatInterfaceInternal({
       // Clear any existing quota error when user tries to send a new message
       setQuotaError(null);
       setInput("");
-      
+
       // Set sending state and clear attachments immediately
       setIsSendingMessage(true);
-      
+
       // Capture attachments before clearing state
       const currentAttachments = uploadedAttachments;
-      
+
       // Clear attachments immediately
       setUploadedAttachments([]);
       setSelectedFiles([]);
       setUploadingFiles([]);
 
-      try {
-        // Build message parts using captured attachments
-        const parts: any[] = [];
-        
-        if (messageContent) {
-          parts.push({ type: "text", text: messageContent });
-        }
-        
-        // Use captured uploaded attachments
-        currentAttachments.forEach(attachment => {
-          parts.push({ 
-            type: "file", 
-            mediaType: attachment.mediaType,
-            url: attachment.url,
-            attachmentId: attachment.attachmentId,
-          });
-        });
+      // Build message parts using captured attachments
+      const parts: any[] = [];
 
+      if (messageContent) {
+        parts.push({ type: "text", text: messageContent });
+      }
+
+      // Use captured uploaded attachments
+      currentAttachments.forEach((attachment) => {
+        parts.push({
+          type: "file",
+          mediaType: attachment.mediaType,
+          url: attachment.url,
+          attachmentId: attachment.attachmentId,
+        });
+      });
+
+      const program = Effect.gen(function* () {
         if (id === "welcome" && onInitialMessage) {
           // Handle initial message on welcome page
           const optimisticMessage: UIMessage = {
@@ -609,30 +642,71 @@ function ChatInterfaceInternal({
           setMessages([optimisticMessage]);
 
           // Call the onInitialMessage callback to create thread and navigate
-          await onInitialMessage(optimisticMessage);
+          yield* Effect.tryPromise({
+            try: () => onInitialMessage(optimisticMessage),
+            catch: (error) =>
+              new MessageSubmitError({
+                message: "Failed to create thread",
+                messageId,
+                cause: error,
+              }),
+          });
         } else if (id !== "welcome") {
           // Use AI SDK sendMessage for streaming response
           // The API route will handle user message persistence
-          await sendMessage({
-            id: messageId,
-            role: "user",
-            parts,
+          yield* Effect.tryPromise({
+            try: () =>
+              sendMessage({
+                id: messageId,
+                role: "user",
+                parts,
+              }),
+            catch: (error) =>
+              new MessageSubmitError({
+                message: "Failed to send message",
+                messageId,
+                cause: error,
+              }),
           });
         }
+      }).pipe(
+        Effect.tap(() =>
+          Effect.sync(() => {
+            setIsSendingMessage(false);
+          })
+        ),
+        Effect.catchAll((error: ChatError) =>
+          Effect.sync(() => {
+            console.error("Failed to send message:", error);
+            triggerError(getErrorMessage(error));
+            setInput(messageContent);
+            // Clear optimistic messages on error
+            setMessages([]);
+            // Reset sending state on error
+            setIsSendingMessage(false);
+          })
+        )
+      );
 
-        // Reset sending state
-        setIsSendingMessage(false);
-      } catch (error) {
-        console.error("Failed to send message:", error);
-        triggerError("Failed to send message. Please try again.");
-        setInput(messageContent);
-        // Clear optimistic messages on error
-        setMessages([]);
-        // Reset sending state on error
-        setIsSendingMessage(false);
-      }
+      await Effect.runPromise(program);
     },
-    [disableInput, authLoading, isAuthenticated, id, onInitialMessage, setMessages, sendMessage, setQuotaError, setInput, setIsSendingMessage, setUploadedAttachments, setSelectedFiles, setUploadingFiles],
+    [
+      disableInput,
+      authLoading,
+      isAuthenticated,
+      status,
+      id,
+      onInitialMessage,
+      setMessages,
+      sendMessage,
+      setQuotaError,
+      setInput,
+      setIsSendingMessage,
+      setUploadedAttachments,
+      setSelectedFiles,
+      setUploadingFiles,
+      triggerError,
+    ]
   );
 
   const handleStop = useCallback(() => {
@@ -641,7 +715,8 @@ function ChatInterfaceInternal({
     
     // Manually force status to 'ready' since AI SDK doesn't properly update on abort
     chatStateInstance.getState().setStatus('ready');
-  }, [stop, chatStateInstance]);
+    setIsSendingMessage(false);
+  }, [stop, chatStateInstance, setIsSendingMessage]);
 
   const handleSuggestionClick = useCallback((prompt: string) => {
     setInput(prompt);
@@ -740,34 +815,55 @@ function ChatInterfaceInternal({
                   key={message.id}
                   message={message}
                   isStreaming={isStreaming}
+                  disableRegenerate={status === "streaming"}
                   onRegenerateAssistantMessage={onRegenerateAssistant}
                   onRegenerateAfterUserMessage={onRegenerateAfterUser}
-                  onEditUserMessage={async (messageId: string, newContent: string) => {
-                    try {
+                  onEditUserMessage={async (
+                    messageId: string,
+                    newContent: string
+                  ) => {
+                    // Edit with retry
+                    const program = Effect.gen(function* () {
                       // Persist edit to Convex
-                      await updateUserMessageContent({ messageId, content: newContent });
+                      yield* updateMessageContentEffect({
+                        updateFn: (params) => updateUserMessageContent(params),
+                        messageId,
+                        content: newContent,
+                      });
 
-                      // Optimistically update local hook store so new content is used immediately
+                      // Optimistically update local hook store
                       setMessages((curr: UIMessage[]) =>
                         curr.map((m) =>
                           m.id === messageId
                             ? {
                                 ...m,
                                 parts: [
-                                  ...m.parts.filter((p: any) => p.type !== "text"),
+                                  ...m.parts.filter(
+                                    (p: any) => p.type !== "text"
+                                  ),
                                   { type: "text", text: newContent } as any,
                                 ],
                               }
-                            : m,
-                        ),
+                            : m
+                        )
                       );
 
                       // Then trigger regeneration (prune-after-user semantics)
                       handleRegenerateAfterUser(messageId, renderedMessages);
-                    } catch (e) {
-                      console.error("Edit message failed", e);
-                      triggerError("Failed to edit message.");
-                    }
+                    }).pipe(
+                      Effect.tapError((error) =>
+                        Effect.sync(() => {
+                          console.error("Edit message failed", error);
+                        })
+                      ),
+                      Effect.catchAll((error) =>
+                        Effect.sync(() => {
+                          triggerError(getErrorMessage(error));
+                        })
+                      )
+                    );
+
+                    await Effect.runPromise(program);
                   }}
                 />
               );

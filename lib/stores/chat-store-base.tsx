@@ -49,15 +49,12 @@ export function createBaseStateCreator<UI_MESSAGE extends UIMessage>(
     let throttledMessagesUpdater: (() => void) | null = null;
     if (!throttledMessagesUpdater) {
       throttledMessagesUpdater = throttle(() => {
-        console.log('executing throttledMessagesUpdater');
         const state = get();
         set({ _throttledMessages: [...state.messages] });
         throttledEffects.forEach((cb) => {
           try {
             cb();
           } catch (err) {
-            // eslint-disable-next-line no-console
-            console.warn('[chat-store-base] throttled effect error', err);
           }
         });
       }, MESSAGES_THROTTLE_MS);

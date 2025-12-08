@@ -130,15 +130,6 @@ export class ProviderError extends Data.TaggedError("ProviderError")<{
 }> {}
 
 /**
- * Error when duplicate request is detected.
- * Maps to HTTP 409 Conflict.
- */
-export class DuplicateRequestError extends Data.TaggedError("DuplicateRequestError")<{
-  readonly message: string;
-  readonly requestId: string;
-}> {}
-
-/**
  * Union type of all chat route errors.
  */
 export type ChatRouteError =
@@ -154,6 +145,5 @@ export type ChatRouteError =
   | ModelError
   | ToolError
   | TimeoutError
-  | ProviderError
-  | DuplicateRequestError;
+  | ProviderError;
 

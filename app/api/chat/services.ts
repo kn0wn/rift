@@ -233,6 +233,30 @@ export const finalizationRetrySchedule = Schedule.exponential("250 millis").pipe
   Schedule.addDelay(() => Math.floor(Math.random() * 100))
 );
 
+/**
+ * Checks if a database error is retryable.
+ * Non-retryable errors include auth failures and configuration issues.
+ */
+export const isRetryableDatabaseError = (error: DatabaseError): boolean => {
+  const checkStr = (str: string) => 
+    str.includes("Unauthorized") || 
+    str.includes("ensureServerSecret") ||
+    str.includes("InvalidSecret");
+
+  if (checkStr(error.message)) return false;
+  
+  if (error.cause) {
+    if (error.cause instanceof Error) {
+      if (checkStr(error.cause.message)) return false;
+    } else if (typeof error.cause === "string") {
+      if (checkStr(error.cause)) return false;
+    }
+  }
+  
+  return true;
+};
+
+
 // ============================================================================
 // Database Queue Service
 // ============================================================================
@@ -264,7 +288,7 @@ export const makeDatabaseQueue = Effect.gen(function* () {
           cause: error,
         }),
     }).pipe(
-      Effect.retry(databaseRetrySchedule),
+      Effect.retry({ schedule: databaseRetrySchedule, while: isRetryableDatabaseError }),
       Effect.catchAll((error) =>
         Effect.sync(() => {
           console.error(`Database operation failed after retries: ${op.name}`, error);
@@ -623,7 +647,7 @@ export const sendUserMessage = (params: {
         operation: "serverSendMessage",
         cause: error,
       }),
-  }).pipe(Effect.retry(databaseRetrySchedule));
+  }).pipe(Effect.retry({ schedule: databaseRetrySchedule, while: isRetryableDatabaseError }));
 
 /**
  * Increments user quota (for regenerations).
@@ -647,7 +671,7 @@ export const incrementUserQuota = (
         operation: "serverIncrementUserQuota",
         cause: error,
       }),
-  }).pipe(Effect.retry(databaseRetrySchedule));
+  }).pipe(Effect.retry({ schedule: databaseRetrySchedule, while: isRetryableDatabaseError }));
 
 /**
  * Saves an assistant message in the database.
@@ -670,7 +694,7 @@ export const startAssistantMessage = (params: {
         operation: "serverStartAssistantMessage",
         cause: error,
       }),
-  }).pipe(Effect.retry(databaseRetrySchedule));
+  }).pipe(Effect.retry({ schedule: databaseRetrySchedule, while: isRetryableDatabaseError }));
 
 /**
  * Appends delta to assistant message.
@@ -695,7 +719,7 @@ export const appendMessageDelta = (params: {
         operation: "serverAppendAssistantMessageDelta",
         cause: error,
       }),
-  }).pipe(Effect.retry(databaseRetrySchedule));
+  }).pipe(Effect.retry({ schedule: databaseRetrySchedule, while: isRetryableDatabaseError }));
 
 /**
  * Finalizes the assistant message with retry logic.
@@ -720,7 +744,7 @@ export const finalizeAssistantMessage = (params: {
         operation: "serverFinalizeAssistantMessage",
         cause: error,
       }),
-  }).pipe(Effect.retry(finalizationRetrySchedule));
+  }).pipe(Effect.retry({ schedule: finalizationRetrySchedule, while: isRetryableDatabaseError }));
 
 /**
  * Adds sources to message.
@@ -742,7 +766,7 @@ export const addSourcesToMessage = (params: {
         operation: "serverAddSourcesToMessage",
         cause: error,
       }),
-  }).pipe(Effect.retry(databaseRetrySchedule));
+  }).pipe(Effect.retry({ schedule: databaseRetrySchedule, while: isRetryableDatabaseError }));
 
 /**
  * Increments tool call quota.
@@ -765,7 +789,7 @@ export const incrementToolCallQuota = (
         cause: error,
       }),
   }).pipe(
-    Effect.retry(databaseRetrySchedule),
+    Effect.retry({ schedule: databaseRetrySchedule, while: isRetryableDatabaseError }),
     Effect.tap(() =>
       Effect.sync(() =>
         console.log(`Incremented tool call quota by ${toolCallCount} for user`)
