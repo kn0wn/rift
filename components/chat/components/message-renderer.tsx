@@ -39,11 +39,13 @@ const MessageActions = React.memo(function MessageActions({
   onRegenerateAssistantMessage,
   onRegenerateAfterUserMessage,
   onStartEdit,
+  disableRegenerate = false,
 }: {
   message: UIMessage;
   onRegenerateAssistantMessage: (messageId: string) => void;
   onRegenerateAfterUserMessage: (messageId: string) => void;
   onStartEdit?: () => void;
+  disableRegenerate?: boolean;
 }) {
   const [isCopied, setIsCopied] = useState(false);
 
@@ -76,6 +78,8 @@ const MessageActions = React.memo(function MessageActions({
             onClick={handleRegenerateAssistant}
             label="Regenerar"
             tooltip="Regenerar respuesta"
+            disabled={disableRegenerate}
+            aria-disabled={disableRegenerate}
           >
             <RedoIcon className="size-4" />
           </Action>
@@ -99,6 +103,8 @@ const MessageActions = React.memo(function MessageActions({
             onClick={handleRegenerateAfterUser}
             label="Reintentar"
             tooltip="Regenerar respuesta"
+            disabled={disableRegenerate}
+            aria-disabled={disableRegenerate}
           >
             <RedoIcon className="size-4" />
           </Action>
@@ -125,8 +131,11 @@ const MessageActions = React.memo(function MessageActions({
 
   return null;
 }, (prevProps, nextProps) => {
-  // Only re-render if the message ID changes, not during streaming
-  return prevProps.message.id === nextProps.message.id;
+  // Re-render when message ID or disabled state changes
+  return (
+    prevProps.message.id === nextProps.message.id &&
+    prevProps.disableRegenerate === nextProps.disableRegenerate
+  );
 });
 
 interface MessageRendererProps {
@@ -135,6 +144,7 @@ interface MessageRendererProps {
   onRegenerateAssistantMessage: (messageId: string) => void;
   onRegenerateAfterUserMessage: (messageId: string) => void;
   onEditUserMessage?: (messageId: string, newText: string) => Promise<void> | void;
+  disableRegenerate?: boolean;
 }
 
 export const MessageRenderer = React.memo(function MessageRenderer({
@@ -143,6 +153,7 @@ export const MessageRenderer = React.memo(function MessageRenderer({
   onRegenerateAssistantMessage,
   onRegenerateAfterUserMessage,
   onEditUserMessage,
+  disableRegenerate = false,
 }: MessageRendererProps) {
   const [isEditing, setIsEditing] = useState(false);
   const textValue = message.parts
@@ -507,6 +518,7 @@ export const MessageRenderer = React.memo(function MessageRenderer({
         message={message}
         onRegenerateAssistantMessage={onRegenerateAssistantMessage}
         onRegenerateAfterUserMessage={onRegenerateAfterUserMessage}
+        disableRegenerate={disableRegenerate}
         onStartEdit={message.role === "user" && !!onEditUserMessage ? () => setIsEditing(true) : undefined}
       />
     </div>
@@ -518,6 +530,7 @@ export const MessageRenderer = React.memo(function MessageRenderer({
   if (prevProps.isStreaming !== nextProps.isStreaming) return false;
   // For non-streaming messages, use strict comparison to avoid churn
   return (
+    prevProps.disableRegenerate === nextProps.disableRegenerate &&
     prevProps.message.id === nextProps.message.id &&
     prevProps.message.role === nextProps.message.role &&
     prevProps.message.parts.length === nextProps.message.parts.length &&

@@ -29,7 +29,7 @@ export function ThreadSidebarHeader() {
             <Button
               size="lg"
               variant="outline"
-              className="w-full dark:bg-[#111111] dark:border-border outline-none"
+              className="w-full dark:bg-[#111111] dark:border-border outline-none cursor-pointer"
               onClick={handleNewChatClick}
             >
               Nuevo Chat

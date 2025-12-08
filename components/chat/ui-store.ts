@@ -2,9 +2,11 @@ import { create } from "zustand";
 import type { ChatState, ChatStateSetters } from "./types";
 import type { FileAttachment } from "@/lib/file-utils";
 import type { ResponseStyle } from "@/lib/ai/response-styles";
+import { toast } from "sonner";
 
 type ChatUIStore = ChatState & ChatStateSetters & {
   handleSearchToggle: () => void;
+  triggerError: (message: string) => void;
 };
 
 export const useChatUIStore = create<ChatUIStore>((set, get) => ({
@@ -19,7 +21,7 @@ export const useChatUIStore = create<ChatUIStore>((set, get) => ({
   quotaError: null,
   showNoSubscriptionDialog: false,
   chatKey: 0,
-  fileUploadError: null,
+  chatError: null,
 
   setInput: (value) =>
     set(typeof value === "function" ? (state) => ({ input: value(state.input) }) : { input: value }),
@@ -67,8 +69,8 @@ export const useChatUIStore = create<ChatUIStore>((set, get) => ({
     ),
   setChatKey: (value) =>
     set(typeof value === "function" ? (state) => ({ chatKey: value(state.chatKey) }) : { chatKey: value }),
-  setFileUploadError: (value) =>
-    set(typeof value === "function" ? (state) => ({ fileUploadError: value(state.fileUploadError) }) : { fileUploadError: value }),
+  setChatError: (value) =>
+    set(typeof value === "function" ? (state) => ({ chatError: value(state.chatError) }) : { chatError: value }),
 
   handleSearchToggle: () => {
     const next = !get().isSearchEnabled;
@@ -76,6 +78,9 @@ export const useChatUIStore = create<ChatUIStore>((set, get) => ({
     if (typeof window !== "undefined") {
       localStorage.setItem("webSearchEnabled", next.toString());
     }
+  },
+  triggerError: (message: string) => {
+    set({ chatError: message });
   },
 }));
 

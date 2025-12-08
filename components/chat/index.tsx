@@ -6,9 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { generateUUID } from "@/lib/utils";
 import { useModel } from "@/contexts/model-context";
 import { useInitialMessage } from "@/contexts/initial-message-context";
-import { toast } from "sonner";
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
-import { useRegeneration, filterHiddenForRender } from "./hooks/use-regeneration";
+import { useRegeneration } from "./hooks/use-regeneration";
 import { ToolType, getDefaultTools } from "@/lib/ai/model-tools";
 import { resolveModel } from "@/lib/ai/ai-providers";
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
@@ -30,7 +29,29 @@ import { MessageRenderer } from "./components/message-renderer";
 import { ChatInputArea } from "./components/chat-input-area";
 import type { ChatInterfaceProps } from "./types";
 import { ChatStoreProvider, useChatStateInstance } from "@/lib/stores/hooks";
-import { uploadFiles, isSupportedFileType } from "@/lib/file-utils";
+import {
+  uploadFilesEffect,
+  describeUploadError,
+  MAX_TOTAL_FILES,
+  MAX_FILE_SIZE_BYTES,
+} from "@/lib/file-utils";
+import { Effect } from "effect";
+
+// Effect services and error types
+import {
+  updateResponseStyleEffect,
+  updateMessageContentEffect,
+  parseServerError,
+  isQuotaError,
+  isNoSubscriptionError,
+  isAbortError,
+  shouldShowErrorToast,
+} from "./services";
+import {
+  type ChatError,
+  getErrorMessage,
+  MessageSubmitError,
+} from "./errors";
 
 // Internal component that uses the store
 function ChatInterfaceInternal({
@@ -44,7 +65,8 @@ function ChatInterfaceInternal({
   const pathname = usePathname();
   const { selectedModel, setSelectedModel } = useModel();
   const { consumeInitialMessage } = useInitialMessage();
-  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const { isAuthenticated } = useConvexAuth();
+  const promptDisabled = disableInput;
   const { user } = useAuth();
   const prevIdRef = useRef(id);
   const autoStartTriggeredRef = useRef(false);
@@ -61,68 +83,63 @@ function ChatInterfaceInternal({
   const setQuotaError = useChatUIStore((s) => s.setQuotaError);
   const setShowNoSubscriptionDialog = useChatUIStore((s) => s.setShowNoSubscriptionDialog);
   const handleSearchToggle = useChatUIStore((s) => s.handleSearchToggle);
-  const setFileUploadError = useChatUIStore((s) => s.setFileUploadError);
+  const triggerError = useChatUIStore((s) => s.triggerError);
+  const setChatError = useChatUIStore((s) => s.setChatError);
   const responseStyle = useChatUIStore((s) => s.responseStyle);
   const setResponseStyle = useChatUIStore((s) => s.setResponseStyle);
   const [isDragActive, setIsDragActive] = useState(false);
   const dragCounterRef = useRef(0);
 
   // Centralized file processing for drag-and-drop uploads
-  const handleProcessFiles = useCallback(async (fileArray: File[]) => {
-    if (!fileArray || fileArray.length === 0) return;
+  const handleProcessFiles = useCallback(
+    async (fileArray: File[]) => {
+      if (!fileArray || fileArray.length === 0) return;
 
-    // Clear previous error
-    setFileUploadError(null);
+      setChatError(null);
 
-    const state = useChatUIStore.getState();
-    const currentTotal = state.uploadedAttachments.length + state.uploadingFiles.length;
-    const newTotal = currentTotal + fileArray.length;
-    if (newTotal > 5) {
-      const remaining = 5 - currentTotal;
-      const errorMsg = remaining <= 0
-        ? "Máximo de 5 archivos permitidos por mensaje"
-        : `Solo puedes agregar ${remaining} más archivo${remaining === 1 ? '' : 's'}. Máximo de 5 archivos permitidos por mensaje.`;
-      toast.error(errorMsg);
-      setFileUploadError(errorMsg);
-      return;
-    }
+      const state = useChatUIStore.getState();
+      const existingCount =
+        state.uploadedAttachments.length + state.uploadingFiles.length;
 
-    const unsupported = fileArray.filter((f) => !isSupportedFileType(f));
-    if (unsupported.length > 0) {
-      const errorMsg = `Tipos de archivo no soportados: ${unsupported.map((f) => f.name).join(", ")}. Solo se permiten imágenes (JPEG, PNG, GIF, WebP) y PDFs.`;
-      toast.error(errorMsg);
-      setFileUploadError(errorMsg);
-      return;
-    }
+      // Optimistically show files as uploading
+      setSelectedFiles((prev: File[]) => [...prev, ...fileArray]);
+      setUploadingFiles((prev: any[]) => [
+        ...prev,
+        ...fileArray.map((file) => ({ file, isUploading: true })),
+      ]);
 
-    const oversized = fileArray.filter((f) => f.size > 10 * 1024 * 1024);
-    if (oversized.length > 0) {
-      const errorMsg = `Archivos demasiado grandes: ${oversized.map((f) => f.name).join(", ")}. El tamaño máximo es 10MB por archivo.`;
-      toast.error(errorMsg);
-      setFileUploadError(errorMsg);
-      return;
-    }
+      const result = await Effect.runPromise(
+        Effect.either(
+          uploadFilesEffect(fileArray, {
+            alreadyAttached: existingCount,
+            maxTotalFiles: MAX_TOTAL_FILES,
+            maxSizeBytes: MAX_FILE_SIZE_BYTES,
+          })
+        )
+      );
 
-    setSelectedFiles((prev: File[]) => [...prev, ...fileArray]);
-    setUploadingFiles((prev: any[]) => [
-      ...prev,
-      ...fileArray.map((file) => ({ file, isUploading: true })),
-    ]);
+      if (result._tag === "Right") {
+        setUploadedAttachments((prev: any[]) => [...prev, ...result.right]);
+      } else {
+        triggerError(describeUploadError(result.left));
+        setSelectedFiles((prev: File[]) =>
+          prev.filter((file) => !fileArray.includes(file))
+        );
+      }
 
-    try {
-      const dt = new DataTransfer();
-      fileArray.forEach((f) => dt.items.add(f));
-      const attachments = await uploadFiles(dt.files);
-      setUploadedAttachments((prev: any[]) => [...prev, ...attachments]);
-    } catch (err) {
-      console.error("Error al subir archivos:", err);
-      const errorMsg = "Error al subir archivos. Por favor, inténtalo de nuevo.";
-      toast.error(errorMsg);
-      setFileUploadError(errorMsg);
-    } finally {
-      setUploadingFiles((prev: any[]) => prev.filter((uf) => !fileArray.includes(uf.file)));
-    }
-  }, [setSelectedFiles, setUploadingFiles, setUploadedAttachments, setFileUploadError]);
+      // Clean up uploading state
+      setUploadingFiles((prev: any[]) =>
+        prev.filter((uf) => !fileArray.includes(uf.file))
+      );
+    },
+    [
+      setSelectedFiles,
+      setUploadingFiles,
+      setUploadedAttachments,
+      setChatError,
+      triggerError,
+    ]
+  );
 
   // Apply model change effects
   const prevModelRef = useRef(selectedModel);
@@ -230,78 +247,50 @@ function ChatInterfaceInternal({
       onError(error: Error) {
         console.error("Chat error:", error);
 
-        // Check if this is a no subscription error
-        if (error.message.includes("No subscription")) {
-          try {
-            // Parse JSON error response
-            const jsonMatch = error.message.match(/\{.*\}/);
-            if (jsonMatch) {
-              const errorResponse = JSON.parse(jsonMatch[0]);
-              if (errorResponse.error === "No subscription") {
-                setShowNoSubscriptionDialog(true);
-                setQuotaError(null); // Clear any existing quota error
-                return;
-              }
-            }
-          } catch {
-            // If parsing fails, still show the dialog
+        // Parse server error
+        const handleError = Effect.gen(function* () {
+          const parsedError = yield* parseServerError(error);
+
+          // Handle based on error type
+          if (isNoSubscriptionError(parsedError)) {
             setShowNoSubscriptionDialog(true);
             setQuotaError(null);
             return;
           }
-        }
 
-        // Check if this is a quota exceeded error and parse JSON response
-        if (
-          error.message.includes("quota exceeded") ||
-          error.message.includes("Message quota exceeded")
-        ) {
-          try {
-            // Parse JSON error response
-            const jsonMatch = error.message.match(/\{.*\}/);
-            if (jsonMatch) {
-              const errorResponse = JSON.parse(jsonMatch[0]);
-              if (
-                errorResponse.error === "Quota exceeded" &&
-                errorResponse.quotaInfo &&
-                errorResponse.otherQuotaInfo
-              ) {
-                setQuotaError({
-                  type: errorResponse.quotaType || "standard",
-                  message: errorResponse.message,
-                  currentUsage: errorResponse.quotaInfo.currentUsage,
-                  limit: errorResponse.quotaInfo.limit,
-                  otherTypeUsage: errorResponse.otherQuotaInfo.currentUsage,
-                  otherTypeLimit: errorResponse.otherQuotaInfo.limit,
-                });
-                setShowNoSubscriptionDialog(false); // Clear dialog if showing
-              }
-            }
-          } catch {
-            // If parsing fails, show generic quota error
+          if (isQuotaError(parsedError)) {
             setQuotaError({
-              type: "standard",
-              message: "Message quota exceeded",
-              currentUsage: 0,
-              limit: 0,
-              otherTypeUsage: 0,
-              otherTypeLimit: 0,
+              type: parsedError.quotaType,
+              message: parsedError.message,
+              currentUsage: parsedError.currentUsage,
+              limit: parsedError.limit,
+              otherTypeUsage: parsedError.otherTypeUsage,
+              otherTypeLimit: parsedError.otherTypeLimit,
             });
             setShowNoSubscriptionDialog(false);
+            return;
           }
-        } else {
-          // Clear quota error and dialog for non-quota errors
+
+          if (isAbortError(parsedError)) {
+            // Don't show error for user-cancelled operations
+            return;
+          }
+
+          // Clear quota error and dialog for other errors
           setQuotaError(null);
           setShowNoSubscriptionDialog(false);
 
-          // Don't show error toast for aborted requests (user stopped generation)
-          if (
-            !error.message.includes("aborted") &&
-            !error.message.includes("cancelled")
-          ) {
-            toast.error("An error occurred. Please try again.");
+          // Show error toast if appropriate
+          if (shouldShowErrorToast(parsedError)) {
+            triggerError(getErrorMessage(parsedError));
           }
-        }
+        });
+
+        Effect.runPromise(handleError).catch((e) => {
+          // Fallback error handling
+          console.error("Error parsing failed:", e);
+          triggerError("An error occurred. Please try again.");
+        });
       },
       transport: new DefaultChatTransport({
         api: "/api/chat",
@@ -317,24 +306,40 @@ function ChatInterfaceInternal({
             ? [...currentDefaultTools, "web_search" as ToolType]
             : currentDefaultTools;
 
-          // Build request context: merge server-fetched base with current chat hook messages
+          // Build request context
           const baseBeforePrune = initialMessages && initialMessages.length > 0
             ? initialMessages
             : historicalMessages;
 
+          // For regeneration, we prune at the anchor.
+          // For normal messages, we rely on the pivot logic relative to the hook messages.
           const anchor = trigger === "regenerate-message" ? regenerateAnchorRef.current : null;
           const base = anchor ? pruneAt(baseBeforePrune, anchor.id, anchor.role) : baseBeforePrune;
+          
+          // If regenerating, also prune the hook messages at the anchor point
           const hookMessages = anchor ? pruneAt(messages, anchor.id, anchor.role) : messages;
 
-          const usedIds = new Set<string>();
-          const requestMessages = base.map((m) => {
-            usedIds.add(m.id);
-            const fromHook = hookMessages.find((s) => s.id === m.id);
-            return fromHook ?? m;
-          });
-          hookMessages.forEach((m) => {
-            if (!usedIds.has(m.id)) requestMessages.push(m);
-          });
+          // Apply Pivot Logic to merge base and hookMessages
+          let requestMessages: UIMessage[] = [];
+          const pivotIndexInLocal = hookMessages.findIndex((localMsg: UIMessage) =>
+            base.some((baseMsg: UIMessage) => baseMsg.id === localMsg.id)
+          );
+
+          if (pivotIndexInLocal !== -1) {
+            const pivotId = hookMessages[pivotIndexInLocal].id;
+            const pivotIndexInBase = base.findIndex((baseMsg: UIMessage) => baseMsg.id === pivotId);
+
+            if (pivotIndexInBase !== -1) {
+              requestMessages = [...base.slice(0, pivotIndexInBase), ...hookMessages];
+            } else {
+               // Fallback
+               const usedIds = new Set(hookMessages.map((m: UIMessage) => m.id));
+               requestMessages = [...base.filter((m: UIMessage) => !usedIds.has(m.id)), ...hookMessages];
+            }
+          } else {
+            const usedIds = new Set(hookMessages.map((m: UIMessage) => m.id));
+            requestMessages = [...base.filter((m: UIMessage) => !usedIds.has(m.id)), ...hookMessages];
+          }
 
           // Get current responseStyle from store
           const currentResponseStyle = useChatUIStore.getState().responseStyle;
@@ -363,9 +368,8 @@ function ChatInterfaceInternal({
     chatStateInstance.syncFromAISDK(messages, status === 'streaming' ? 'streaming' : 'ready');
   }, [messages, status, chatStateInstance]);
 
-  const {
+    const {
     regenerateAnchorRef,
-    hiddenIdsRef,
     pruneAt,
     handleRegenerateAssistant,
     handleRegenerateAfterUser,
@@ -377,6 +381,22 @@ function ChatInterfaceInternal({
     regenerate: async ({ messageId }: { messageId: string }) => {
       if (regenerateRef.current) {
         await regenerateRef.current({ messageId });
+      }
+    },
+    onError: (error) => {
+      // Extract error message from cause if available
+      const causeMessage = error.cause instanceof Error 
+        ? error.cause.message 
+        : typeof error.cause === "string" 
+          ? error.cause 
+          : null;
+      
+      const displayMessage = causeMessage || error.message;
+      
+      if (error._tag === "RegenerationError") {
+        triggerError(`Failed to regenerate: ${displayMessage}`);
+      } else if (error._tag === "EditError") {
+        triggerError(`Failed to edit: ${displayMessage}`);
       }
     },
   });
@@ -398,22 +418,32 @@ function ChatInterfaceInternal({
       return [];
     }
 
-    const baseBeforePrune = initialMessages && initialMessages.length > 0 ? initialMessages : historicalMessages;
-    const anchor = regenerateAnchorRef.current;
-    const base = anchor ? pruneAt(baseBeforePrune, anchor.id, anchor.role) : baseBeforePrune;
+    const base = initialMessages && initialMessages.length > 0 ? initialMessages : historicalMessages;
 
-    // Keep base order, overlay streaming message if same id, append new streaming-only items at the end
-    const usedIds = new Set<string>();
-    const result: UIMessage[] = base.map((m) => {
-      const sm = messages.find((s: UIMessage) => s.id === m.id);
-      usedIds.add(m.id);
-      return sm ?? m;
-    });
-    messages.forEach((s: UIMessage) => {
-      if (!usedIds.has(s.id)) result.push(s);
-    });
-    return filterHiddenForRender(result, hiddenIdsRef);
-  }, [isThread, historicalMessages, messages, initialMessages, pruneAt]);
+    const pivotIndexInLocal = messages.findIndex((localMsg: UIMessage) =>
+      base.some((baseMsg: UIMessage) => baseMsg.id === localMsg.id)
+    );
+
+    if (pivotIndexInLocal !== -1) {
+      const pivotId = messages[pivotIndexInLocal].id;
+      const pivotIndexInBase = base.findIndex((baseMsg: UIMessage) => baseMsg.id === pivotId);
+
+      if (pivotIndexInBase !== -1) {
+        // Take history up to pivot, then append local messages (which includes the pivot and everything after)
+        const merged = [...base.slice(0, pivotIndexInBase), ...messages];
+        return merged;
+      }
+    }
+
+    // Fallback: If no overlapping pivot found, assume local messages are new/appended
+    // Filter duplicates just in case, but rely on base + local structure
+    const usedIds = new Set(messages.map((m: UIMessage) => m.id));
+    const merged = [
+      ...base.filter((m: any) => !usedIds.has(m.id)),
+      ...messages,
+    ];
+    return merged;
+  }, [isThread, historicalMessages, messages, initialMessages]);
 
   // Preserve last non-empty render while pagination is loading to prevent flicker on model change
   const lastNonEmptyRenderRef = useRef<UIMessage[]>([]);
@@ -445,7 +475,7 @@ function ChatInterfaceInternal({
       // Clear error states
       setQuotaError(null);
       setShowNoSubscriptionDialog(false);
-      
+
       // Update previous ID reference
       prevIdRef.current = id;
     }
@@ -505,7 +535,7 @@ function ChatInterfaceInternal({
       prevResponseStyleRef.current = responseStyle;
       return;
     }
-    
+
     if (
       isThread &&
       isAuthenticated &&
@@ -515,14 +545,30 @@ function ChatInterfaceInternal({
     ) {
       // Only update if thread exists and style changed from what's in DB
       prevResponseStyleRef.current = responseStyle;
-      updateThreadResponseStyle({
+
+      const program = updateResponseStyleEffect({
+        updateFn: (params) => updateThreadResponseStyle(params),
         threadId: id,
         responseStyle,
-      }).catch((error) => {
-        console.error("Failed to update thread response style:", error);
-      });
+      }).pipe(
+        Effect.tapError((error) =>
+          Effect.sync(() => {
+            console.error("Failed to update thread response style:", error);
+          })
+        ),
+        Effect.catchAll(() => Effect.void)
+      );
+
+      Effect.runPromise(program);
     }
-  }, [responseStyle, isThread, isAuthenticated, threadInfo, id, updateThreadResponseStyle]);
+  }, [
+    responseStyle,
+    isThread,
+    isAuthenticated,
+    threadInfo,
+    id,
+    updateThreadResponseStyle,
+  ]);
 
   // Cleanup effect when thread ID changes
   useEffect(() => {
@@ -539,15 +585,26 @@ function ChatInterfaceInternal({
   const handleSubmit = useCallback(
     async (e?: React.FormEvent) => {
       e?.preventDefault();
-      const { input, uploadedAttachments, uploadingFiles } = useChatUIStore.getState();
+      const state = useChatUIStore.getState();
+      const {
+        input,
+        uploadedAttachments,
+        uploadingFiles,
+        isSendingMessage,
+      } = state;
+      const isGenerating =
+        status === "streaming" || status === "submitted" || isSendingMessage;
+
       // Prevent sending when input is disabled, unauthenticated, or while auth is (re)loading
       if (
-        disableInput ||
-        authLoading ||
-        !isAuthenticated ||
-        (!input.trim() && uploadedAttachments.length === 0 && uploadingFiles.length === 0)
-      )
+        promptDisabled ||
+        isGenerating ||
+        (!input.trim() &&
+          uploadedAttachments.length === 0 &&
+          uploadingFiles.length === 0)
+      ) {
         return;
+      }
 
       const messageContent = input.trim();
       const messageId = generateUUID();
@@ -557,44 +614,41 @@ function ChatInterfaceInternal({
         if (regenerateAnchorRef.current) {
           regenerateAnchorRef.current = null;
         }
-        if (hiddenIdsRef.current && typeof hiddenIdsRef.current.clear === "function") {
-          hiddenIdsRef.current.clear();
-        }
       } catch {}
 
       // Clear any existing quota error when user tries to send a new message
       setQuotaError(null);
       setInput("");
-      
+
       // Set sending state and clear attachments immediately
       setIsSendingMessage(true);
-      
+
       // Capture attachments before clearing state
       const currentAttachments = uploadedAttachments;
-      
+
       // Clear attachments immediately
       setUploadedAttachments([]);
       setSelectedFiles([]);
       setUploadingFiles([]);
 
-      try {
-        // Build message parts using captured attachments
-        const parts: any[] = [];
-        
-        if (messageContent) {
-          parts.push({ type: "text", text: messageContent });
-        }
-        
-        // Use captured uploaded attachments
-        currentAttachments.forEach(attachment => {
-          parts.push({ 
-            type: "file", 
-            mediaType: attachment.mediaType,
-            url: attachment.url,
-            attachmentId: attachment.attachmentId,
-          });
-        });
+      // Build message parts using captured attachments
+      const parts: any[] = [];
 
+      if (messageContent) {
+        parts.push({ type: "text", text: messageContent });
+      }
+
+      // Use captured uploaded attachments
+      currentAttachments.forEach((attachment) => {
+        parts.push({
+          type: "file",
+          mediaType: attachment.mediaType,
+          url: attachment.url,
+          attachmentId: attachment.attachmentId,
+        });
+      });
+
+      const program = Effect.gen(function* () {
         if (id === "welcome" && onInitialMessage) {
           // Handle initial message on welcome page
           const optimisticMessage: UIMessage = {
@@ -607,30 +661,69 @@ function ChatInterfaceInternal({
           setMessages([optimisticMessage]);
 
           // Call the onInitialMessage callback to create thread and navigate
-          await onInitialMessage(optimisticMessage);
+          yield* Effect.tryPromise({
+            try: () => onInitialMessage(optimisticMessage),
+            catch: (error) =>
+              new MessageSubmitError({
+                message: "Failed to create thread",
+                messageId,
+                cause: error,
+              }),
+          });
         } else if (id !== "welcome") {
           // Use AI SDK sendMessage for streaming response
           // The API route will handle user message persistence
-          await sendMessage({
-            id: messageId,
-            role: "user",
-            parts,
+          yield* Effect.tryPromise({
+            try: () =>
+              sendMessage({
+                id: messageId,
+                role: "user",
+                parts,
+              }),
+            catch: (error) =>
+              new MessageSubmitError({
+                message: "Failed to send message",
+                messageId,
+                cause: error,
+              }),
           });
         }
+      }).pipe(
+        Effect.tap(() =>
+          Effect.sync(() => {
+            setIsSendingMessage(false);
+          })
+        ),
+        Effect.catchAll((error: ChatError) =>
+          Effect.sync(() => {
+            console.error("Failed to send message:", error);
+            triggerError(getErrorMessage(error));
+            setInput(messageContent);
+            // Clear optimistic messages on error
+            setMessages([]);
+            // Reset sending state on error
+            setIsSendingMessage(false);
+          })
+        )
+      );
 
-        // Reset sending state
-        setIsSendingMessage(false);
-      } catch (error) {
-        console.error("Failed to send message:", error);
-        toast.error("Failed to send message. Please try again.");
-        setInput(messageContent);
-        // Clear optimistic messages on error
-        setMessages([]);
-        // Reset sending state on error
-        setIsSendingMessage(false);
-      }
+      await Effect.runPromise(program);
     },
-    [disableInput, authLoading, isAuthenticated, id, onInitialMessage, setMessages, sendMessage, setQuotaError, setInput, setIsSendingMessage, setUploadedAttachments, setSelectedFiles, setUploadingFiles],
+    [
+      promptDisabled,
+      status,
+      id,
+      onInitialMessage,
+      setMessages,
+      sendMessage,
+      setQuotaError,
+      setInput,
+      setIsSendingMessage,
+      setUploadedAttachments,
+      setSelectedFiles,
+      setUploadingFiles,
+      triggerError,
+    ]
   );
 
   const handleStop = useCallback(() => {
@@ -639,7 +732,8 @@ function ChatInterfaceInternal({
     
     // Manually force status to 'ready' since AI SDK doesn't properly update on abort
     chatStateInstance.getState().setStatus('ready');
-  }, [stop, chatStateInstance]);
+    setIsSendingMessage(false);
+  }, [stop, chatStateInstance, setIsSendingMessage]);
 
   const handleSuggestionClick = useCallback((prompt: string) => {
     setInput(prompt);
@@ -738,34 +832,55 @@ function ChatInterfaceInternal({
                   key={message.id}
                   message={message}
                   isStreaming={isStreaming}
+                  disableRegenerate={status === "streaming"}
                   onRegenerateAssistantMessage={onRegenerateAssistant}
                   onRegenerateAfterUserMessage={onRegenerateAfterUser}
-                  onEditUserMessage={async (messageId: string, newContent: string) => {
-                    try {
+                  onEditUserMessage={async (
+                    messageId: string,
+                    newContent: string
+                  ) => {
+                    // Edit with retry
+                    const program = Effect.gen(function* () {
                       // Persist edit to Convex
-                      await updateUserMessageContent({ messageId, content: newContent });
+                      yield* updateMessageContentEffect({
+                        updateFn: (params) => updateUserMessageContent(params),
+                        messageId,
+                        content: newContent,
+                      });
 
-                      // Optimistically update local hook store so new content is used immediately
+                      // Optimistically update local hook store
                       setMessages((curr: UIMessage[]) =>
                         curr.map((m) =>
                           m.id === messageId
                             ? {
                                 ...m,
                                 parts: [
-                                  ...m.parts.filter((p: any) => p.type !== "text"),
+                                  ...m.parts.filter(
+                                    (p: any) => p.type !== "text"
+                                  ),
                                   { type: "text", text: newContent } as any,
                                 ],
                               }
-                            : m,
-                        ),
+                            : m
+                        )
                       );
 
                       // Then trigger regeneration (prune-after-user semantics)
                       handleRegenerateAfterUser(messageId, renderedMessages);
-                    } catch (e) {
-                      console.error("Edit message failed", e);
-                      toast.error("Failed to edit message.");
-                    }
+                    }).pipe(
+                      Effect.tapError((error) =>
+                        Effect.sync(() => {
+                          console.error("Edit message failed", error);
+                        })
+                      ),
+                      Effect.catchAll((error) =>
+                        Effect.sync(() => {
+                          triggerError(getErrorMessage(error));
+                        })
+                      )
+                    );
+
+                    await Effect.runPromise(program);
                   }}
                 />
               );
@@ -787,7 +902,7 @@ function ChatInterfaceInternal({
 
       {/* Prompt input overlayed at bottom of the main area */}
       <ChatInputArea
-        disableInput={disableInput || !isAuthenticated || authLoading}
+        disableInput={promptDisabled}
         selectedModel={selectedModel}
         onModelChange={setSelectedModel}
         onSubmit={handleSubmit}
