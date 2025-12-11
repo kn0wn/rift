@@ -1,4 +1,4 @@
-import { Chunk, Effect, Fiber, Queue, Ref } from "effect";
+import { Chunk, Duration, Effect, Fiber, Queue, Ref } from "effect";
 
 import { DatabaseError } from "./errors";
 import {
@@ -18,6 +18,7 @@ export const createDatabaseQueue = (logContext: LogContext) =>
   Effect.gen(function* () {
     const queue = yield* Queue.unbounded<DatabaseOperation>();
     const isShutdown = yield* Ref.make(false);
+    const autoShutdownDelayMs = CONFIG.REQUEST_TIMEOUT_MS + 60_000; // request timeout + 1m buffer
 
     const shouldRetryOperation = (name: string) => name !== "appendMessageDelta";
 
@@ -96,6 +97,9 @@ export const createDatabaseQueue = (logContext: LogContext) =>
       Queue.offer(queue, { operation, name }).pipe(Effect.asVoid);
 
     const shutdown = Effect.gen(function* () {
+      const alreadyShutdown = yield* Ref.get(isShutdown);
+      if (alreadyShutdown) return;
+
       yield* Ref.set(isShutdown, true);
       yield* Queue.offer(queue, {
         operation: Effect.void,
@@ -103,6 +107,17 @@ export const createDatabaseQueue = (logContext: LogContext) =>
       });
       yield* Fiber.await(processorFiber);
     });
+
+    // Failsafe: ensure the daemon fiber doesn't live forever
+    yield* Effect.forkDaemon(
+      Effect.gen(function* () {
+        yield* Effect.sleep(Duration.millis(autoShutdownDelayMs));
+        const alreadyShutdown = yield* Ref.get(isShutdown);
+        if (alreadyShutdown) return;
+        logger.warn("Auto-shutting down database queue after timeout", logContext);
+        yield* shutdown;
+      })
+    );
 
     return { enqueue, shutdown };
   });
