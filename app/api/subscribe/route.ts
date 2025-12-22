@@ -55,6 +55,9 @@ export const POST = async (req: NextRequest) => {
          if (!orgName) {
              return NextResponse.json({ error: 'Organization Name is required to create a new organization' }, { status: 400 });
          }
+         if (orgName.length > 50) {
+             return NextResponse.json({ error: 'Organization Name must be at most 50 characters' }, { status: 400 });
+         }
          const organization = await workos.organizations.createOrganization({
            name: orgName,
          });

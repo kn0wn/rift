@@ -228,7 +228,6 @@ export default defineSchema({
     ownerId: v.string(),
     orgId: v.optional(v.string()),
     isSharedWithOrg: v.boolean(),
-    sharedWithUsers: v.array(v.string()),
     usageCount: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -236,4 +235,10 @@ export default defineSchema({
     .index("by_owner", ["ownerId"])
     .index("by_org", ["orgId"])
     .index("by_usage", ["usageCount"]),
+  customInstructionShares: defineTable({
+    instructionId: v.id("customInstructions"),
+    userId: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_instruction", ["instructionId"]),
 });

@@ -43,7 +43,7 @@ export function InstructionManager() {
     items: any[], 
     emptyMessage: string 
   }) => (
-    <div className="grid gap-3 md:grid-cols-1 lg:grid-cols-2">
+    <div className="grid gap-3 md:grid-cols-1 lg:grid-cols-2 items-stretch">
       {items.map((instruction) => (
         <InstructionCard
           key={instruction._id}
@@ -73,7 +73,7 @@ export function InstructionManager() {
               <DialogTrigger asChild>
                 <Button 
                   onClick={() => setEditingId(null)}
-                  className="cursor-pointer gap-2 rounded-md border border-border/60 bg-white/90 shadow-sm shadow-black/5 dark:bg-popover-secondary/75 dark:shadow-black/30 hover:bg-black/[0.04] dark:hover:bg-hover/30 disabled:opacity-50 disabled:cursor-not-allowed h-9 px-4 text-sm font-medium"
+                  className="cursor-pointer gap-2 rounded-md border border-border/60 bg-white/90 shadow-sm shadow-black/5 dark:bg-popover-secondary/75 dark:shadow-black/30 hover:bg-black/[0.04] dark:hover:bg-hover/30 hover:text-foreground dark:hover:text-popover-text disabled:opacity-50 disabled:cursor-not-allowed h-9 px-4 text-sm font-medium"
                 >
                   <PlusIcon className="size-4" />
                   <span className="hidden sm:inline">Nueva Instrucción</span>
@@ -87,7 +87,7 @@ export function InstructionManager() {
                       {editingId ? "Editar Instrucción" : "Crear Instrucción"}
                     </DialogTitle>
                     <p className="text-base text-muted-foreground leading-relaxed">
-                      {editingId ? "Modifica tu instrucción personalizada." : "Crea una nueva instrucción de sistema para tus chats."}
+                      {editingId ? "Modifica tu instrucción personalizada." : "Crea una nueva instrucción para tus chats."}
                     </p>
                   </DialogHeader>
                   <InstructionForm

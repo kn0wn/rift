@@ -13,11 +13,15 @@ export const create = AuthMutation({
     iconColor: v.optional(v.string()),
     instructions: v.string(),
     isSharedWithOrg: v.boolean(),
-    sharedWithUsers: v.array(v.string()),
   },
   handler: async (ctx, args) => {
     const orgId = extractOrganizationIdFromJWT(ctx.identity);
     
+    // Validation
+    if (args.title.length > 50) throw new Error("Title too long (max 50)");
+    if (args.description.length > 160) throw new Error("Description too long (max 160)");
+    if (args.instructions.length > 25000) throw new Error("Instructions too long (max 25000)");
+
     const id = await ctx.db.insert("customInstructions", {
       ...args,
       ownerId: ctx.identity.subject,
@@ -40,8 +44,8 @@ export const update = AuthMutation({
     iconColor: v.optional(v.string()),
     instructions: v.optional(v.string()),
     isSharedWithOrg: v.optional(v.boolean()),
-    sharedWithUsers: v.optional(v.array(v.string())),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const instruction = await ctx.db.get(args.id);
     if (!instruction) {
@@ -52,11 +56,19 @@ export const update = AuthMutation({
       throw new Error("Unauthorized");
     }
 
+    // Validation
+    if (args.title && args.title.length > 50) throw new Error("Title too long (max 50)");
+    if (args.description && args.description.length > 160) throw new Error("Description too long (max 160)");
+    if (args.instructions && args.instructions.length > 25000) throw new Error("Instructions too long (max 25000)");
+
     const { id, ...updates } = args;
+    
     await ctx.db.patch(id, {
       ...updates,
       updatedAt: Date.now(),
     });
+
+    return null;
   },
 });
 
@@ -64,6 +76,7 @@ export const remove = AuthMutation({
   args: {
     id: v.id("customInstructions"),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const instruction = await ctx.db.get(args.id);
     if (!instruction) {
@@ -74,7 +87,17 @@ export const remove = AuthMutation({
       throw new Error("Unauthorized");
     }
 
+    // Delete associated share records
+    const shares = await ctx.db
+      .query("customInstructionShares")
+      .withIndex("by_instruction", (q) => q.eq("instructionId", args.id))
+      .collect();
+    for (const share of shares) {
+      await ctx.db.delete(share._id);
+    }
+
     await ctx.db.delete(args.id);
+    return null;
   },
 });
 
@@ -100,10 +123,18 @@ export const list = AuthQuery({
         .collect();
     }
 
-    // Get instructions directly shared with the user (table scan, but small volume)
-    const allInstructions = await ctx.db.query("customInstructions").collect();
-    const sharedWithMeDirectly = allInstructions.filter(inst => 
-      inst.ownerId !== userId && inst.sharedWithUsers.includes(userId)
+    // Get instructions directly shared with the user
+    const shareRecords = await ctx.db
+      .query("customInstructionShares")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    const sharedInstructionIds = shareRecords.map(s => s.instructionId);
+    const sharedWithMeDirectly = await Promise.all(
+      sharedInstructionIds.map(id => ctx.db.get(id))
+    );
+    const sharedInstructions = sharedWithMeDirectly.filter(
+      (inst): inst is Doc<"customInstructions"> => 
+        inst !== null && inst.ownerId !== userId
     );
 
     // Merge and deduplicate
@@ -118,7 +149,7 @@ export const list = AuthQuery({
     };
 
     addToResult(orgInstructions);
-    addToResult(sharedWithMeDirectly);
+    addToResult(sharedInstructions);
     
     // Fetch owner information for all
     const results = await Promise.all(
@@ -157,7 +188,14 @@ export const get = AuthQuery({
     // Check access
     const isOwner = instruction.ownerId === userId;
     const isOrgMember = orgId && instruction.orgId === orgId && instruction.isSharedWithOrg;
-    const isSharedUser = instruction.sharedWithUsers.includes(userId);
+    
+    // Check if user has direct share via junction table
+    const shareRecord = await ctx.db
+      .query("customInstructionShares")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .filter((q) => q.eq(q.field("instructionId"), args.id))
+      .first();
+    const isSharedUser = shareRecord !== null;
 
     if (!isOwner && !isOrgMember && !isSharedUser) {
       return null;
@@ -182,6 +220,24 @@ export const serverGet = query({
     id: v.id("customInstructions"),
     secret: v.string(),
   },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("customInstructions"),
+      _creationTime: v.number(),
+      title: v.string(),
+      description: v.string(),
+      icon: v.string(),
+      iconColor: v.optional(v.string()),
+      instructions: v.string(),
+      ownerId: v.string(),
+      orgId: v.optional(v.string()),
+      isSharedWithOrg: v.boolean(),
+      usageCount: v.number(),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+  ),
   handler: async (ctx, args) => {
     ensureServerSecret(args.secret);
 
@@ -190,25 +246,12 @@ export const serverGet = query({
   },
 });
 
-export const incrementUsage = mutation({
-  args: {
-    id: v.id("customInstructions"),
-  },
-  handler: async (ctx, args) => {
-    const instruction = await ctx.db.get(args.id);
-    if (instruction) {
-      await ctx.db.patch(args.id, {
-        usageCount: (instruction.usageCount || 0) + 1,
-      });
-    }
-  },
-});
-
 export const serverIncrementUsage = mutation({
   args: {
     id: v.id("customInstructions"),
     secret: v.string(),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     ensureServerSecret(args.secret);
 
@@ -218,5 +261,6 @@ export const serverIncrementUsage = mutation({
         usageCount: (instruction.usageCount || 0) + 1,
       });
     }
+    return null;
   },
 });
