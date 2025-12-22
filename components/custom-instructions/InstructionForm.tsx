@@ -114,6 +114,7 @@ export function InstructionForm({
       } else {
         await createInstruction({
           ...formData,
+          sharedWithUsers: [],
         });
       }
       onSuccess();
