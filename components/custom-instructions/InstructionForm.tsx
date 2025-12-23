@@ -112,10 +112,7 @@ export function InstructionForm({
           ...formData,
         });
       } else {
-        await createInstruction({
-          ...formData,
-          sharedWithUsers: [],
-        });
+        await createInstruction(formData);
       }
       onSuccess();
     } catch (error) {

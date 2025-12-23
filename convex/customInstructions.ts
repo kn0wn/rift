@@ -20,6 +20,7 @@ export const create = AuthMutation({
     // Validation
     if (args.title.length > 60) throw new Error("Title too long (max 60)");
     if (args.description.length > 180) throw new Error("Description too long (max 180)");
+    if (args.instructions.length > 25000) throw new Error("Instructions too long (max 25000)");
 
     const id = await ctx.db.insert("customInstructions", {
       ...args,
@@ -58,6 +59,7 @@ export const update = AuthMutation({
     // Validation
     if (args.title && args.title.length > 60) throw new Error("Title too long (max 60)");
     if (args.description && args.description.length > 180) throw new Error("Description too long (max 180)");
+    if (args.instructions && args.instructions.length > 25000) throw new Error("Instructions too long (max 25000)");
 
     const { id, ...updates } = args;
     
@@ -101,6 +103,23 @@ export const remove = AuthMutation({
 
 export const list = AuthQuery({
   args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("customInstructions"),
+      _creationTime: v.number(),
+      title: v.string(),
+      description: v.string(),
+      icon: v.string(),
+      iconColor: v.optional(v.string()),
+      instructions: v.string(),
+      ownerId: v.string(),
+      orgId: v.optional(v.string()),
+      isSharedWithOrg: v.boolean(),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+      ownerName: v.string(),
+    })
+  ),
   handler: async (ctx) => {
     const userId = ctx.identity.subject;
     const orgId = extractOrganizationIdFromJWT(ctx.identity);
@@ -176,6 +195,24 @@ export const get = AuthQuery({
   args: {
     id: v.id("customInstructions"),
   },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("customInstructions"),
+      _creationTime: v.number(),
+      title: v.string(),
+      description: v.string(),
+      icon: v.string(),
+      iconColor: v.optional(v.string()),
+      instructions: v.string(),
+      ownerId: v.string(),
+      orgId: v.optional(v.string()),
+      isSharedWithOrg: v.boolean(),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+      ownerName: v.string(),
+    })
+  ),
   handler: async (ctx, args) => {
     const userId = ctx.identity.subject;
     const orgId = extractOrganizationIdFromJWT(ctx.identity);

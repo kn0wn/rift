@@ -7,6 +7,7 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,8 +45,13 @@ export function InstructionCard({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const handleDelete = async () => {
-    await deleteInstruction({ id: instruction._id });
-    setDeleteDialogOpen(false);
+    try {
+      await deleteInstruction({ id: instruction._id });
+      setDeleteDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to delete instruction:", error);
+      toast.error("Error al eliminar la instrucción. Por favor, intenta nuevamente.");
+    }
   };
 
   const IconComponent = (LucideIcons as any)[instruction.icon] as LucideIcon || LucideIcons.MessageSquare;
