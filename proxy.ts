@@ -44,4 +44,5 @@ export const config = {
     // Catch-all for any other API routes
     '/api/:path*',
   ],
+  runtime: "nodejs",
 };
