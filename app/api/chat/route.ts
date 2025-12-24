@@ -947,7 +947,7 @@ const handleChatRequest = (
           writer.merge(
             result.toUIMessageStream({
               sendStart: false,
-              sendSources: false,
+              sendSources: true,
               sendReasoning: true,
             })
           );
