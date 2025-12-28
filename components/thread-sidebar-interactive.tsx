@@ -2,7 +2,14 @@
 
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Preloaded, usePaginatedQuery, useMutation, useConvexAuth, Authenticated, AuthLoading, Unauthenticated } from "convex/react";
+import {
+  usePaginatedQuery,
+  useMutation,
+  useConvexAuth,
+  Authenticated,
+  AuthLoading,
+  Unauthenticated,
+} from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ai/ui/button";
 import { Loader } from "@/components/ai/loader";
@@ -44,10 +51,6 @@ interface Thread {
   sharedAt?: number;
 }
 
-interface ThreadSidebarInteractiveProps {
-  preloadedThreads?: Preloaded<typeof api.threads.getUserThreadsPaginatedSafe>;
-}
-
 const PAGE_SIZE = 20;
 const GROUP_ORDER = [
   "Fijados",
@@ -60,24 +63,6 @@ const GROUP_ORDER = [
 const MAX_TITLE_LENGTH = 35;
 const BLUR_DELAY = 150;
 
-const parsePreloadedSnapshot = (
-  preloadedThreads?: Preloaded<typeof api.threads.getUserThreadsPaginatedSafe>,
-) => {
-  const snapshot = (preloadedThreads as {
-    _valueJSON?: {
-      page?: Thread[];
-      continueCursor?: string;
-      isDone?: boolean;
-    };
-  })?._valueJSON;
-
-  return {
-    page: snapshot?.page ?? [],
-    continueCursor: snapshot?.continueCursor ?? null,
-    isDone: snapshot?.isDone ?? true,
-  };
-};
-
 const sortThreads = (a: Thread, b: Thread) => {
   if (a.pinned && !b.pinned) return -1;
   if (!a.pinned && b.pinned) return 1;
@@ -89,8 +74,7 @@ const sortThreads = (a: Thread, b: Thread) => {
 };
 
 export function ThreadSidebarInteractive({
-  preloadedThreads,
-}: ThreadSidebarInteractiveProps) {
+}: {}) {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -119,35 +103,21 @@ export function ThreadSidebarInteractive({
     setHasHydrated(true);
   }, []);
 
-  const preloadedSnapshot = useMemo(
-    () => parsePreloadedSnapshot(preloadedThreads),
-    [preloadedThreads],
-  );
-
-  const preloadedIsDone = preloadedSnapshot.isDone;
-  const hasPreloadedMore = Boolean(preloadedThreads && !preloadedIsDone);
-  // Avoid running live paginated query until auth is confirmed
-  const shouldUsePaginated = hasHydrated && isAuthenticated && (!preloadedThreads || hasPreloadedMore);
-
+  const shouldUsePaginated = hasHydrated && !authLoading;
   const paginatedArgs = useMemo(
     () => ({
       paginationOpts: {
         numItems: PAGE_SIZE,
-        cursor: hasPreloadedMore ? preloadedSnapshot.continueCursor : null,
+        cursor: null,
       },
     }),
-    [hasPreloadedMore, preloadedSnapshot.continueCursor],
-  );
-
-  const paginatedOptions = useMemo(
-    () => ({ initialNumItems: hasPreloadedMore ? 0 : PAGE_SIZE }),
-    [hasPreloadedMore],
+    [],
   );
 
   const paginated = usePaginatedQuery(
     api.threads.getUserThreadsPaginatedSafe,
     shouldUsePaginated ? paginatedArgs : "skip",
-    paginatedOptions,
+    { initialNumItems: PAGE_SIZE },
   );
 
   const paginatedResults = useMemo(
@@ -190,20 +160,8 @@ export function ThreadSidebarInteractive({
   }, [searchQuery]);
 
   const combinedThreads = useMemo(() => {
-    const pageFromPreload = preloadedSnapshot.page;
-    const allThreads = hasPreloadedMore
-      ? [...pageFromPreload, ...paginatedResults]
-      : paginatedResults.length > 0
-        ? paginatedResults
-        : pageFromPreload;
-
-    const threadsById = new Map<string, Thread>();
-    for (const thread of allThreads) {
-      threadsById.set(thread.threadId, thread);
-    }
-
-    return Array.from(threadsById.values()).sort(sortThreads);
-  }, [hasPreloadedMore, paginatedResults, preloadedSnapshot.page]);
+    return [...paginatedResults].sort(sortThreads);
+  }, [paginatedResults]);
 
   const filteredThreads = useMemo(() => {
     if (!searchQuery) {
@@ -600,30 +558,8 @@ export function ThreadSidebarInteractive({
   };
 
   const renderEmptyState = () => {
-    // During auth loading, show nothing changing to avoid flicker from empty safe query
-    if (authLoading) {
-      return null;
-    }
-    if (filteredThreads.length === 0 && searchQuery) {
-      return (
-        <div className="p-4 text-center text-muted-foreground">
-          <p className="text-sm">
-            No se encontraron chats que coincidan con &quot;{searchQuery}&quot;
-          </p>
-          <p className="text-xs">Intenta ajustar tus términos de búsqueda</p>
-        </div>
-      );
-    }
-
-    if (filteredThreads.length === 0) {
-      return (
-        <div className="p-4 text-center text-muted-foreground">
-          <p className="text-sm">Aún no hay chats</p>
-          <p className="text-xs">Inicia una nueva conversación</p>
-        </div>
-      );
-    }
-
+    // Keep sidebar body blank until we have client auth + data to avoid layout shifts.
+    if (authLoading || !hasHydrated) return null;
     return null;
   };
 
@@ -631,18 +567,7 @@ export function ThreadSidebarInteractive({
     <div className="flex h-full flex-col">
       <div className="flex-1 min-h-0">
         <AuthLoading>
-          {/* Keep layout stable while auth loads; render snapshot groups when present */}
-          {preloadedSnapshot.page.length > 0 ? (
-            <div
-              ref={scrollContainerRef}
-              className="sidebar-scroll-container h-full w-full overflow-y-auto"
-            >
-              {GROUP_ORDER.map((groupName) =>
-                renderThreadGroup(groupName, groupedThreads[groupName]),
-              )}
-              <div ref={sentinelRef} className="h-[1px] w-full" />
-            </div>
-          ) : null}
+          {null}
         </AuthLoading>
         <Authenticated>
           {renderEmptyState() || (
@@ -658,29 +583,9 @@ export function ThreadSidebarInteractive({
           )}
         </Authenticated>
         <Unauthenticated>
-          {/* If unauthenticated, show snapshot if any; otherwise show empty-state copy */}
-          {preloadedSnapshot.page.length > 0 ? (
-            <div
-              ref={scrollContainerRef}
-              className="sidebar-scroll-container h-full w-full overflow-y-auto"
-            >
-              {GROUP_ORDER.map((groupName) =>
-                renderThreadGroup(groupName, groupedThreads[groupName]),
-              )}
-              <div ref={sentinelRef} className="h-[1px] w-full" />
-            </div>
-          ) : (
-            renderEmptyState()
-          )}
+          {null}
         </Unauthenticated>
       </div>
-
-      {isScrollLoading && (
-        <div className="border-t border-border p-2 text-center text-muted-foreground">
-          <Loader size={14} className="mx-auto" />
-          <p className="mt-1 text-xs">Cargando más chats...</p>
-        </div>
-      )}
 
       {/* Button removed: automatic infinite scroll handles pagination */}
 

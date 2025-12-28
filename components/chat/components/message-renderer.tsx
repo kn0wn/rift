@@ -262,14 +262,18 @@ export const MessageRenderer = React.memo(function MessageRenderer({
           }
 
           if (part.type === "text" && "text" in part) {
-            // Use optimized MemoResponse for assistant messages
+            // Use optimized MemoResponse for assistant messages *while streaming*.
+            // For historical messages (loaded from Convex), MemoResponse may not have store
+            // state for this messageId/partIdx, which would render blank.
             if (message.role === "assistant") {
-              return (
-                <MemoResponse 
+              return isStreaming ? (
+                <MemoResponse
                   key={`${message.id}-${partIdx}`}
                   messageId={message.id}
                   partIdx={partIdx}
                 />
+              ) : (
+                <Response key={`${message.id}-${partIdx}`}>{part.text}</Response>
               );
             }
             // Use regular Response for user messages (no need to optimize)

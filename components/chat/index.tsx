@@ -142,7 +142,7 @@ function ChatInterfaceInternal({
     )
       ? { threadId: id }
       : "skip",
-    { initialNumItems: 5 }
+    { initialNumItems: 20 }
   );
 
   // Transform paginated messages to UIMessage format

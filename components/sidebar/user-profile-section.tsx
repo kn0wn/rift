@@ -1,7 +1,7 @@
+"use client";
 
-import { fetchQuery } from "convex/nextjs";
+import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { getAccessToken } from "@/lib/auth";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ai/ui/button";
@@ -24,32 +24,24 @@ function getPlanBadgeStyles(plan: string) {
   }
 }
 
-export async function UserProfileSection() {
-  const accessToken = await getAccessToken();
-  
-  let user = null;
-  let orgInfo = null;
-  if (accessToken) {
-    try {
-      const [userData, orgData] = await Promise.all([
-        fetchQuery(api.users.getCurrentUser, {}, { token: accessToken }),
-        fetchQuery(api.organizations.getCurrentOrganizationInfo, {}, { token: accessToken })
-      ]);
-      user = userData;
-      orgInfo = orgData;
-    } catch (error) {
-      // If there's an error fetching user data, fall back to unauthenticated state
-      console.error("Error fetching user data:", error);
-    }
-  }
-
+export function UserProfileSection() {
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const user = useQuery(api.users.getCurrentUser, isAuthenticated ? {} : "skip");
+  const orgInfo = useQuery(
+    api.organizations.getCurrentOrganizationInfo,
+    isAuthenticated ? {} : "skip",
+  );
 
   return (
     <div
       className="border-t border-border p-4 flex-shrink-0 flex items-center justify-center"
       style={{ minHeight: "80px" }}
     >
-      {user ? (
+      {isLoading ? (
+        <div className="w-full">
+          <div className="h-10 w-full rounded-lg bg-muted/40" />
+        </div>
+      ) : user ? (
         // Authenticated state
         <Link href="/settings/usage?sidebar=true" className="w-full">
           <div className="group flex items-center gap-3 hover:bg-popover-main hover:text-popover-text dark:hover:bg-hover/60 rounded-lg p-2 -m-2 cursor-pointer transition-colors">
@@ -109,3 +101,7 @@ export async function UserProfileSection() {
     </div>
   );
 }
+
+
+
+
