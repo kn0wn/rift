@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { generateUUID } from "@/lib/utils";
 import { useModel } from "@/contexts/model-context";
 import { useInitialMessage } from "@/contexts/initial-message-context";
-import { useCallback, useEffect, useRef, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useMemo, useState, useLayoutEffect } from "react";
 import { useRegeneration } from "./hooks/use-regeneration";
 import { ToolType, getDefaultTools } from "@/lib/ai/model-tools";
 import { resolveModel } from "@/lib/ai/ai-providers";
@@ -29,7 +29,7 @@ import type { ChatInterfaceProps } from "./types";
 import { ChatStoreProvider, useChatStateInstance } from "@/lib/stores/hooks";
 import { Effect } from "effect";
 import { saveCachedThreadMessages } from "@/lib/local-first/thread-messages-cache";
-import { useDebugStore } from "./DebugOverlay";
+import { useStickToBottom } from "@/lib/hooks/use-stick-to-bottom";
 
 // Effect services and error types
 import {
@@ -55,15 +55,17 @@ function ChatInterfaceInternal({
 }: ChatInterfaceProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const addEvent = useDebugStore((s) => s.addEvent);
-  const setLoadSource = useDebugStore((s) => s.setLoadSource);
-  const startConvexQuery = useDebugStore((s) => s.startConvexQuery);
-  const endConvexQuery = useDebugStore((s) => s.endConvexQuery);
 
-  // Debug: track component mount
-  useEffect(() => {
-    addEvent(`🎯 ChatInterface ready (cache: ${initialMessages?.length ?? 0} msgs)`);
-  }, [addEvent]);
+  // Stick-to-bottom hook for auto-scrolling
+  const {
+    scrollRef,
+    contentRef,
+    isAtBottom,
+    scrollToBottom,
+    markInitialScrollDone,
+    reset: resetStickToBottom,
+  } = useStickToBottom();
+
   const { selectedModel, setSelectedModel } = useModel();
   const { consumeInitialMessage } = useInitialMessage();
   const { isAuthenticated } = useConvexAuth();
@@ -154,30 +156,6 @@ function ChatInterfaceInternal({
     { initialNumItems: 20 }
   );
 
-  // Debug: track Convex query timing
-  const convexQueryStartedRef = useRef(false);
-  useEffect(() => {
-    if (paginationStatus === "LoadingFirstPage" && !convexQueryStartedRef.current) {
-      convexQueryStartedRef.current = true;
-      startConvexQuery();
-    }
-    
-    if ((paginationStatus === "CanLoadMore" || paginationStatus === "Exhausted") && convexQueryStartedRef.current) {
-      convexQueryStartedRef.current = false;
-      endConvexQuery(paginatedMessages?.length ?? 0);
-      
-      // If we didn't have cache, this is our source
-      if (!initialMessages || initialMessages.length === 0) {
-        setLoadSource("convex");
-      }
-    }
-  }, [paginationStatus, paginatedMessages?.length, initialMessages?.length, startConvexQuery, endConvexQuery, setLoadSource]);
-
-  // Reset convex query tracking when thread changes
-  useEffect(() => {
-    convexQueryStartedRef.current = false;
-  }, [id]);
-
   // Transform paginated messages to UIMessage format
   const historicalMessagesFromServer: UIMessage[] = useMemo(() => {
     if (!paginatedMessages || !isThread) return [];
@@ -231,22 +209,6 @@ function ChatInterfaceInternal({
 
     return [];
   }, [isThread, historicalMessagesFromServer, initialMessages]);
-
-  // Debug: track data source changes (only log meaningful transitions)
-  const lastDataSourceRef = useRef<string | null>(null);
-  useEffect(() => {
-    const cacheCount = initialMessages?.length ?? 0;
-    const serverCount = historicalMessagesFromServer.length;
-    
-    // Only log when there's actual data and source changes
-    if (cacheCount > 0 && serverCount > 0 && serverCount < cacheCount) {
-      const key = `kept-cache:${cacheCount}`;
-      if (lastDataSourceRef.current !== key) {
-        lastDataSourceRef.current = key;
-        addEvent(`⚠️ Kept cache (${cacheCount}) - Convex had fewer (${serverCount})`);
-      }
-    }
-  }, [historicalMessagesFromServer.length, initialMessages?.length, addEvent]);
 
   // Access chat state instance early so we can seed useChat with last throttled messages
   const chatStateInstance = useChatStateInstance();
@@ -491,20 +453,37 @@ function ChatInterfaceInternal({
     return renderedMessages;
   }, [renderedMessages, isThread, paginationStatus]);
 
-  // Debug: track when content is ready to display
-  const hasLoggedContentRendered = useRef(false);
-  useEffect(() => {
-    if (displayMessages.length > 0 && !hasLoggedContentRendered.current) {
-      addEvent(`✅ Content rendered: ${displayMessages.length} msgs`);
-      hasLoggedContentRendered.current = true;
+  // Initial scroll to bottom when thread loads (instant, no animation)
+  const hasInitialScrolledRef = useRef(false);
+  const initialScrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  useLayoutEffect(() => {
+    // Only scroll on initial load for this thread
+    if (displayMessages.length > 0 && !hasInitialScrolledRef.current) {
+      scrollToBottom("instant");
+      hasInitialScrolledRef.current = true;
+      
+      // Delay marking initial scroll done to allow late-rendering content
+      // (like Streamdown markdown) to also benefit from instant scroll
+      // The ResizeObserver will catch content growth and use instant scroll
+      // until this timeout fires, then switch to smooth scroll
+      if (initialScrollTimeoutRef.current) {
+        clearTimeout(initialScrollTimeoutRef.current);
+      }
+      initialScrollTimeoutRef.current = setTimeout(() => {
+        markInitialScrollDone();
+      }, 150); // Small delay for heavy components to render
     }
-  }, [displayMessages.length, addEvent]);
+  }, [displayMessages.length, scrollToBottom, markInitialScrollDone]);
 
-  // Reset the flag when thread changes
+  // Reset scroll state when thread changes
   useEffect(() => {
-    hasLoggedContentRendered.current = false;
-  }, [id]);
-
+    hasInitialScrolledRef.current = false;
+    if (initialScrollTimeoutRef.current) {
+      clearTimeout(initialScrollTimeoutRef.current);
+      initialScrollTimeoutRef.current = null;
+    }
+    resetStickToBottom();
+  }, [id, resetStickToBottom]);
 
   // Persist conversation locally for instant/offline loading.
   // We avoid saving while actively streaming to keep writes low and store stable history.
@@ -787,8 +766,8 @@ function ChatInterfaceInternal({
       }}
     >
       <div className="flex-1 min-h-0">
-        <Conversation>
-          <ConversationContent className="mx-auto w-full max-w-full md:max-w-3xl p-4 pb-[140px] md:pb-35">
+        <Conversation ref={scrollRef as React.RefObject<HTMLDivElement>}>
+          <ConversationContent ref={contentRef as React.RefObject<HTMLDivElement>} className="mx-auto w-full max-w-full md:max-w-3xl p-4 pb-[140px] md:pb-35">
             {/* Load More button for threads */}
             {isThread && (paginationStatus === "CanLoadMore" || (initialMessages && hasMoreMessages && !enableClientPagination)) && (
               <div className="flex justify-center mb-4">
@@ -882,6 +861,31 @@ function ChatInterfaceInternal({
                 </Message>
               )}
           </ConversationContent>
+          
+          {/* Scroll to bottom button - shown when user scrolls up */}
+          {!isAtBottom && displayMessages.length > 0 && (
+            <button
+              onClick={() => scrollToBottom("smooth")}
+              className="absolute bottom-36 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 px-4 py-2 bg-background/90 backdrop-blur-sm border border-border rounded-full shadow-lg hover:bg-accent transition-all duration-200"
+              aria-label="Scroll to bottom"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 5v14" />
+                <path d="m19 12-7 7-7-7" />
+              </svg>
+              <span className="text-sm font-medium">New messages</span>
+            </button>
+          )}
         </Conversation>
       </div>
 

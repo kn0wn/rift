@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import type { UIMessage } from "@ai-sdk-tools/store";
 import ChatInterface from "@/components/chat";
 import {
   loadCachedThreadMessages,
   getMemoryCachedThreadMessages,
 } from "@/lib/local-first/thread-messages-cache";
-import { useDebugStore } from "./DebugOverlay";
 
 interface CachedChatWrapperProps {
   threadId: string;
@@ -25,11 +24,7 @@ interface CachedChatWrapperProps {
  * ChatInterface remains pure and unaware of caching.
  */
 export function CachedChatWrapper({ threadId, customInstructionId }: CachedChatWrapperProps) {
-  const addEvent = useDebugStore((s) => s.addEvent);
-  const setLoadSource = useDebugStore((s) => s.setLoadSource);
-
   // Synchronously get cached messages during render - this is instant for memory cache
-  // We compute this during render (not in effect) for instant display
   let memoryCachedMessages: UIMessage[] | undefined;
   let hadMemoryCache = false;
   if (typeof window !== "undefined") {
@@ -37,20 +32,6 @@ export function CachedChatWrapper({ threadId, customInstructionId }: CachedChatW
     memoryCachedMessages = cached?.messages;
     hadMemoryCache = !!(memoryCachedMessages && memoryCachedMessages.length > 0);
   }
-
-  // Log cache status in effect (not during render)
-  const lastLoggedThreadRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (lastLoggedThreadRef.current !== threadId) {
-      lastLoggedThreadRef.current = threadId;
-      if (hadMemoryCache) {
-        addEvent(`💾 Memory cache: ${memoryCachedMessages?.length ?? 0} msgs`);
-        setLoadSource("memory-cache");
-      } else {
-        addEvent("💾 Memory cache: empty");
-      }
-    }
-  }, [threadId, hadMemoryCache, memoryCachedMessages?.length, addEvent, setLoadSource]);
 
   // Track async-loaded messages from IndexedDB (only used when memory cache is empty)
   const [asyncLoadedMessages, setAsyncLoadedMessages] = useState<UIMessage[] | undefined>(undefined);
@@ -70,7 +51,6 @@ export function CachedChatWrapper({ threadId, customInstructionId }: CachedChatW
 
     // Reset async state for new thread
     setAsyncLoadedMessages(undefined);
-    const idbStart = performance.now();
 
     let cancelled = false;
     
@@ -79,22 +59,10 @@ export function CachedChatWrapper({ threadId, customInstructionId }: CachedChatW
         const record = await loadCachedThreadMessages(threadId);
         if (cancelled) return;
         
-        const idbDuration = Math.round(performance.now() - idbStart);
-        
-        if (record?.messages && record.messages.length > 0) {
-          addEvent(`💿 IndexedDB: ${record.messages.length} msgs`, idbDuration);
-          setLoadSource("indexeddb-cache");
-        } else {
-          addEvent(`💿 IndexedDB: empty`, idbDuration);
-          setLoadSource("none");
-        }
-        
         setAsyncLoadedMessages(record?.messages);
         setAsyncLoadedThreadId(threadId);
-      } catch (e) {
+      } catch {
         // Ignore cache errors (private browsing, etc.)
-        const idbDuration = Math.round(performance.now() - idbStart);
-        addEvent(`💿 IndexedDB error`, idbDuration);
         if (!cancelled) {
           setAsyncLoadedMessages(undefined);
           setAsyncLoadedThreadId(threadId);
@@ -105,7 +73,7 @@ export function CachedChatWrapper({ threadId, customInstructionId }: CachedChatW
     return () => {
       cancelled = true;
     };
-  }, [threadId, hadMemoryCache, asyncLoadedThreadId, addEvent, setLoadSource]);
+  }, [threadId, hadMemoryCache, asyncLoadedThreadId]);
 
   // Use memory cache first (instant), fall back to async-loaded messages
   const initialMessages = memoryCachedMessages ?? 

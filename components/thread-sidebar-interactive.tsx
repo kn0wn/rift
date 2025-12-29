@@ -35,7 +35,6 @@ import {
 import { useThreadShare } from "@/lib/hooks/useThreadShare";
 import { ShareSettingsDialog } from "@/components/share/ShareSettingsDialog";
 import { prefetchCachedThreadMessages } from "@/lib/local-first/thread-messages-cache";
-import { useDebugStore } from "@/components/chat/DebugOverlay";
 import {
   getLastUserKey,
   loadSidebarThreads,
@@ -446,13 +445,8 @@ export function ThreadSidebarInteractive({
     }
   }, []);
 
-  const debug = useDebugStore();
   const handleThreadNavigation = useCallback(
     (threadId: string) => {
-      // Start debug timer when user clicks a thread
-      debug.startNavigation(threadId);
-      debug.addEvent("Thread clicked - starting navigation");
-      
       // Prefetch cached messages in parallel with route navigation (warms in-memory cache).
       prefetchCachedThreadMessages(threadId);
 
@@ -461,7 +455,7 @@ export function ThreadSidebarInteractive({
         closeSidebar();
       }
     },
-    [router, closeSidebar, isMobileViewport, debug],
+    [router, closeSidebar, isMobileViewport],
   );
 
   // Idle prefetch: warm Next.js route (RSC) + local-first cache for the most visible threads.
