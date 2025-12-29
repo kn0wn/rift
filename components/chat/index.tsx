@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { generateUUID } from "@/lib/utils";
 import { useModel } from "@/contexts/model-context";
 import { useInitialMessage } from "@/contexts/initial-message-context";
-import { useCallback, useEffect, useRef, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useMemo, useState, useLayoutEffect } from "react";
 import { useRegeneration } from "./hooks/use-regeneration";
 import { ToolType, getDefaultTools } from "@/lib/ai/model-tools";
 import { resolveModel } from "@/lib/ai/ai-providers";
@@ -29,6 +29,16 @@ import { ChatInputArea } from "./components/chat-input-area";
 import type { ChatInterfaceProps } from "./types";
 import { ChatStoreProvider, useChatStateInstance } from "@/lib/stores/hooks";
 import { Effect } from "effect";
+import {
+  loadCachedThreadMessages,
+  saveCachedThreadMessages,
+  getMemoryCachedThreadMessages,
+} from "@/lib/local-first/thread-messages-cache";
+import {
+  markThreadLoad,
+  consumeThreadLoadBreakdown,
+  peekThreadLoadMarks,
+} from "@/lib/local-first/thread-load-marks";
 
 // Effect services and error types
 import {
@@ -79,6 +89,11 @@ function ChatInterfaceInternal({
   const setCustomInstructionId = useChatUIStore((s) => s.setCustomInstructionId);
   const [isDragActive, setIsDragActive] = useState(false);
   const dragCounterRef = useRef(0);
+  
+  // Debug timing: track conversation load performance
+  const [loadTime, setLoadTime] = useState<number | null>(null);
+  const [isCalculatingLoadTime, setIsCalculatingLoadTime] = useState(false);
+  const loadTimeMeasuredRef = useRef(false);
 
   // Centralized file processing for drag-and-drop uploads
   const handleProcessFiles = useCallback(
@@ -128,8 +143,181 @@ function ChatInterfaceInternal({
   // State to enable client-side pagination when user clicks "Load More"
   const [enableClientPagination, setEnableClientPagination] = useState(false);
 
-  // Paginated query for historical messages
-  // Skip the query if we have initialMessages from server-side rendering, unless pagination is enabled
+  // Online/offline state (used to skip Convex queries when offline and cache exists)
+  const [isOnline, setIsOnline] = useState(true);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const update = () => setIsOnline(navigator.onLine);
+    update();
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
+
+  // Local-first cache for instant/offline thread hydration
+  const [cachedMessages, setCachedMessages] = useState<UIMessage[] | null>(() => {
+    if (typeof window === "undefined") return null;
+    const record = getMemoryCachedThreadMessages(id);
+    return record?.messages ?? null;
+  });
+  const [cacheLoaded, setCacheLoaded] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return getMemoryCachedThreadMessages(id) !== null;
+  });
+
+  // Ensure we only log breakdown once per thread navigation.
+  const breakdownLoggedForThreadRef = useRef<string | null>(null);
+  const scheduleBreakdownLog = useCallback((threadId: string) => {
+    if (breakdownLoggedForThreadRef.current === threadId) return;
+    breakdownLoggedForThreadRef.current = threadId;
+
+    // Two RAFs ensures we measure after paint.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        markThreadLoad(threadId, "firstPaint");
+        const breakdown = consumeThreadLoadBreakdown(threadId);
+        // eslint-disable-next-line no-console
+        console.log(
+          "[LoadTimer] Breakdown",
+          breakdown ?? {
+            threadId,
+            error: "no_marks",
+            marks: peekThreadLoadMarks(threadId),
+          },
+        );
+      });
+    });
+  }, []);
+
+  // When switching threads, synchronously swap to memory-cached messages if available.
+  // This prevents a "blank" render and avoids waiting for IndexedDB on common navigations.
+  useLayoutEffect(() => {
+    if (!isThread) return;
+    // Route param seen by the conversation component
+    markThreadLoad(id, "routeSeen");
+
+    const record = getMemoryCachedThreadMessages(id);
+    if (record?.messages && record.messages.length > 0) {
+      setCachedMessages(record.messages);
+      setCacheLoaded(true);
+    } else {
+      // Don't force-clear messages here; the async effect below will handle misses.
+      setCacheLoaded(false);
+    }
+  }, [id, isThread]);
+
+  useEffect(() => {
+    let cancelled = false;
+    // If we already have a memory hit for this thread, skip IndexedDB entirely.
+    const memory = getMemoryCachedThreadMessages(id);
+    if (memory?.messages && memory.messages.length > 0) {
+      setCachedMessages(memory.messages);
+      setCacheLoaded(true);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setCacheLoaded(false);
+    setCachedMessages(null);
+
+    if (!isThread) {
+      setCacheLoaded(true);
+      return;
+    }
+
+    void (async () => {
+      try {
+        const record = await loadCachedThreadMessages(id);
+        if (cancelled) return;
+        
+        // Stop timer immediately if we have cached messages (before React render)
+        if (record?.messages && record.messages.length > 0) {
+          const startTimeKey = `thread-load-start-${id}`;
+          const startTimeStr = sessionStorage.getItem(startTimeKey);
+          
+          if (startTimeStr && !loadTimeMeasuredRef.current) {
+            const startTime = parseFloat(startTimeStr);
+            const endTime = performance.now();
+            const duration = endTime - startTime;
+            
+            console.log('[LoadTimer] ✅ Cached conversation loaded (immediate):', {
+              threadId: id,
+              duration: `${duration.toFixed(1)}ms`,
+              fromCache: true,
+            });
+            
+            setLoadTime(duration);
+            setIsCalculatingLoadTime(false);
+            loadTimeMeasuredRef.current = true;
+            sessionStorage.removeItem(startTimeKey);
+          }
+        }
+        
+        setCachedMessages(record?.messages ?? null);
+      } catch {
+        // Best-effort cache; ignore failures (private browsing / IDB blocked, etc.)
+        if (cancelled) return;
+        setCachedMessages(null);
+      } finally {
+        if (!cancelled) setCacheLoaded(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, isThread]);
+
+  // Debug timing: if we already have cached messages in memory on first render,
+  // stop the timer in a layout effect (runs before paint).
+  useLayoutEffect(() => {
+    if (!isThread) return;
+    if (!cachedMessages || cachedMessages.length === 0) return;
+    if (loadTimeMeasuredRef.current) return;
+
+    const startTimeKey = `thread-load-start-${id}`;
+    const startTimeStr = sessionStorage.getItem(startTimeKey);
+    if (!startTimeStr) return;
+
+    markThreadLoad(id, "cacheReady");
+    const startTime = parseFloat(startTimeStr);
+    const endTime = performance.now();
+    const duration = endTime - startTime;
+
+    console.log("[LoadTimer] ✅ Cached conversation loaded (memory, before paint):", {
+      threadId: id,
+      duration: `${duration.toFixed(1)}ms`,
+      fromCache: true,
+    });
+
+    setLoadTime(duration);
+    setIsCalculatingLoadTime(false);
+    loadTimeMeasuredRef.current = true;
+    sessionStorage.removeItem(startTimeKey);
+
+    // Always log breakdown from this path (can't be skipped).
+    scheduleBreakdownLog(id);
+  }, [id, isThread, cachedMessages]);
+
+  const canHydrateFromCache =
+    isThread &&
+    cacheLoaded &&
+    !!cachedMessages &&
+    cachedMessages.length > 0 &&
+    (!initialMessages || initialMessages.length === 0);
+
+  const shouldFetchHistoryFromConvex =
+    isThread &&
+    (isOnline || !canHydrateFromCache) &&
+    (!initialMessages ||
+      (Array.isArray(initialMessages) && initialMessages.length === 0) ||
+      enableClientPagination);
+
+  // Paginated query for historical messages (skipped when offline and cache exists)
   const { 
     results: paginatedMessages, 
     status: paginationStatus, 
@@ -137,16 +325,12 @@ function ChatInterfaceInternal({
   } = usePaginatedQuery(
     api.threads.getThreadMessagesPaginatedSafe,
     // If initialMessages is undefined OR an empty array, fetch from client.
-    isThread && (
-      !initialMessages || (Array.isArray(initialMessages) && initialMessages.length === 0) || enableClientPagination
-    )
-      ? { threadId: id }
-      : "skip",
+    shouldFetchHistoryFromConvex ? { threadId: id } : "skip",
     { initialNumItems: 20 }
   );
 
   // Transform paginated messages to UIMessage format
-  const historicalMessages: UIMessage[] = useMemo(() => {
+  const historicalMessagesFromServer: UIMessage[] = useMemo(() => {
     if (!paginatedMessages || !isThread) return [];
     
     // Reverse order since query returns desc (newest first), we want oldest first for display
@@ -172,6 +356,27 @@ function ChatInterfaceInternal({
       ],
     }));
   }, [paginatedMessages, isThread]);
+
+  const historicalBaseMessages: UIMessage[] = useMemo(() => {
+    if (!isThread) return [];
+
+    // Prefer server history when available.
+    if (historicalMessagesFromServer.length > 0) return historicalMessagesFromServer;
+
+    // If SSR already provided initialMessages, don't mix in cache.
+    if (initialMessages && initialMessages.length > 0) return initialMessages;
+
+    // Use cache only after we attempted to load it (prevents brief empty flash).
+    if (cacheLoaded && cachedMessages && cachedMessages.length > 0) return cachedMessages;
+
+    return [];
+  }, [
+    isThread,
+    historicalMessagesFromServer,
+    initialMessages,
+    cacheLoaded,
+    cachedMessages,
+  ]);
 
   // Access chat state instance early so we can seed useChat with last throttled messages
   const chatStateInstance = useChatStateInstance();
@@ -265,9 +470,10 @@ function ChatInterfaceInternal({
             : currentDefaultTools;
 
           // Build request context
-          const baseBeforePrune = initialMessages && initialMessages.length > 0
-            ? initialMessages
-            : historicalMessages;
+          const baseBeforePrune =
+            initialMessages && initialMessages.length > 0
+              ? initialMessages
+              : historicalBaseMessages;
 
           // For regeneration, we prune at the anchor.
           // For normal messages, we rely on the pivot logic relative to the hook messages.
@@ -369,7 +575,10 @@ function ChatInterfaceInternal({
       return [];
     }
 
-    const base = initialMessages && initialMessages.length > 0 ? initialMessages : historicalMessages;
+    const base =
+      initialMessages && initialMessages.length > 0
+        ? initialMessages
+        : historicalBaseMessages;
 
     const pivotIndexInLocal = messages.findIndex((localMsg: UIMessage) =>
       base.some((baseMsg: UIMessage) => baseMsg.id === localMsg.id)
@@ -394,7 +603,7 @@ function ChatInterfaceInternal({
       ...messages,
     ];
     return merged;
-  }, [isThread, historicalMessages, messages, initialMessages]);
+  }, [isThread, historicalBaseMessages, messages, initialMessages]);
 
   // Preserve last non-empty render while pagination is loading to prevent flicker on model change
   const lastNonEmptyRenderRef = useRef<UIMessage[]>([]);
@@ -411,6 +620,73 @@ function ChatInterfaceInternal({
     }
     return renderedMessages;
   }, [renderedMessages, isThread, paginationStatus]);
+
+  // Debug timing: stop timer when conversation is loaded (fallback for server-loaded messages)
+  // Note: Cached messages stop the timer immediately in the cache loading effect above
+  useEffect(() => {
+    if (!isThread || loadTimeMeasuredRef.current) return;
+    
+    const startTimeKey = `thread-load-start-${id}`;
+    const startTimeStr = sessionStorage.getItem(startTimeKey);
+    
+    if (!startTimeStr) {
+      // No timer started for this thread
+      setIsCalculatingLoadTime(false);
+      return;
+    }
+    
+    // Mark that we're calculating load time (for server-loaded messages)
+    setIsCalculatingLoadTime(true);
+    
+    // For server-loaded messages: wait for messages to display
+    const hasMessages = displayMessages && displayMessages.length > 0;
+    const isLoading = paginationStatus === "LoadingFirstPage" || paginationStatus === "LoadingMore";
+    const hasCachedMessages = cachedMessages && cachedMessages.length > 0;
+    
+    // Only measure server-loaded messages (cached ones are handled in cache effect)
+    // Loaded if: we have messages AND not loading AND no cached messages (meaning it's from server)
+    const isLoaded = hasMessages && !isLoading && !hasCachedMessages;
+    
+    if (isLoaded) {
+      const startTime = parseFloat(startTimeStr);
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+      
+      console.log('[LoadTimer] ✅ Server conversation loaded:', {
+        threadId: id,
+        duration: `${duration.toFixed(1)}ms`,
+        fromCache: false,
+      });
+      
+      setLoadTime(duration);
+      setIsCalculatingLoadTime(false);
+      loadTimeMeasuredRef.current = true;
+      sessionStorage.removeItem(startTimeKey);
+    }
+  }, [id, isThread, displayMessages, paginationStatus, cachedMessages]);
+
+  // Reset load time measurement when thread changes
+  useEffect(() => {
+    if (prevIdRef.current !== id) {
+      setLoadTime(null);
+      setIsCalculatingLoadTime(false);
+      loadTimeMeasuredRef.current = false;
+    }
+  }, [id]);
+
+  // Persist conversation locally for instant/offline loading.
+  // We avoid saving while actively streaming to keep writes low and store stable history.
+  useEffect(() => {
+    if (!isThread) return;
+    if (!displayMessages || displayMessages.length === 0) return;
+    if (status === "streaming") return;
+
+    const handle = setTimeout(() => {
+      void saveCachedThreadMessages(id, displayMessages);
+    }, 750);
+
+    return () => clearTimeout(handle);
+  }, [id, isThread, displayMessages, status]);
 
   // Cleanup effect when thread ID changes - reset all UI state
   useEffect(() => {
@@ -795,6 +1071,33 @@ function ChatInterfaceInternal({
             <h3 className="text-lg font-semibold mb-1">Arrastra y suelta archivos</h3>
             <p className="text-sm text-muted-foreground mb-2">Archivos de imagen y PDF hasta 10MB cada uno</p>
             <p className="text-xs text-muted-foreground">Máximo 5 archivos por mensaje</p>
+          </div>
+        </div>
+      )}
+
+      {/* Debug: Conversation load timing */}
+      {(loadTime !== null || isCalculatingLoadTime) && (
+        <div className="fixed top-4 right-4 z-[9999] pointer-events-none">
+          <div className="bg-black/90 backdrop-blur-sm text-white text-sm font-mono px-4 py-3 rounded-lg shadow-2xl border-2 border-white/30">
+            <div className="font-bold mb-1.5 text-white">⚡ Load Time</div>
+            {loadTime !== null ? (
+              <>
+                <div className="text-lg font-bold">
+                  {loadTime < 100 ? (
+                    <span className="text-green-400">⚡ {loadTime.toFixed(1)}ms</span>
+                  ) : loadTime < 500 ? (
+                    <span className="text-yellow-400">✓ {loadTime.toFixed(1)}ms</span>
+                  ) : (
+                    <span className="text-red-400">⚠ {loadTime.toFixed(1)}ms</span>
+                  )}
+                </div>
+                <div className="text-xs text-gray-300 mt-1.5 pt-1.5 border-t border-white/20">
+                  {cachedMessages && cachedMessages.length > 0 ? "📦 from cache" : "🌐 from server"}
+                </div>
+              </>
+            ) : (
+              <div className="text-yellow-400 text-sm">Calculating...</div>
+            )}
           </div>
         </div>
       )}

@@ -33,6 +33,8 @@ import {
 } from "@/components/ai/ui/context-menu";
 import { useThreadShare } from "@/lib/hooks/useThreadShare";
 import { ShareSettingsDialog } from "@/components/share/ShareSettingsDialog";
+import { prefetchCachedThreadMessages } from "@/lib/local-first/thread-messages-cache";
+import { startThreadLoadMarks, markThreadLoad } from "@/lib/local-first/thread-load-marks";
 
 interface Thread {
   threadId: string;
@@ -91,6 +93,7 @@ export function ThreadSidebarInteractive({
   const [shareDialogThread, setShareDialogThread] = useState<Thread | null>(null);
   const requestInFlightRef = useRef(false);
   const [optimisticTitles, setOptimisticTitles] = useState<Record<string, string>>({});
+  const prefetchedThreadIdsRef = useRef<Set<string>>(new Set());
   const {
     resolveShareState,
     handleToggleShare,
@@ -394,13 +397,67 @@ export function ThreadSidebarInteractive({
 
   const handleThreadNavigation = useCallback(
     (threadId: string) => {
+      // Start debug timer for conversation load performance
+      const startTime = startThreadLoadMarks(threadId);
+      const startTimeKey = `thread-load-start-${threadId}`;
+      sessionStorage.setItem(startTimeKey, startTime.toString());
+      console.log("[LoadTimer] Started timer for thread:", threadId, "at", startTime);
+      
+      // Prefetch cached messages in parallel with route navigation (warms in-memory cache).
+      prefetchCachedThreadMessages(threadId);
+
       router.push(`/chat/${threadId}`);
+      markThreadLoad(threadId, "pushCalled");
       if (isMobileViewport) {
         closeSidebar();
       }
     },
     [router, closeSidebar, isMobileViewport],
   );
+
+  useEffect(() => {
+    if (!hasHydrated || authLoading) return;
+
+    const ids: string[] = [];
+    for (const groupName of GROUP_ORDER) {
+      const group = groupedThreads[groupName];
+      if (!group) continue;
+      for (const t of group) {
+        if (t.threadId && pathname !== `/chat/${t.threadId}`) {
+          ids.push(t.threadId);
+        }
+      }
+    }
+
+    const toPrefetch = ids.slice(0, 12);
+    if (toPrefetch.length === 0) return;
+
+    const run = () => {
+      for (const threadId of toPrefetch) {
+        if (prefetchedThreadIdsRef.current.has(threadId)) continue;
+        prefetchedThreadIdsRef.current.add(threadId);
+        router.prefetch(`/chat/${threadId}`);
+        prefetchCachedThreadMessages(threadId);
+      }
+    };
+
+    const ric = (window as any).requestIdleCallback as
+      | ((cb: () => void, opts?: { timeout?: number }) => number)
+      | undefined;
+    const cic = (window as any).cancelIdleCallback as
+      | ((id: number) => void)
+      | undefined;
+
+    if (typeof ric === "function") {
+      const id = ric(run, { timeout: 1500 });
+      return () => {
+        if (typeof cic === "function") cic(id);
+      };
+    }
+
+    const timeout = window.setTimeout(run, 0);
+    return () => window.clearTimeout(timeout);
+  }, [groupedThreads, hasHydrated, authLoading, router, pathname]);
 
 
   const renderThreadItem = (thread: Thread) => {
@@ -412,6 +469,20 @@ export function ThreadSidebarInteractive({
         <ContextMenuTrigger>
           <div
             onClick={isEditing ? handleContainerClick : () => handleThreadNavigation(thread.threadId)}
+            onPointerEnter={() => {
+              if (!prefetchedThreadIdsRef.current.has(thread.threadId)) {
+                prefetchedThreadIdsRef.current.add(thread.threadId);
+              }
+              router.prefetch(`/chat/${thread.threadId}`);
+              prefetchCachedThreadMessages(thread.threadId);
+            }}
+            onPointerDown={() => {
+              if (!prefetchedThreadIdsRef.current.has(thread.threadId)) {
+                prefetchedThreadIdsRef.current.add(thread.threadId);
+              }
+              router.prefetch(`/chat/${thread.threadId}`);
+              prefetchCachedThreadMessages(thread.threadId);
+            }}
             className={cn(
               "group relative mb-1 flex cursor-pointer items-center gap-2 overflow-hidden rounded-lg p-2.5 transition-colors",
               "hover:bg-hover hover:text-accent-foreground",
