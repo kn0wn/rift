@@ -5,12 +5,16 @@ import type { ComponentProps } from 'react';
 
 export type ConversationProps = ComponentProps<'div'>;
 
-export const Conversation = ({ className, ...props }: ConversationProps) => (
+export const Conversation = ({ className, style, ...props }: ConversationProps) => (
   <div
     className={cn(
       'relative h-full w-full flex-1 min-h-0 min-w-0 max-w-[100vw] overflow-y-auto',
       className
     )}
+    style={{
+      scrollbarGutter: 'stable both-edges',
+      ...style,
+    }}
     role="log"
     {...props}
   />

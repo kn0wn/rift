@@ -2,7 +2,7 @@
 
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import ChatInterface from "@/components/chat";
+import { CachedChatWrapper } from "@/components/chat/CachedChatWrapper";
 
 export function ChatMessagesClient({ threadId }: { threadId: string }) {
   const { isAuthenticated } = useConvexAuth();
@@ -17,9 +17,10 @@ export function ChatMessagesClient({ threadId }: { threadId: string }) {
   // Keep the shell visible immediately; only data-driven parts should appear later.
   if (!hasValidThreadId) return null;
 
+  // CachedChatWrapper handles loading cached messages and passing them to ChatInterface
   return (
-    <ChatInterface
-      id={threadId}
+    <CachedChatWrapper
+      threadId={threadId}
       customInstructionId={threadInfo?.customInstructionId}
     />
   );

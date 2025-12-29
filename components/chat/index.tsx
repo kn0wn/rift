@@ -3,10 +3,10 @@
 import { useChat, type UIMessage } from "@ai-sdk-tools/store";
 import { DefaultChatTransport } from "ai";
 import { usePathname, useRouter } from "next/navigation";
-import { generateUUID, cn } from "@/lib/utils";
+import { generateUUID } from "@/lib/utils";
 import { useModel } from "@/contexts/model-context";
 import { useInitialMessage } from "@/contexts/initial-message-context";
-import { useCallback, useEffect, useRef, useMemo, useState, useLayoutEffect } from "react";
+import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useRegeneration } from "./hooks/use-regeneration";
 import { ToolType, getDefaultTools } from "@/lib/ai/model-tools";
 import { resolveModel } from "@/lib/ai/ai-providers";
@@ -28,11 +28,8 @@ import { ChatInputArea } from "./components/chat-input-area";
 import type { ChatInterfaceProps } from "./types";
 import { ChatStoreProvider, useChatStateInstance } from "@/lib/stores/hooks";
 import { Effect } from "effect";
-import {
-  loadCachedThreadMessages,
-  saveCachedThreadMessages,
-  getMemoryCachedThreadMessages,
-} from "@/lib/local-first/thread-messages-cache";
+import { saveCachedThreadMessages } from "@/lib/local-first/thread-messages-cache";
+import { useDebugStore } from "./DebugOverlay";
 
 // Effect services and error types
 import {
@@ -58,6 +55,15 @@ function ChatInterfaceInternal({
 }: ChatInterfaceProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const addEvent = useDebugStore((s) => s.addEvent);
+  const setLoadSource = useDebugStore((s) => s.setLoadSource);
+  const startConvexQuery = useDebugStore((s) => s.startConvexQuery);
+  const endConvexQuery = useDebugStore((s) => s.endConvexQuery);
+
+  // Debug: track component mount
+  useEffect(() => {
+    addEvent(`🎯 ChatInterface ready (cache: ${initialMessages?.length ?? 0} msgs)`);
+  }, [addEvent]);
   const { selectedModel, setSelectedModel } = useModel();
   const { consumeInitialMessage } = useInitialMessage();
   const { isAuthenticated } = useConvexAuth();
@@ -132,97 +138,9 @@ function ChatInterfaceInternal({
   // State to enable client-side pagination when user clicks "Load More"
   const [enableClientPagination, setEnableClientPagination] = useState(false);
 
-  // Online/offline state (used to skip Convex queries when offline and cache exists)
-  const [isOnline, setIsOnline] = useState(true);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const update = () => setIsOnline(navigator.onLine);
-    update();
-    window.addEventListener("online", update);
-    window.addEventListener("offline", update);
-    return () => {
-      window.removeEventListener("online", update);
-      window.removeEventListener("offline", update);
-    };
-  }, []);
-
-  // Local-first cache for instant/offline thread hydration
-  const [cachedMessages, setCachedMessages] = useState<UIMessage[] | null>(() => {
-    if (typeof window === "undefined") return null;
-    const record = getMemoryCachedThreadMessages(id);
-    return record?.messages ?? null;
-  });
-  const [cacheLoaded, setCacheLoaded] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return getMemoryCachedThreadMessages(id) !== null;
-  });
-
-  // When switching threads, synchronously swap to memory-cached messages if available.
-  // This prevents a "blank" render and avoids waiting for IndexedDB on common navigations.
-  useLayoutEffect(() => {
-    if (!isThread) return;
-    const record = getMemoryCachedThreadMessages(id);
-    if (record?.messages && record.messages.length > 0) {
-      setCachedMessages(record.messages);
-      setCacheLoaded(true);
-    } else {
-      // Don't force-clear messages here; the async effect below will handle misses.
-      setCacheLoaded(false);
-    }
-  }, [id, isThread]);
-
-  useEffect(() => {
-    let cancelled = false;
-    // If we already have a memory hit for this thread, skip IndexedDB entirely.
-    const memory = getMemoryCachedThreadMessages(id);
-    if (memory?.messages && memory.messages.length > 0) {
-      setCachedMessages(memory.messages);
-      setCacheLoaded(true);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    setCacheLoaded(false);
-    setCachedMessages(null);
-
-    if (!isThread) {
-      setCacheLoaded(true);
-      return;
-    }
-
-    void (async () => {
-      try {
-        const record = await loadCachedThreadMessages(id);
-        if (cancelled) return;
-        setCachedMessages(record?.messages ?? null);
-      } catch {
-        // Best-effort cache; ignore failures (private browsing / IDB blocked, etc.)
-        if (cancelled) return;
-        setCachedMessages(null);
-      } finally {
-        if (!cancelled) setCacheLoaded(true);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [id, isThread]);
-
-  const canHydrateFromCache =
-    isThread &&
-    cacheLoaded &&
-    !!cachedMessages &&
-    cachedMessages.length > 0 &&
-    (!initialMessages || initialMessages.length === 0);
-
-  const shouldFetchHistoryFromConvex =
-    isThread &&
-    (isOnline || !canHydrateFromCache) &&
-    (!initialMessages ||
-      (Array.isArray(initialMessages) && initialMessages.length === 0) ||
-      enableClientPagination);
+  // Always fetch from Convex for threads to get fresh data
+  // Even when cache provides initialMessages, Convex runs in background for updates
+  const shouldFetchHistoryFromConvex = isThread;
 
   // Paginated query for historical messages (skipped when offline and cache exists)
   const { 
@@ -235,6 +153,30 @@ function ChatInterfaceInternal({
     shouldFetchHistoryFromConvex ? { threadId: id } : "skip",
     { initialNumItems: 20 }
   );
+
+  // Debug: track Convex query timing
+  const convexQueryStartedRef = useRef(false);
+  useEffect(() => {
+    if (paginationStatus === "LoadingFirstPage" && !convexQueryStartedRef.current) {
+      convexQueryStartedRef.current = true;
+      startConvexQuery();
+    }
+    
+    if ((paginationStatus === "CanLoadMore" || paginationStatus === "Exhausted") && convexQueryStartedRef.current) {
+      convexQueryStartedRef.current = false;
+      endConvexQuery(paginatedMessages?.length ?? 0);
+      
+      // If we didn't have cache, this is our source
+      if (!initialMessages || initialMessages.length === 0) {
+        setLoadSource("convex");
+      }
+    }
+  }, [paginationStatus, paginatedMessages?.length, initialMessages?.length, startConvexQuery, endConvexQuery, setLoadSource]);
+
+  // Reset convex query tracking when thread changes
+  useEffect(() => {
+    convexQueryStartedRef.current = false;
+  }, [id]);
 
   // Transform paginated messages to UIMessage format
   const historicalMessagesFromServer: UIMessage[] = useMemo(() => {
@@ -264,26 +206,47 @@ function ChatInterfaceInternal({
     }));
   }, [paginatedMessages, isThread]);
 
-  const historicalBaseMessages: UIMessage[] = useMemo(() => {
+  // Combine historical messages from server with initialMessages (from cache)
+  const historicalMessages: UIMessage[] = useMemo(() => {
     if (!isThread) return [];
 
-    // Prefer server history when available.
-    if (historicalMessagesFromServer.length > 0) return historicalMessagesFromServer;
+    const cacheCount = initialMessages?.length ?? 0;
+    const serverCount = historicalMessagesFromServer.length;
 
-    // If SSR already provided initialMessages, don't mix in cache.
-    if (initialMessages && initialMessages.length > 0) return initialMessages;
+    // If we have cache data, only switch to server data if it has at least as many messages
+    // This prevents jarring visual changes when server returns fewer messages (e.g., pagination)
+    if (cacheCount > 0) {
+      if (serverCount >= cacheCount) {
+        // Server has same or more messages, use server data
+        return historicalMessagesFromServer;
+      }
+      // Server has fewer messages, keep using cache to avoid content disappearing
+      return initialMessages!;
+    }
 
-    // Use cache only after we attempted to load it (prevents brief empty flash).
-    if (cacheLoaded && cachedMessages && cachedMessages.length > 0) return cachedMessages;
+    // No cache, use server data if available
+    if (serverCount > 0) {
+      return historicalMessagesFromServer;
+    }
 
     return [];
-  }, [
-    isThread,
-    historicalMessagesFromServer,
-    initialMessages,
-    cacheLoaded,
-    cachedMessages,
-  ]);
+  }, [isThread, historicalMessagesFromServer, initialMessages]);
+
+  // Debug: track data source changes (only log meaningful transitions)
+  const lastDataSourceRef = useRef<string | null>(null);
+  useEffect(() => {
+    const cacheCount = initialMessages?.length ?? 0;
+    const serverCount = historicalMessagesFromServer.length;
+    
+    // Only log when there's actual data and source changes
+    if (cacheCount > 0 && serverCount > 0 && serverCount < cacheCount) {
+      const key = `kept-cache:${cacheCount}`;
+      if (lastDataSourceRef.current !== key) {
+        lastDataSourceRef.current = key;
+        addEvent(`⚠️ Kept cache (${cacheCount}) - Convex had fewer (${serverCount})`);
+      }
+    }
+  }, [historicalMessagesFromServer.length, initialMessages?.length, addEvent]);
 
   // Access chat state instance early so we can seed useChat with last throttled messages
   const chatStateInstance = useChatStateInstance();
@@ -380,7 +343,7 @@ function ChatInterfaceInternal({
           const baseBeforePrune =
             initialMessages && initialMessages.length > 0
               ? initialMessages
-              : historicalBaseMessages;
+              : historicalMessages;
 
           // For regeneration, we prune at the anchor.
           // For normal messages, we rely on the pivot logic relative to the hook messages.
@@ -485,7 +448,7 @@ function ChatInterfaceInternal({
     const base =
       initialMessages && initialMessages.length > 0
         ? initialMessages
-        : historicalBaseMessages;
+        : historicalMessages;
 
     const pivotIndexInLocal = messages.findIndex((localMsg: UIMessage) =>
       base.some((baseMsg: UIMessage) => baseMsg.id === localMsg.id)
@@ -510,7 +473,7 @@ function ChatInterfaceInternal({
       ...messages,
     ];
     return merged;
-  }, [isThread, historicalBaseMessages, messages, initialMessages]);
+  }, [isThread, historicalMessages, messages, initialMessages]);
 
   // Preserve last non-empty render while pagination is loading to prevent flicker on model change
   const lastNonEmptyRenderRef = useRef<UIMessage[]>([]);
@@ -520,79 +483,6 @@ function ChatInterfaceInternal({
     }
   }, [renderedMessages]);
 
-  // Track which assistant message parts have finished rendering
-  const [readyResponseParts, setReadyResponseParts] = useState<Set<string>>(new Set());
-  const readyResponsePartsRef = useRef<Set<string>>(new Set());
-
-  // Calculate which assistant message parts need to be rendered (for historical messages only)
-  const expectedResponseParts = useMemo(() => {
-    if (status === "streaming" || status === "submitted") {
-      // During streaming, don't block - let messages appear as they stream
-      return new Set<string>();
-    }
-
-    const parts = new Set<string>();
-    renderedMessages.forEach((message) => {
-      if (message.role === "assistant") {
-        message.parts.forEach((part, partIdx) => {
-          if (part.type === "text" && "text" in part && part.text) {
-            parts.add(`${message.id}-${partIdx}`);
-          }
-        });
-      }
-    });
-    return parts;
-  }, [renderedMessages, status]);
-
-  // Reset ready parts when messages change (new thread loaded)
-  useEffect(() => {
-    readyResponsePartsRef.current.clear();
-    setReadyResponseParts(new Set());
-  }, [id]);
-
-  // Check if all responses are ready
-  const allResponsesReady = useMemo(() => {
-    // During streaming, always show messages
-    if (status === "streaming" || status === "submitted") {
-      return true;
-    }
-
-    // If no assistant messages, show immediately
-    if (expectedResponseParts.size === 0) {
-      return true;
-    }
-
-    // Check if all expected parts are ready
-    return expectedResponseParts.size > 0 && 
-           Array.from(expectedResponseParts).every(key => readyResponseParts.has(key));
-  }, [expectedResponseParts, readyResponseParts, status]);
-
-  // Fallback timeout: if responses don't all become ready within 500ms, show messages anyway
-  useEffect(() => {
-    if (status === "streaming" || status === "submitted") return;
-    if (expectedResponseParts.size === 0) return;
-    if (allResponsesReady) return;
-
-    const timeout = setTimeout(() => {
-      // Mark all expected parts as ready to unblock rendering
-      expectedResponseParts.forEach(key => {
-        readyResponsePartsRef.current.add(key);
-      });
-      setReadyResponseParts(new Set(readyResponsePartsRef.current));
-    }, 500);
-
-    return () => clearTimeout(timeout);
-  }, [expectedResponseParts, allResponsesReady, status]);
-
-  // Handle response ready callback
-  const handleResponseReady = useCallback((messageId: string, partIdx: number) => {
-    const key = `${messageId}-${partIdx}`;
-    if (!readyResponsePartsRef.current.has(key)) {
-      readyResponsePartsRef.current.add(key);
-      setReadyResponseParts(new Set(readyResponsePartsRef.current));
-    }
-  }, []);
-
   const displayMessages: UIMessage[] = useMemo(() => {
     const loadingHistory = paginationStatus === "LoadingFirstPage" || paginationStatus === "LoadingMore";
     if (renderedMessages.length === 0 && isThread && loadingHistory) {
@@ -600,6 +490,20 @@ function ChatInterfaceInternal({
     }
     return renderedMessages;
   }, [renderedMessages, isThread, paginationStatus]);
+
+  // Debug: track when content is ready to display
+  const hasLoggedContentRendered = useRef(false);
+  useEffect(() => {
+    if (displayMessages.length > 0 && !hasLoggedContentRendered.current) {
+      addEvent(`✅ Content rendered: ${displayMessages.length} msgs`);
+      hasLoggedContentRendered.current = true;
+    }
+  }, [displayMessages.length, addEvent]);
+
+  // Reset the flag when thread changes
+  useEffect(() => {
+    hasLoggedContentRendered.current = false;
+  }, [id]);
 
 
   // Persist conversation locally for instant/offline loading.
@@ -904,14 +808,7 @@ function ChatInterfaceInternal({
                 onSuggestionClick={handleSuggestionClick}
               />
             )}
-            <div 
-              className={cn(
-                // Hide messages until all AI responses are ready (only for historical messages)
-                !allResponsesReady && isThread && status !== "streaming" && status !== "submitted" && "invisible",
-                // Smooth transition when showing
-                allResponsesReady && isThread && status !== "streaming" && status !== "submitted" && "animate-in fade-in duration-50"
-              )}
-            >
+            <div>
               {displayMessages.map((message, index) => {
               const isLast = index === displayMessages.length - 1;
               const isStreaming = isLast && (status === "streaming");
@@ -923,7 +820,6 @@ function ChatInterfaceInternal({
                   disableRegenerate={status === "streaming"}
                   onRegenerateAssistantMessage={onRegenerateAssistant}
                   onRegenerateAfterUserMessage={onRegenerateAfterUser}
-                  onResponseReady={handleResponseReady}
                   onEditUserMessage={async (
                     messageId: string,
                     newContent: string

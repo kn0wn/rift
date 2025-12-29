@@ -16,7 +16,6 @@ import {
 } from "@/components/ai/tool";
 import { Message, MessageContent } from "@/components/ai/message";
 import { Response } from "@/components/ai/response";
-import { MemoResponse } from "@/components/ai/memo-response";
 import { Actions, Action } from "@/components/ai/actions";
 import {
   Reasoning,
@@ -148,7 +147,6 @@ interface MessageRendererProps {
   onRegenerateAfterUserMessage: (messageId: string) => void;
   onEditUserMessage?: (messageId: string, newText: string) => Promise<void> | void;
   disableRegenerate?: boolean;
-  onResponseReady?: (messageId: string, partIdx: number) => void;
 }
 
 export const MessageRenderer = React.memo(function MessageRenderer({
@@ -158,7 +156,6 @@ export const MessageRenderer = React.memo(function MessageRenderer({
   onRegenerateAfterUserMessage,
   onEditUserMessage,
   disableRegenerate = false,
-  onResponseReady,
 }: MessageRendererProps) {
   const [isEditing, setIsEditing] = useState(false);
   const textValue = message.parts
@@ -264,21 +261,11 @@ export const MessageRenderer = React.memo(function MessageRenderer({
           }
 
           if (part.type === "text" && "text" in part) {
-            // Use optimized MemoResponse for assistant messages *while streaming*.
-            // For historical messages (loaded from Convex), MemoResponse may not have store
-            // state for this messageId/partIdx, which would render blank.
+            // Always use Response for assistant messages - consistent rendering prevents
+            // component switching that causes re-mounts and scroll position issues.
             if (message.role === "assistant") {
-              return isStreaming ? (
-                <MemoResponse
-                  key={`${message.id}-${partIdx}`}
-                  messageId={message.id}
-                  partIdx={partIdx}
-                />
-              ) : (
-                <Response 
-                  key={`${message.id}-${partIdx}`}
-                  onReady={onResponseReady ? () => onResponseReady(message.id, partIdx) : undefined}
-                >
+              return (
+                <Response key={`${message.id}-${partIdx}`}>
                   {part.text}
                 </Response>
               );

@@ -1,6 +1,7 @@
 import ChatShell from "@/components/ai/ChatShell";
 import { ThreadSidebar } from "@/components/sidebar";
 import { NoOrgModal } from "@/components/ai/NoOrgModal";
+import { DebugOverlay } from "@/components/chat/DebugOverlay";
 
 export default function ChatLayout({
   children,
@@ -13,6 +14,7 @@ export default function ChatLayout({
       <ChatShell sidebar={<ThreadSidebar />}>
         {children}
       </ChatShell>
+      <DebugOverlay />
     </>
   );
 }
