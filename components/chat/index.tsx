@@ -3,7 +3,7 @@
 import { useChat, type UIMessage } from "@ai-sdk-tools/store";
 import { DefaultChatTransport } from "ai";
 import { usePathname, useRouter } from "next/navigation";
-import { generateUUID } from "@/lib/utils";
+import { generateUUID, cn } from "@/lib/utils";
 import { useModel } from "@/contexts/model-context";
 import { useInitialMessage } from "@/contexts/initial-message-context";
 import { useCallback, useEffect, useRef, useMemo, useState, useLayoutEffect } from "react";
@@ -18,7 +18,6 @@ import { AttachmentsIcon } from "@/components/ui/icons/svg-icons";
 import {
   Conversation,
   ConversationContent,
-  ConversationScrollButton,
 } from "@/components/ai/conversation";
 import { Message, MessageContent } from "@/components/ai/message";
 
@@ -521,6 +520,79 @@ function ChatInterfaceInternal({
     }
   }, [renderedMessages]);
 
+  // Track which assistant message parts have finished rendering
+  const [readyResponseParts, setReadyResponseParts] = useState<Set<string>>(new Set());
+  const readyResponsePartsRef = useRef<Set<string>>(new Set());
+
+  // Calculate which assistant message parts need to be rendered (for historical messages only)
+  const expectedResponseParts = useMemo(() => {
+    if (status === "streaming" || status === "submitted") {
+      // During streaming, don't block - let messages appear as they stream
+      return new Set<string>();
+    }
+
+    const parts = new Set<string>();
+    renderedMessages.forEach((message) => {
+      if (message.role === "assistant") {
+        message.parts.forEach((part, partIdx) => {
+          if (part.type === "text" && "text" in part && part.text) {
+            parts.add(`${message.id}-${partIdx}`);
+          }
+        });
+      }
+    });
+    return parts;
+  }, [renderedMessages, status]);
+
+  // Reset ready parts when messages change (new thread loaded)
+  useEffect(() => {
+    readyResponsePartsRef.current.clear();
+    setReadyResponseParts(new Set());
+  }, [id]);
+
+  // Check if all responses are ready
+  const allResponsesReady = useMemo(() => {
+    // During streaming, always show messages
+    if (status === "streaming" || status === "submitted") {
+      return true;
+    }
+
+    // If no assistant messages, show immediately
+    if (expectedResponseParts.size === 0) {
+      return true;
+    }
+
+    // Check if all expected parts are ready
+    return expectedResponseParts.size > 0 && 
+           Array.from(expectedResponseParts).every(key => readyResponseParts.has(key));
+  }, [expectedResponseParts, readyResponseParts, status]);
+
+  // Fallback timeout: if responses don't all become ready within 500ms, show messages anyway
+  useEffect(() => {
+    if (status === "streaming" || status === "submitted") return;
+    if (expectedResponseParts.size === 0) return;
+    if (allResponsesReady) return;
+
+    const timeout = setTimeout(() => {
+      // Mark all expected parts as ready to unblock rendering
+      expectedResponseParts.forEach(key => {
+        readyResponsePartsRef.current.add(key);
+      });
+      setReadyResponseParts(new Set(readyResponsePartsRef.current));
+    }, 500);
+
+    return () => clearTimeout(timeout);
+  }, [expectedResponseParts, allResponsesReady, status]);
+
+  // Handle response ready callback
+  const handleResponseReady = useCallback((messageId: string, partIdx: number) => {
+    const key = `${messageId}-${partIdx}`;
+    if (!readyResponsePartsRef.current.has(key)) {
+      readyResponsePartsRef.current.add(key);
+      setReadyResponseParts(new Set(readyResponsePartsRef.current));
+    }
+  }, []);
+
   const displayMessages: UIMessage[] = useMemo(() => {
     const loadingHistory = paginationStatus === "LoadingFirstPage" || paginationStatus === "LoadingMore";
     if (renderedMessages.length === 0 && isThread && loadingHistory) {
@@ -832,7 +904,15 @@ function ChatInterfaceInternal({
                 onSuggestionClick={handleSuggestionClick}
               />
             )}
-            {displayMessages.map((message, index) => {
+            <div 
+              className={cn(
+                // Hide messages until all AI responses are ready (only for historical messages)
+                !allResponsesReady && isThread && status !== "streaming" && status !== "submitted" && "invisible",
+                // Smooth transition when showing
+                allResponsesReady && isThread && status !== "streaming" && status !== "submitted" && "animate-in fade-in duration-50"
+              )}
+            >
+              {displayMessages.map((message, index) => {
               const isLast = index === displayMessages.length - 1;
               const isStreaming = isLast && (status === "streaming");
               return (
@@ -843,6 +923,7 @@ function ChatInterfaceInternal({
                   disableRegenerate={status === "streaming"}
                   onRegenerateAssistantMessage={onRegenerateAssistant}
                   onRegenerateAfterUserMessage={onRegenerateAfterUser}
+                  onResponseReady={handleResponseReady}
                   onEditUserMessage={async (
                     messageId: string,
                     newContent: string
@@ -893,6 +974,7 @@ function ChatInterfaceInternal({
                 />
               );
             })}
+            </div>
             {(status === "submitted" || status === "streaming") &&
               !hasAssistantMessage && (
                 <Message from={"assistant"}>
@@ -904,7 +986,6 @@ function ChatInterfaceInternal({
                 </Message>
               )}
           </ConversationContent>
-          <ConversationScrollButton />
         </Conversation>
       </div>
 

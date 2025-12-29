@@ -148,6 +148,7 @@ interface MessageRendererProps {
   onRegenerateAfterUserMessage: (messageId: string) => void;
   onEditUserMessage?: (messageId: string, newText: string) => Promise<void> | void;
   disableRegenerate?: boolean;
+  onResponseReady?: (messageId: string, partIdx: number) => void;
 }
 
 export const MessageRenderer = React.memo(function MessageRenderer({
@@ -157,6 +158,7 @@ export const MessageRenderer = React.memo(function MessageRenderer({
   onRegenerateAfterUserMessage,
   onEditUserMessage,
   disableRegenerate = false,
+  onResponseReady,
 }: MessageRendererProps) {
   const [isEditing, setIsEditing] = useState(false);
   const textValue = message.parts
@@ -273,14 +275,22 @@ export const MessageRenderer = React.memo(function MessageRenderer({
                   partIdx={partIdx}
                 />
               ) : (
-                <Response key={`${message.id}-${partIdx}`}>{part.text}</Response>
+                <Response 
+                  key={`${message.id}-${partIdx}`}
+                  onReady={onResponseReady ? () => onResponseReady(message.id, partIdx) : undefined}
+                >
+                  {part.text}
+                </Response>
               );
             }
-            // Use regular Response for user messages (no need to optimize)
+            // Render user messages as plain text without markdown processing
             return (
-              <Response key={`${message.id}-${partIdx}`}>
+              <div 
+                key={`${message.id}-${partIdx}`}
+                className="whitespace-pre-wrap break-words"
+              >
                 {part.text}
-              </Response>
+              </div>
             );
           }
           if (part.type === "tool-call") {
