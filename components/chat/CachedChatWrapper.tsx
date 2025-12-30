@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { UIMessage } from "@ai-sdk-tools/store";
+import * as Sentry from "@sentry/nextjs";
 import ChatInterface from "@/components/chat";
 import {
   loadCachedThreadMessages,
@@ -43,8 +44,17 @@ export function CachedChatWrapper({ threadId, customInstructionId }: CachedChatW
         if (cancelled) return;
         setAsyncLoadedMessages(record?.messages);
         setAsyncLoadedThreadId(threadId);
-      } catch {
+      } catch (error) {
         if (!cancelled) {
+          Sentry.captureException(error, {
+            tags: {
+              error_type: "indexeddb_load_failure",
+              operation: "load_cached_thread_messages",
+            },
+            extra: {
+              threadId,
+            },
+          });
           setAsyncLoadedMessages(undefined);
           setAsyncLoadedThreadId(threadId);
         }

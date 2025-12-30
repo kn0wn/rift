@@ -14,10 +14,12 @@ export const Response = memo(
 
     useEffect(() => {
       if (onReady && !hasNotifiedRef.current) {
-        let timeoutId: NodeJS.Timeout | null = null;
+        let rafId1: number | null = null;
         let rafId2: number | null = null;
+        let timeoutId: NodeJS.Timeout | null = null;
         
-        const rafId1 = requestAnimationFrame(() => {
+        // Dual RAF + setTimeout ensures DOM has painted before scroll coordination
+        rafId1 = requestAnimationFrame(() => {
           rafId2 = requestAnimationFrame(() => {
             timeoutId = setTimeout(() => {
               if (!hasNotifiedRef.current) {
@@ -29,9 +31,9 @@ export const Response = memo(
         });
         
         return () => {
-          cancelAnimationFrame(rafId1);
+          if (rafId1 !== null) cancelAnimationFrame(rafId1);
           if (rafId2 !== null) cancelAnimationFrame(rafId2);
-          if (timeoutId) clearTimeout(timeoutId);
+          if (timeoutId !== null) clearTimeout(timeoutId);
         };
       }
     }, [onReady]);

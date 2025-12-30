@@ -426,7 +426,7 @@ export const MessageRenderer = React.memo(function MessageRenderer({
         )}
       </>
     );
-  }, [message, isStreaming]);
+  }, [message, isStreaming, onResponseReady]);
 
 
   return (
@@ -520,6 +520,7 @@ export const MessageRenderer = React.memo(function MessageRenderer({
     prevProps.message.parts.every((part, index) => {
       const nextPart = nextProps.message.parts[index];
       return part.type === nextPart.type && (part as any).text === (nextPart as any).text;
-    })
+    }) &&
+    prevProps.onResponseReady === nextProps.onResponseReady
   );
 });

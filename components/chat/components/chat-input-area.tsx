@@ -156,7 +156,7 @@ export const ChatInputArea = React.memo(function ChatInputArea({
           <div className="absolute -top-12 left-0 right-0 flex justify-center pointer-events-none z-20">
             <button
               onClick={onScrollToBottom}
-              className="pointer-events-auto flex items-center justify-center size-9 bg-popover-main backdrop-blur-sm border border-border rounded-full shadow-md hover:bg-hover/60 transition-all duration-200 text-popover-text"
+              className="pointer-events-auto flex items-center justify-center size-9 bg-background dark:bg-[oklch(0.2046_0_0)] border border-border rounded-full cursor-pointer"
               aria-label="Scroll to bottom"
             >
               <ChevronDown className="size-5" />

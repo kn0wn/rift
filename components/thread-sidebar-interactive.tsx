@@ -516,20 +516,19 @@ export function ThreadSidebarInteractive({
             onClick={isEditing ? handleContainerClick : () => handleThreadNavigation(thread.threadId)}
             onPointerEnter={() => {
               // Warm both the route and local-first cache on hover (mouse/pen).
-              // Helps reduce click -> routeSeen.
               if (!prefetchedThreadIdsRef.current.has(thread.threadId)) {
                 prefetchedThreadIdsRef.current.add(thread.threadId);
+                router.prefetch(`/chat/${thread.threadId}`);
+                prefetchCachedThreadMessages(thread.threadId);
               }
-              router.prefetch(`/chat/${thread.threadId}`);
-              prefetchCachedThreadMessages(thread.threadId);
             }}
             onPointerDown={() => {
               // Touch/mobile doesn't hover; start warming as early as possible.
               if (!prefetchedThreadIdsRef.current.has(thread.threadId)) {
                 prefetchedThreadIdsRef.current.add(thread.threadId);
+                router.prefetch(`/chat/${thread.threadId}`);
+                prefetchCachedThreadMessages(thread.threadId);
               }
-              router.prefetch(`/chat/${thread.threadId}`);
-              prefetchCachedThreadMessages(thread.threadId);
             }}
             className={cn(
               "group relative mb-1 flex cursor-pointer items-center gap-2 overflow-hidden rounded-lg p-2.5 transition-colors",
@@ -679,7 +678,32 @@ export function ThreadSidebarInteractive({
   const renderEmptyState = () => {
     // Keep sidebar body blank until we have client auth + data to avoid layout shifts.
     if (authLoading || !hasHydrated) return null;
-    return null;
+    
+    // If there are threads to show, don't render empty state
+    if (filteredThreads.length > 0) return null;
+    
+    if (searchQuery) {
+      return (
+        <div className="flex h-full items-center justify-center px-5">
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground">
+              No se encontraron chats que coincidan con "{searchQuery}"
+            </p>
+          </div>
+        </div>
+      );
+    }
+    
+    // No threads and no search query
+    return (
+      <div className="flex h-full items-center justify-center px-5">
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">
+            Aún no hay chats
+          </p>
+        </div>
+      </div>
+    );
   };
 
   const renderCachedOnlyList = () => {
