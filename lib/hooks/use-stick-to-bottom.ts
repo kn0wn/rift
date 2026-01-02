@@ -50,6 +50,10 @@ export function useStickToBottom(
   const lastScrollTopRef = useRef<number>(0);
   const isProgrammaticScrollRef = useRef(false);
   const initialScrollDoneRef = useRef(false);
+  // Delay smooth auto-scroll during initial mount / heavy content layout (markdown, code blocks, etc.).
+  // Prevents the "jump up then smooth down" effect on first load.
+  const smoothEnabledAtRef = useRef<number>(0);
+  const AUTO_SMOOTH_DELAY_MS = 800;
 
   const checkIsAtBottom = useCallback(() => {
     const el = scrollRef.current;
@@ -59,10 +63,12 @@ export function useStickToBottom(
 
   const markInitialScrollDone = useCallback(() => {
     initialScrollDoneRef.current = true;
+    smoothEnabledAtRef.current = Date.now() + AUTO_SMOOTH_DELAY_MS;
   }, []);
 
   const reset = useCallback(() => {
     initialScrollDoneRef.current = false;
+    smoothEnabledAtRef.current = Date.now() + AUTO_SMOOTH_DELAY_MS;
     setIsAtBottom(true);
     setEscapedFromLock(false);
   }, []);
@@ -141,10 +147,17 @@ export function useStickToBottom(
     const observer = new ResizeObserver((entries) => {
       const height = entries[0]?.contentRect.height ?? 0;
       const grew = height > prevHeight;
+      const shrank = height < prevHeight;
       prevHeight = height;
 
-      if (grew && isAtBottomRef.current && !escapedFromLockRef.current) {
-        scrollToBottom(initialScrollDoneRef.current ? "smooth" : "instant");
+      // Keep pinned to bottom when content changes size, as long as the user hasn't escaped the lock.
+      if ((grew || shrank) && isAtBottomRef.current && !escapedFromLockRef.current) {
+        const now = Date.now();
+        const canSmooth =
+          grew &&
+          initialScrollDoneRef.current &&
+          now >= smoothEnabledAtRef.current;
+        scrollToBottom(canSmooth ? "smooth" : "instant");
       }
     });
 

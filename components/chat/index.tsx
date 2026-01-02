@@ -460,9 +460,14 @@ function ChatInterfaceInternal({
           // Use ref to get latest server data (avoids stale closure issue)
           const serverData = historicalMessagesRef.current;
 
-          const anchor = trigger === "regenerate-message" ? regenerateAnchorRef.current : null;
-          const base = anchor ? pruneAt(serverData, anchor.id, anchor.role) : serverData;
-          const hookMessages = anchor ? pruneAt(messages, anchor.id, anchor.role) : messages;
+          const regenAnchor = regenerateAnchorRef.current;
+          const base = regenAnchor
+            ? pruneAt(serverData, regenAnchor.id, regenAnchor.role)
+            : serverData;
+          const hookMessages =
+            trigger === "regenerate-message" && regenAnchor
+              ? pruneAt(messages, regenAnchor.id, regenAnchor.role)
+              : messages;
 
           // Use server versions for existing messages, hook only for new messages
           const serverIds = new Set(base.map((m: UIMessage) => m.id));
@@ -544,35 +549,51 @@ function ChatInterfaceInternal({
       return [];
     }
 
+    const regenAnchor = regenerateAnchorRef.current;
+    const effectiveBaseHistory =
+      regenAnchor && baseHistory.length > 0
+        ? pruneAt(baseHistory, regenAnchor.id, regenAnchor.role)
+        : baseHistory;
+
     // During active generation, use server for history + hook for new/streaming messages
     if (isActivelyGenerating && messages.length > 0) {
-      if (baseHistory.length > 0) {
+      if (effectiveBaseHistory.length > 0) {
         // Use base history (ephemeral older + server/cache) for existing messages,
         // hook only for new messages (includes streaming).
-        const baseIds = new Set(baseHistory.map((m: UIMessage) => m.id));
-        const hookAfterBase = sliceHookMessagesAfterBaseTail(baseHistory, messages);
+        const baseIds = new Set(
+          effectiveBaseHistory.map((m: UIMessage) => m.id)
+        );
+        const hookAfterBase = sliceHookMessagesAfterBaseTail(
+          effectiveBaseHistory,
+          messages
+        );
         const newMessagesFromHook = hookAfterBase.filter((m: UIMessage) => !baseIds.has(m.id));
-        return [...baseHistory, ...newMessagesFromHook];
+        return [...effectiveBaseHistory, ...newMessagesFromHook];
       }
       return messages;
     }
 
     // After active session (user sent message/received stream), merge server + new hook messages
     if (hadActiveSessionRef.current && messages.length > 0) {
-      if (baseHistory.length > 0) {
+      if (effectiveBaseHistory.length > 0) {
         // Use base versions for existing messages (source of truth),
         // only use hook for NEW messages (user's new message, AI response).
-        const baseIds = new Set(baseHistory.map((m: UIMessage) => m.id));
-        const hookAfterBase = sliceHookMessagesAfterBaseTail(baseHistory, messages);
+        const baseIds = new Set(
+          effectiveBaseHistory.map((m: UIMessage) => m.id)
+        );
+        const hookAfterBase = sliceHookMessagesAfterBaseTail(
+          effectiveBaseHistory,
+          messages
+        );
         const newMessagesFromHook = hookAfterBase.filter((m: UIMessage) => !baseIds.has(m.id));
-        return [...baseHistory, ...newMessagesFromHook];
+        return [...effectiveBaseHistory, ...newMessagesFromHook];
       }
       // No server data but we have hook messages - use them (preserves AI response)
       return messages;
     }
 
     // Fresh navigation (no active session) - use base history (includes ephemeral older when present).
-    if (baseHistory.length > 0) return baseHistory;
+    if (effectiveBaseHistory.length > 0) return effectiveBaseHistory;
     return historicalMessages;
   }, [
     isThread,
@@ -582,6 +603,7 @@ function ChatInterfaceInternal({
     initialMessages,
     isActivelyGenerating,
     sliceHookMessagesAfterBaseTail,
+    pruneAt,
   ]);
 
   const lastNonEmptyRenderRef = useRef<UIMessage[]>([]);
@@ -784,7 +806,9 @@ function ChatInterfaceInternal({
       const messageContent = input.trim();
       const messageId = generateUUID();
 
-      try { if (regenerateAnchorRef.current) regenerateAnchorRef.current = null; } catch {}
+      // Do NOT clear regenerateAnchorRef here.
+      // The base history can remain stale for a while (local-first, no live subscription),
+      // and clearing the anchor allows "ghost" assistant messages (pruned locally) to reappear.
 
       setQuotaError(null);
       setInput("");

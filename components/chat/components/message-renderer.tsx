@@ -15,7 +15,7 @@ import {
   ToolOutput,
 } from "@/components/ai/tool";
 import { Message, MessageContent } from "@/components/ai/message";
-import { Response } from "@/components/ai/response";
+import { MemoResponse } from "@/components/ai/memo-response";
 import { Actions, Action } from "@/components/ai/actions";
 import {
   Reasoning,
@@ -253,16 +253,17 @@ export const MessageRenderer = React.memo(function MessageRenderer({
           if (part.type === "text" && "text" in part) {
             if (message.role === "assistant") {
               return (
-                <Response 
+                <MemoResponse
                   key={`${message.id}-${partIdx}`}
+                  messageId={message.id}
+                  partIdx={partIdx}
                   onReady={onResponseReady}
-                >
-                  {part.text}
-                </Response>
+                  text={part.text}
+                />
               );
             }
             return (
-              <div 
+              <div
                 key={`${message.id}-${partIdx}`}
                 className="whitespace-pre-wrap break-words"
               >
