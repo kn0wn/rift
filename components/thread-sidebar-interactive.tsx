@@ -697,11 +697,6 @@ export function ThreadSidebarInteractive({
     // No threads and no search query
     return (
       <div className="flex h-full items-center justify-center px-5">
-        <div className="text-center">
-          <p className="text-sm text-muted-foreground">
-            Aún no hay chats
-          </p>
-        </div>
       </div>
     );
   };

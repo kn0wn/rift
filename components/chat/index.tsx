@@ -466,14 +466,20 @@ function ChatInterfaceInternal({
             : serverData;
           const hookMessages =
             trigger === "regenerate-message" && regenAnchor
-              ? pruneAt(messages, regenAnchor.id, regenAnchor.role)
-              : messages;
+              ? pruneAt(messages as UIMessage[], regenAnchor.id, regenAnchor.role)
+              : (messages as UIMessage[]);
 
-          // Use server versions for existing messages, hook only for new messages
-          const serverIds = new Set(base.map((m: UIMessage) => m.id));
-          const hookAfterBase = sliceHookMessagesAfterBaseTail(base, hookMessages);
-          const newMessagesFromHook = hookAfterBase.filter((m: UIMessage) => !serverIds.has(m.id));
-          const requestMessages = [...base, ...newMessagesFromHook];
+          // Prefer hook versions for overlapping ids (edits/pruning), append only truly-new hook messages.
+          const hookById = new Map<string, UIMessage>(
+            hookMessages.map((m) => [m.id, m] as const),
+          );
+          const baseWithHookEdits: UIMessage[] = base.map(
+            (m) => hookById.get(m.id) ?? m,
+          );
+          const baseIds = new Set(baseWithHookEdits.map((m) => m.id));
+          const hookAfterBase = sliceHookMessagesAfterBaseTail(baseWithHookEdits, hookMessages);
+          const newMessagesFromHook = hookAfterBase.filter((m) => !baseIds.has(m.id));
+          const requestMessages = [...baseWithHookEdits, ...newMessagesFromHook];
 
           const currentCustomInstructionId = useChatUIStore.getState().customInstructionId;
 
@@ -558,17 +564,21 @@ function ChatInterfaceInternal({
     // During active generation, use server for history + hook for new/streaming messages
     if (isActivelyGenerating && messages.length > 0) {
       if (effectiveBaseHistory.length > 0) {
-        // Use base history (ephemeral older + server/cache) for existing messages,
-        // hook only for new messages (includes streaming).
-        const baseIds = new Set(
-          effectiveBaseHistory.map((m: UIMessage) => m.id)
+        // Prefer hook versions for overlapping ids (e.g. edited messages), append only truly-new hook messages.
+        const hookMessages = messages as UIMessage[];
+        const hookById = new Map<string, UIMessage>(
+          hookMessages.map((m) => [m.id, m] as const),
         );
+        const baseWithHookEdits: UIMessage[] = effectiveBaseHistory.map(
+          (m) => hookById.get(m.id) ?? m,
+        );
+        const baseIds = new Set(baseWithHookEdits.map((m) => m.id));
         const hookAfterBase = sliceHookMessagesAfterBaseTail(
-          effectiveBaseHistory,
-          messages
+          baseWithHookEdits,
+          hookMessages
         );
-        const newMessagesFromHook = hookAfterBase.filter((m: UIMessage) => !baseIds.has(m.id));
-        return [...effectiveBaseHistory, ...newMessagesFromHook];
+        const newMessagesFromHook = hookAfterBase.filter((m) => !baseIds.has(m.id));
+        return [...baseWithHookEdits, ...newMessagesFromHook];
       }
       return messages;
     }
@@ -576,17 +586,21 @@ function ChatInterfaceInternal({
     // After active session (user sent message/received stream), merge server + new hook messages
     if (hadActiveSessionRef.current && messages.length > 0) {
       if (effectiveBaseHistory.length > 0) {
-        // Use base versions for existing messages (source of truth),
-        // only use hook for NEW messages (user's new message, AI response).
-        const baseIds = new Set(
-          effectiveBaseHistory.map((m: UIMessage) => m.id)
+        // Prefer hook versions for overlapping ids (e.g. edits), append only truly-new hook messages.
+        const hookMessages = messages as UIMessage[];
+        const hookById = new Map<string, UIMessage>(
+          hookMessages.map((m) => [m.id, m] as const),
         );
+        const baseWithHookEdits: UIMessage[] = effectiveBaseHistory.map(
+          (m) => hookById.get(m.id) ?? m,
+        );
+        const baseIds = new Set(baseWithHookEdits.map((m) => m.id));
         const hookAfterBase = sliceHookMessagesAfterBaseTail(
-          effectiveBaseHistory,
-          messages
+          baseWithHookEdits,
+          hookMessages
         );
-        const newMessagesFromHook = hookAfterBase.filter((m: UIMessage) => !baseIds.has(m.id));
-        return [...effectiveBaseHistory, ...newMessagesFromHook];
+        const newMessagesFromHook = hookAfterBase.filter((m) => !baseIds.has(m.id));
+        return [...baseWithHookEdits, ...newMessagesFromHook];
       }
       // No server data but we have hook messages - use them (preserves AI response)
       return messages;
@@ -971,7 +985,7 @@ function ChatInterfaceInternal({
                   disableRegenerate={status === "streaming"}
                   onRegenerateAssistantMessage={onRegenerateAssistant}
                   onRegenerateAfterUserMessage={onRegenerateAfterUser}
-                  onResponseReady={() => handleResponseReady(message.id)}
+                  onResponseReady={handleResponseReady}
                   onEditUserMessage={async (
                     messageId: string,
                     newContent: string

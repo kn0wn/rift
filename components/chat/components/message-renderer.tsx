@@ -143,7 +143,7 @@ interface MessageRendererProps {
   onRegenerateAfterUserMessage: (messageId: string) => void;
   onEditUserMessage?: (messageId: string, newText: string) => Promise<void> | void;
   disableRegenerate?: boolean;
-  onResponseReady?: () => void;
+  onResponseReady?: (messageId: string) => void;
 }
 
 export const MessageRenderer = React.memo(function MessageRenderer({
@@ -257,7 +257,7 @@ export const MessageRenderer = React.memo(function MessageRenderer({
                   key={`${message.id}-${partIdx}`}
                   messageId={message.id}
                   partIdx={partIdx}
-                  onReady={onResponseReady}
+                  onReady={onResponseReady ? () => onResponseReady(message.id) : undefined}
                   text={part.text}
                 />
               );

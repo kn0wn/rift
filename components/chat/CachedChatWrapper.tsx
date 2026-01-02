@@ -113,6 +113,7 @@ export function CachedChatWrapper({ threadId, customInstructionId }: CachedChatW
           await reconcileCacheWithServer(threadId, messages);
         } else {
           setServerMessages([]);
+          await reconcileCacheWithServer(threadId, []);
         }
         
         setServerFetchedThreadId(threadId);
