@@ -671,6 +671,8 @@ function ChatInterfaceInternal({
   }, [status, expectedResponseCount, readyResponseCount]);
 
   const [forceShow, setForceShow] = useState(false);
+  // Once we've shown messages for a given thread, never hide them again.
+  const [hasEverShownMessages, setHasEverShownMessages] = useState(false);
   useEffect(() => {
     if (allResponsesReady || !isThread || displayMessages.length === 0) {
       setForceShow(false);
@@ -686,9 +688,18 @@ function ChatInterfaceInternal({
 
   useEffect(() => {
     setForceShow(false);
+    setHasEverShownMessages(false);
   }, [id]);
 
   const shouldShowMessages = allResponsesReady || forceShow || status === "streaming" || status === "submitted";
+
+  useEffect(() => {
+    if (!isThread) return;
+    if (hasEverShownMessages) return;
+    if (!shouldShowMessages) return;
+    if (displayMessages.length === 0) return;
+    setHasEverShownMessages(true);
+  }, [displayMessages.length, hasEverShownMessages, isThread, shouldShowMessages]);
 
   // Initial scroll to bottom (instant, then switch to smooth after 150ms)
   const hasInitialScrolledRef = useRef(false);
@@ -972,7 +983,7 @@ function ChatInterfaceInternal({
               </div>
             )}
             <div
-              className={shouldShowMessages ? "" : "opacity-0"}
+              className={!hasEverShownMessages && !shouldShowMessages ? "opacity-0" : ""}
             >
               {displayMessages.map((message, index) => {
               const isLast = index === displayMessages.length - 1;
