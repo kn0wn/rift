@@ -24,7 +24,7 @@ export default function UpdatesPage() {
     {
       id: '1.2.0',
       version: '1.2.0',
-      date: '2025-01-15',
+      date: '2026-01-06',
       title: 'Mejoras de Rendimiento y Nuevas Funcionalidades',
       description: 'Actualización importante con mejoras significativas de rendimiento, nuevas instrucciones personalizadas, modelos de IA adicionales y correcciones de estabilidad.',
       features: [
