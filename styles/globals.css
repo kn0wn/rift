@@ -53,6 +53,24 @@
   --color-popover-secondary: var(--popover-secondary);
   --color-popover-text: var(--popover-text);
 
+  --color-button-default: var(--button-default);
+  --color-button-default-hover: var(--button-default-hover);
+  --color-button-default-text: var(--button-default-text);
+  --color-button-default-text-hover: var(--button-default-text-hover);
+
+
+  --color-button-destructive: var(--button-destructive);
+  --color-button-outline: var(--button-outline);
+
+  --color-button-secondary: var(--button-secondary);
+  --color-button-secondary-hover: var(--button-secondary-hover);
+  --color-button-secondary-text: var(--button-secondary-text);
+  --color-button-secondary-text-hover: var(--button-secondary-text-hover);
+
+  --color-button-ghost: var(--button-ghost);
+  --color-button-link: var(--button-link);
+  --color-button-accent: var(--button-accent);
+
   /* Landing page custom colors */
   --color-landing-accent: var(--landing-accent);
   --color-landing-text-secondary: var(--landing-text-secondary);
@@ -61,8 +79,8 @@
 
 :root {
   --radius: 0.625rem;
-  --background: #FAFBFB;
-  --background-secondary: #f3f3f3;
+  --background: oklch(0.9873 0.0011 197.14);
+  --background-secondary: oklch(0.9642 0 0);
   --background-settings: oklch(0.967 0.0029 264.54);
 
   --stroke-primary: oklch(0.937 0 0);
@@ -80,6 +98,24 @@
   --accent-green: oklch(0.9317 0.0542 156.7);
   --accent-green-2: oklch(0.6198 0.1752 148 / 90%);
   --danger: oklch(0.6417 0.2062 15.77);
+
+  --button-default: #F1F2F2;
+  --button-default-hover: oklch(0.2046 0 0 / 85%);
+  --button-default-text: oklch(0.2046 0 0);
+  --button-default-text-hover: oklch(0.937 0 0);
+
+  --button-destructive: #EF4444;
+  --button-outline: #EBEBEB;
+
+  --button-secondary: #F1F2F2;
+  --button-secondary-hover: oklch(0.2046 0 0 / 85%);
+  --button-secondary-text: oklch(0.2046 0 0);
+  --button-secondary-text-hover: oklch(0.937 0 0);
+
+
+  --button-ghost: #F1F2F2;
+  --button-link: #343434;
+  --button-accent: #007AFF;
 
   --popover-main: oklch(0.2046 0 0 / 85%);
   --popover-main-s: oklch(0.2046 0 0);
@@ -99,9 +135,9 @@
   --muted-foreground: oklch(0.556 0 0); /* #8e8e8e */
   --accent-foreground: oklch(0.205 0 0); /* #343434 */
   --destructive: oklch(0.6417 0.2062 15.77); /* #ef4444 */
-  --border: #EBEBEB;
+  --border: oklch(0.9401 0 0);
   --input: oklch(0.922 0 0); /* #eaeaea */
-  --ring: oklch(0.708 0 0); /* #b5b5b5 */
+  --ring: oklch(0.6028 0.2177 257.42); /* #b5b5b5 */
 
   /* Surface colors */
   --surface-elevated: #ffffff; /* #ffffff */
@@ -116,8 +152,8 @@
 }
 
 .dark {
-  --background: oklch(0.09 0 0);
-  --background-secondary: oklch(0.12 0 0);
+  --background: oklch(0.1149 0 0);
+  --background-secondary: oklch(0.2046 0 0);
   --background-settings: oklch(0.15 0.0029 264.54);
 
   --stroke-primary: oklch(0.2 0 0);
@@ -135,6 +171,24 @@
   --accent-green: oklch(0.7 0.1 156.7);
   --accent-green-2: oklch(0.6 0.15 148 / 90%);
   --danger: oklch(0.6 0.2 15.77);
+
+  --button-default: #111111;
+  --button-default-hover: oklch(0.5742 0 0);
+  --button-default-text: oklch(0.8 0 0);
+  --button-default-text-hover: oklch(0.937 0 0);
+
+
+  --button-destructive: #EF4444;
+  --button-outline: #EBEBEB;
+
+  --button-secondary: #111111;
+  --button-secondary-hover: oklch(0.8205 0 0);
+  --button-secondary-text: oklch(0.8 0 0);
+  --button-secondary-text-hover: oklch(0.2046 0 0);
+
+  --button-ghost: #F1F2F2;
+  --button-link: #343434;
+  --button-accent: #007AFF;
 
   --popover-main: oklch(0.2046 0 0 / 85%);
   --popover-main-s: oklch(0.2046 0 0);
@@ -156,7 +210,7 @@
   --destructive: oklch(0.6 0.2 15.77);
   --border: oklch(0.35 0 0);
   --input: oklch(0.15 0 0);
-  --ring: oklch(0.4 0 0);
+  --ring: oklch(0.6 0.15 243.43);
 
   /* Surface colors for dark mode */
   --surface-elevated: oklch(0.1 0 0);

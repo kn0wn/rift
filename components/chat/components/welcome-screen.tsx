@@ -100,7 +100,7 @@ export const WelcomeScreen = React.memo(function WelcomeScreen({ user, onSuggest
         </h2>
 
         {/* Prompt suggestions */}
-        <div className="hidden md:grid md:grid-cols-2 gap-4 text-left">
+        <div className="hidden md:grid md:grid-cols-2 gap-3 text-left">
           {[
             {
               icon: (
@@ -153,7 +153,7 @@ export const WelcomeScreen = React.memo(function WelcomeScreen({ user, onSuggest
             <div
               key={index}
               onClick={() => onSuggestionClick?.(item.prompt)}
-              className="bg-white/50 dark:bg-popover-main rounded-3xl p-4 border border-gray-200 dark:border-border hover:bg-white/70 dark:hover:bg-hover/60 shadow-container-small cursor-pointer"
+              className="bg-background-secondary rounded-3xl p-4 border border-border shadow-sm hover:bg-hover cursor-pointer"
             >
               <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
                 {item.icon} {item.title}

@@ -154,7 +154,7 @@ export const ChatInputArea = React.memo(function ChatInputArea({
   }, [isSendingMessage, uploadedAttachments, uploadingFiles]);
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 md:pb-0">
+    <div className="absolute bottom-0 left-0 right-0 md:pb-0 z-[20]">
       <div className="mx-auto w-full max-w-full md:max-w-3xl px-0 md:px-2 pb-0 md:pb-0 relative">
         {showScrollToBottom && (
           <div className="absolute -top-12 left-0 right-0 flex justify-center pointer-events-none z-20">
@@ -227,7 +227,7 @@ export const ChatInputArea = React.memo(function ChatInputArea({
             </div>
           </div>
         )}
-        <PromptInput onSubmit={onSubmit}>
+        <PromptInput onSubmit={onSubmit} borderClassName="border-border">
           <ChatErrorAlert />
           <PromptInputFilePreview
             files={files}

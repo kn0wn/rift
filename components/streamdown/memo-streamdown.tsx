@@ -36,13 +36,15 @@ type BlockProps = HardenReactMarkdownProps & {
 const Block = memo(
   ({ messageId, partIdx, index, ...props }: BlockProps) => {
     const block = useMarkdownBlockByIndex(messageId, partIdx, index);
-    if (block === null || block.trim() === '') return null;
-
+    
     const [plugins, setPlugins] = useState<{ remark: PluggableList; rehype: PluggableList } | null>(
       null
     );
 
     useEffect(() => {
+      // Skip loading plugins if block is empty
+      if (block === null || block.trim() === '') return;
+      
       let active = true;
       const needsMath = detectMath(block);
       const needsRaw = detectRawHtml(block);
@@ -57,6 +59,8 @@ const Block = memo(
         active = false;
       };
     }, [block]);
+
+    if (block === null || block.trim() === '') return null;
 
     const remarkPlugins = plugins
       ? [...plugins.remark, ...(props.remarkPlugins ?? [])]

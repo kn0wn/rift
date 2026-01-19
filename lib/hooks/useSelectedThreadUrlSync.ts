@@ -18,11 +18,14 @@ function ensureHistoryPatched() {
   const originalReplaceState = window.history.replaceState.bind(window.history);
 
   const dispatch = () => {
-    try {
-      window.dispatchEvent(new Event(RIFT_NAV_EVENT));
-    } catch {
-      // ignore
-    }
+    // Defer to avoid triggering state updates during useInsertionEffect or render
+    queueMicrotask(() => {
+      try {
+        window.dispatchEvent(new Event(RIFT_NAV_EVENT));
+      } catch {
+        // ignore
+      }
+    });
   };
 
   window.history.pushState = ((data: any, unused: string, url?: string | URL | null) => {
