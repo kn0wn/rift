@@ -22,6 +22,8 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  transpilePackages: ["shiki"],
+  serverExternalPackages: ["langium", "@mermaid-js/parser"],
   images: {
     remotePatterns: [
       {
@@ -29,6 +31,16 @@ const nextConfig: NextConfig = {
         hostname: "**",
       },
     ],
+  },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        "vscode-jsonrpc": false,
+        langium: false,
+      };
+    }
+    return config;
   },
   async rewrites() {
     return [

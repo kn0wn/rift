@@ -1,16 +1,10 @@
 import React, {
   type DetailedHTMLProps,
   type HTMLAttributes,
-  isValidElement,
   memo,
 } from 'react';
 import type { ExtraProps, Options } from 'react-markdown';
-import type { BundledLanguage } from 'shiki';
-import { CodeBlock, CodeBlockCopyButton } from './code-block';
-import { Mermaid } from './mermaid';
 import { cn } from './utils';
-
-const LANGUAGE_RE = /language-([^\s]+)/;
 
 type MarkdownPoint = { line?: number; column?: number };
 type MarkdownPosition = { start?: MarkdownPoint; end?: MarkdownPoint };
@@ -405,88 +399,9 @@ const MemoLi = memo<LiProps>(
 );
 MemoLi.displayName = 'MarkdownLi';
 
-const CodeComponent = ({
-  node,
-  className,
-  children,
-  ...props
-}: DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> &
-  ExtraProps) => {
-  const inline = node?.position?.start.line === node?.position?.end.line;
-
-  if (inline) {
-    return (
-      <code
-        className={cn(
-          'rounded-md px-2 py-1 text-sm bg-hover dark:bg-popover-main',
-          className
-        )}
-        style={{ fontFamily: 'lilex, monospace' }}
-        {...props}
-      >
-        {children}
-      </code>
-    );
-  }
-
-  const match = className?.match(LANGUAGE_RE);
-  const language = (match?.at(1) ?? 'plaintext') as BundledLanguage;
-
-  // Extract code content from children safely
-  let code = '';
-  if (
-    isValidElement(children) &&
-    children.props &&
-    typeof children.props === 'object' &&
-    'children' in children.props &&
-    typeof children.props.children === 'string'
-  ) {
-    code = children.props.children;
-  } else if (typeof children === 'string') {
-    code = children;
-  }
-
-  const isMermaid =
-    language === 'mermaid' ||
-    code.includes('graph') ||
-    code.includes('flowchart') ||
-    code.includes('sequenceDiagram') ||
-    code.includes('classDiagram') ||
-    code.includes('gantt');
-
-  if (isMermaid) {
-    return (
-      <div
-        className={cn(
-          'group relative my-4 h-auto rounded-lg border p-4 text-[14px]',
-          className
-        )}
-      >
-        <Mermaid chart={code} />
-        <CodeBlockCopyButton />
-      </div>
-    );
-  }
-
-  return (
-    <CodeBlock
-      className={cn(className)}
-      code={code}
-      language={language}
-    >
-      <CodeBlockCopyButton />
-    </CodeBlock>
-  );
-};
-
-const MemoCode = memo<
-  DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> & ExtraProps
->(
-  CodeComponent,
-  (p, n) => p.className === n.className && sameNodePosition(p.node, n.node)
-);
-MemoCode.displayName = 'MarkdownCode';
-
+/**
+ * Custom components for Streamdown markdown rendering.
+ */
 export const components: Options['components'] = {
   ol: MemoOl,
   li: MemoLi,
@@ -512,8 +427,6 @@ export const components: Options['components'] = {
   th: MemoTh,
   td: MemoTd,
   blockquote: MemoBlockquote,
-  code: MemoCode,
-  pre: ({ children }) => children,
   sup: MemoSup,
   sub: MemoSub,
   input: MemoInput,

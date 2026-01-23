@@ -1,27 +1,28 @@
 'use client';
 
+import React, { memo, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { type ComponentProps, memo, useEffect, useMemo, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import type { PluggableList } from 'unified';
-import { Streamdown } from '@/components/streamdown/memo-streamdown';
-import { components as defaultComponents } from '@/components/streamdown/lib/components';
-import { useMarkdownBlocksForPart } from '@/lib/stores/hooks';
-import {
-  detectMath,
-  detectRawHtml,
-  loadMarkdownPlugins,
-} from '@/components/streamdown/lib/markdown-plugins';
+import { Streamdown, type PluginConfig } from 'streamdown';
+import { code } from '@streamdown/code';
+import { mermaid } from '@streamdown/mermaid';
+import { math } from '@streamdown/math';
+import { components as customComponents } from '@/components/streamdown/lib/components';
 
-type ResponseProps = Omit<ComponentProps<typeof Streamdown>, 'children'> & {
+const plugins = { code, mermaid, math } as PluginConfig;
+
+type MemoResponseProps = {
   messageId: string;
   partIdx: number;
   onReady?: () => void;
   /**
-   * Raw markdown text fallback for cold reloads where the markdown memo store
-   * hasn't been seeded with the message yet.
+   * The markdown text content to render.
    */
   text?: string;
+  /**
+   * Whether the response is currently streaming.
+   */
+  isStreaming?: boolean;
+  className?: string;
 };
 
 export const MemoResponse = memo(
@@ -31,22 +32,9 @@ export const MemoResponse = memo(
     partIdx,
     onReady,
     text,
-    components,
-    rehypePlugins,
-    remarkPlugins,
-    ...markdownProps
-  }: ResponseProps) => {
+    isStreaming = false,
+  }: MemoResponseProps) => {
     const hasNotifiedRef = useRef(false);
-    const blocks = useMarkdownBlocksForPart(messageId, partIdx);
-    const [fallbackPlugins, setFallbackPlugins] = useState<{
-      remark: PluggableList;
-      rehype: PluggableList;
-    } | null>(null);
-
-    const hasBlocks = useMemo(() => {
-      if (!blocks || blocks.length === 0) return false;
-      return blocks.some((b) => b && b.trim() !== '');
-    }, [blocks]);
 
     useEffect(() => {
       if (!onReady || hasNotifiedRef.current) return;
@@ -74,77 +62,44 @@ export const MemoResponse = memo(
       };
     }, [onReady]);
 
-    const fallback = typeof text === 'string' ? text : '';
-    const shouldUseFallback = !hasBlocks && fallback.trim() !== '';
-    const needsMath = shouldUseFallback ? detectMath(fallback) : false;
-    const needsRaw = shouldUseFallback ? detectRawHtml(fallback) : false;
-
-    useEffect(() => {
-      if (!shouldUseFallback) {
-        setFallbackPlugins(null);
-        return;
-      }
-
-      let active = true;
-      loadMarkdownPlugins({ gfm: true, math: needsMath, raw: needsRaw }).then(
-        (loaded) => {
-          if (active) setFallbackPlugins(loaded);
-        }
-      );
-      return () => {
-        active = false;
-      };
-    }, [shouldUseFallback, fallback, needsMath, needsRaw]);
-
-    if (shouldUseFallback) {
-      const remarkPluginsResolved = fallbackPlugins
-        ? [...fallbackPlugins.remark, ...(remarkPlugins ?? [])]
-        : remarkPlugins;
-      const rehypePluginsResolved = fallbackPlugins
-        ? [...fallbackPlugins.rehype, ...(rehypePlugins ?? [])]
-        : rehypePlugins;
-
-      return (
-        <div
-          className={cn(
-            'size-full min-w-0 max-w-full break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 text-[16px] leading-[28px] font-normal tracking-[0.015em] proportional-nums',
-            className
-          )}
-        >
-          <ReactMarkdown
-            {...markdownProps}
-            components={{
-              ...defaultComponents,
-              ...components,
-            }}
-            rehypePlugins={rehypePluginsResolved}
-            remarkPlugins={remarkPluginsResolved}
-          >
-            {fallback}
-          </ReactMarkdown>
-        </div>
-      );
+    const content = typeof text === 'string' ? text : '';
+    
+    if (!content.trim()) {
+      return null;
     }
 
     return (
       <Streamdown
-        messageId={messageId}
-        partIdx={partIdx}
+        key={`${messageId}-${partIdx}`}
+        plugins={plugins}
+        shikiTheme={['github-light', 'github-dark']}
+        isAnimating={isStreaming}
+        mode={isStreaming ? 'streaming' : 'static'}
+        components={customComponents as Record<string, React.ComponentType<unknown>>}
+        controls={{
+          code: true,
+          table: true,
+          mermaid: {
+            download: true,
+            copy: true,
+            fullscreen: true,
+            panZoom: false,
+          },
+        }}
         className={cn(
           'size-full min-w-0 max-w-full break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 text-[16px] leading-[28px] font-normal tracking-[0.015em] proportional-nums',
           className
         )}
-        components={components}
-        rehypePlugins={rehypePlugins}
-        remarkPlugins={remarkPlugins}
-        {...markdownProps}
-      />
+      >
+        {content}
+      </Streamdown>
     );
   },
   (prevProps, nextProps) =>
     prevProps.messageId === nextProps.messageId &&
     prevProps.partIdx === nextProps.partIdx &&
-    prevProps.text === nextProps.text
+    prevProps.text === nextProps.text &&
+    prevProps.isStreaming === nextProps.isStreaming
 );
 
 MemoResponse.displayName = 'MemoResponse';

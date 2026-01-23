@@ -259,6 +259,7 @@ export const MessageRenderer = React.memo(function MessageRenderer({
                   partIdx={partIdx}
                   onReady={onResponseReady ? () => onResponseReady(message.id) : undefined}
                   text={part.text}
+                  isStreaming={isStreaming}
                 />
               );
             }
