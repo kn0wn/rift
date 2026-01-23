@@ -274,7 +274,7 @@ export function ModelSelectorPanel({
             </button>
           </div>
           <div className="flex flex-1 min-h-0">
-            <aside className="w-[64px] py-3 overflow-y-auto scroll-container border border-border/40 rounded-tr-3xl">
+            <aside className="w-[64px] py-3 overflow-y-auto border border-border/40 rounded-tr-3xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               <div className="flex flex-col items-center gap-2 pb-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -315,7 +315,7 @@ export function ModelSelectorPanel({
               </div>
             </aside>
             <div className="flex-1 min-h-0">
-            <div className="h-full overflow-y-auto px-1 pt-3 pb-3 scroll-container">
+            <div className="h-full overflow-y-auto px-1 pt-3 pb-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 {showRecommendedOptions ? (
                   <div className="px-4 py-4 space-y-4">
                     <div className="text-center mb-4">
@@ -394,15 +394,6 @@ export function ModelSelectorPanel({
           </div>
         </div>
       </PopoverContent>
-      <style jsx>{`
-        .scroll-container {
-          scrollbar-width: none;
-          -ms-overflow-style: none;
-        }
-        .scroll-container::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
     </Popover>
   );
 }
