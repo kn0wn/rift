@@ -100,6 +100,7 @@ function SettingItem({
     <Link 
       href={href}
       className={baseClasses}
+      prefetch={false}
     >
       <Icon className={iconClasses} />
       <span className="flex-1 text-left truncate">{title}</span>

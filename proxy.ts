@@ -34,15 +34,7 @@ export default authkitMiddleware({
 
 export const config = {
   matcher: [
-    {
-      // Settings routes: skip middleware for prefetch requests (fast client-side navigation)
-      source: '/settings/:path*',
-      missing: [
-        { type: 'header', key: 'next-router-prefetch' },
-        { type: 'header', key: 'purpose', value: 'prefetch' },
-      ],
-    },
-    // All other routes: always run middleware (skip Next.js internals and static files)
+    // All routes except Next.js internals, static files, and settings routes
     '/((?!_next|settings|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
     // Always run for API routes (no prefetch for API routes)
     '/api/chat',

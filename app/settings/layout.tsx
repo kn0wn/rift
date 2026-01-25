@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, startTransition } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useConvexAuth } from "convex/react";
 import { SettingsSidebar } from "@/components/settings/settings-sidebar";
 import Link from 'next/link';
 import { SettingsShell } from "@/components/settings/settings-shell";
@@ -50,6 +53,20 @@ export default function SettingsLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { isAuthenticated, isLoading } = useConvexAuth();
+
+  // Redirect to sign-in if not authenticated (non-urgent update)
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      const returnTo = encodeURIComponent(pathname);
+      startTransition(() => {
+        router.replace(`/sign-in?return_to=${returnTo}`);
+      });
+    }
+  }, [isAuthenticated, isLoading, router, pathname]);
+
   // Layout is non-blocking - permissions are parsed client-side instantly
   // No server-side loading needed - client-side JWT parsing gives same result immediately
   return (

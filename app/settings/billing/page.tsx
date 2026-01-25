@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { useHasPermission } from "@/lib/permissions-client";
@@ -15,7 +15,9 @@ export default function BillingPage() {
   // Redirect if user doesn't have permission
   useEffect(() => {
     if (!canManageBilling) {
-      router.replace("/settings/profile");
+      startTransition(() => {
+        router.replace("/settings/profile");
+      });
     }
   }, [canManageBilling, router]);
 
