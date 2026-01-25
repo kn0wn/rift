@@ -188,7 +188,7 @@ export function PasswordChangeDialog({ hasPassword, isPending: parentIsPending }
       >
         <DialogTrigger asChild>
           <Button type="button" variant="accent" className="gap-2 border border-border/60 shadow-sm shadow-black/5 dark:shadow-black/30 text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">
-            {hasPassword ? "Cambiar contraseña" : "Crear contraseña"}
+            Cambiar contraseña
           </Button>
         </DialogTrigger>
         <DialogContent 
@@ -290,7 +290,7 @@ export function PasswordChangeDialog({ hasPassword, isPending: parentIsPending }
             <div className="space-y-6 p-2">
               <DialogHeader className="space-y-2">
                 <DialogTitle className="text-2xl font-bold text-foreground dark:text-popover-text">
-                  {hasPassword ? "Cambiar contraseña" : "Crear contraseña"}
+                  Cambiar contraseña
                 </DialogTitle>
                 {!passwordStepUpVerified ? (
                   <DialogDescription className="text-base text-muted-foreground leading-relaxed">

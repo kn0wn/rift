@@ -57,7 +57,7 @@ export function InstructionCard({
   const IconComponent = getIconByName(instruction.icon);
 
   return (
-    <div className="flex items-stretch gap-4 p-4 rounded-2xl border border-border/20 transition-colors group relative bg-white/50 dark:bg-popover-secondary/30">
+    <div className="flex items-stretch gap-4 p-4 rounded-lg border border-gray-200 dark:border-border transition-colors group relative bg-white dark:bg-popover-secondary shadow-sm">
       <div className="flex-shrink-0">
         <div 
           className="w-12 h-12 rounded-full flex items-center justify-center border border-border/40"

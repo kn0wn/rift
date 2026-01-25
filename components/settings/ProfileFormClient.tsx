@@ -1,24 +1,60 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import Image from "next/image";
-
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { updateCurrentUserProfile } from "@/actions/updateCurrentUserProfile";
+import { type CurrentUserProfile } from "@/actions/getCurrentUserProfile";
 import { SettingRow, SettingsInput } from "@/components/settings";
 import { Button } from "@/components/ai/ui/button";
 
-export type ProfileFormUser = {
-  id: string;
-  email: string;
-  firstName?: string | null;
-  lastName?: string | null;
-  profilePictureUrl?: string | null;
-};
+export type ProfileFormUser = CurrentUserProfile;
 
-export function ProfileForm({ initialUser }: { initialUser: ProfileFormUser }) {
-  const [savedFirstName, setSavedFirstName] = useState(
-    initialUser.firstName ?? "",
-  );
+const THROTTLE_MS = 2000;
+
+function getInitial(name: string) {
+  return name.charAt(0).toUpperCase();
+}
+
+function getDisplayName(firstName: string | null | undefined, lastName: string | null | undefined, email: string) {
+  const name = `${firstName ?? ""} ${lastName ?? ""}`.trim();
+  return name || email;
+}
+
+interface ProfileFormContextValue {
+  isEditing: boolean;
+  setIsEditing: (editing: boolean) => void;
+  firstName: string;
+  setFirstName: (value: string) => void;
+  lastName: string;
+  setLastName: (value: string) => void;
+  savedFirstName: string;
+  savedLastName: string;
+  isPending: boolean;
+  error: string | null;
+  setError: (error: string | null) => void;
+  onSave: (e: React.FormEvent) => void;
+  handleCancel: () => void;
+  isDirty: boolean;
+  isSubmitCoolingDown: boolean;
+  initialUser: ProfileFormUser;
+}
+
+const ProfileFormContext = createContext<ProfileFormContextValue | null>(null);
+
+function useProfileForm() {
+  const context = useContext(ProfileFormContext);
+  if (!context) {
+    throw new Error("useProfileForm must be used within ProfileFormProvider");
+  }
+  return context;
+}
+
+export interface ProfileFormProviderProps {
+  initialUser: ProfileFormUser;
+  children: React.ReactNode;
+}
+
+export function ProfileFormProvider({ initialUser, children }: ProfileFormProviderProps) {
+  const [savedFirstName, setSavedFirstName] = useState(initialUser.firstName ?? "");
   const [savedLastName, setSavedLastName] = useState(initialUser.lastName ?? "");
   const [firstName, setFirstName] = useState(initialUser.firstName ?? "");
   const [lastName, setLastName] = useState(initialUser.lastName ?? "");
@@ -38,24 +74,18 @@ export function ProfileForm({ initialUser }: { initialUser: ProfileFormUser }) {
     };
   }, []);
 
-  const displayName = useMemo(() => {
-    const name = `${firstName} ${lastName}`.trim();
-    return name || initialUser.email;
-  }, [firstName, lastName, initialUser.email]);
-
-  const getInitial = (name: string) => name.charAt(0).toUpperCase();
-
-  const isDirty = (firstName ?? "") !== (savedFirstName ?? "") || (lastName ?? "") !== (savedLastName ?? "");
+  const isDirty = useMemo(
+    () => firstName !== savedFirstName || lastName !== savedLastName,
+    [firstName, lastName, savedFirstName, savedLastName]
+  );
 
   const onSave = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     
     const now = Date.now();
     const timeSinceLastSubmit = now - lastSubmitTimeRef.current;
-    const THROTTLE_MS = 2000;
     
     if (timeSinceLastSubmit < THROTTLE_MS && lastSubmitTimeRef.current > 0) {
-      // Too soon, ignore this submission
       return;
     }
     
@@ -92,67 +122,137 @@ export function ProfileForm({ initialUser }: { initialUser: ProfileFormUser }) {
       setSavedFirstName(newFirstName);
       setSavedLastName(newLastName);
       
-      // Exit edit mode after successful save
       setIsEditing(false);
     });
   }, [firstName, lastName]);
 
-  const handleCancel = () => {
-    // Reset to saved values
+  const handleCancel = useCallback(() => {
     setFirstName(savedFirstName);
     setLastName(savedLastName);
     setError(null);
     setIsEditing(false);
-  };
+  }, [savedFirstName, savedLastName]);
+
+  const contextValue = useMemo(
+    () => ({
+      isEditing,
+      setIsEditing,
+      firstName,
+      setFirstName,
+      lastName,
+      setLastName,
+      savedFirstName,
+      savedLastName,
+      isPending,
+      error,
+      setError,
+      onSave,
+      handleCancel,
+      isDirty,
+      isSubmitCoolingDown,
+      initialUser,
+    }),
+    [
+      isEditing,
+      firstName,
+      lastName,
+      savedFirstName,
+      savedLastName,
+      isPending,
+      error,
+      onSave,
+      handleCancel,
+      isDirty,
+      isSubmitCoolingDown,
+      initialUser,
+    ]
+  );
 
   return (
-    <div className="p-6 bg-white dark:bg-popover-secondary rounded-lg border border-gray-200 dark:border-border shadow-sm">
-      <div className="space-y-6">
-        {/* Profile Picture Section */}
-        <div className="flex items-center gap-4">
-        <div className="flex-shrink-0">
-          {initialUser.profilePictureUrl ? (
-            <Image
-              className="h-16 w-16 rounded-full object-cover"
-              src={initialUser.profilePictureUrl}
-              alt={displayName}
-              width={64}
-              height={64}
-              unoptimized
-            />
-          ) : (
-            <div className="h-16 w-16 rounded-full bg-gradient-to-t from-blue-500 to-blue-400 flex items-center justify-center">
-              <span className="text-xl font-semibold text-white">
-                {getInitial(displayName)}
-              </span>
-            </div>
-          )}
-        </div>
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {displayName}
-          </h3>
-          <p className="text-sm text-gray-500 dark:text-text-muted">
-            {initialUser.email}
-          </p>
-        </div>
-        {!isEditing && (
-          <Button
-            type="button"
-            onClick={() => setIsEditing(true)}
-            variant="accent"
-            className="gap-2 border border-border/60 shadow-sm shadow-black/5 dark:shadow-black/30 text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Editar perfil
-          </Button>
+    <ProfileFormContext.Provider value={contextValue}>
+      {children}
+    </ProfileFormContext.Provider>
+  );
+}
+
+export function ProfileFormButton() {
+  const { isEditing, setIsEditing } = useProfileForm();
+
+  if (isEditing) {
+    return null;
+  }
+
+  return (
+    <Button
+      type="button"
+      onClick={() => setIsEditing(true)}
+      variant="accent"
+      className="gap-2 border border-border/60 shadow-sm shadow-black/5 dark:shadow-black/30 text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      Editar perfil
+    </Button>
+  );
+}
+
+export function ProfileDisplay() {
+  const { initialUser } = useProfileForm();
+  const displayName = getDisplayName(initialUser.firstName, initialUser.lastName, initialUser.email);
+
+  return (
+    <div className="flex items-center gap-4">
+      <div className="flex-shrink-0">
+        {initialUser.profilePictureUrl ? (
+          <img
+            className="h-16 w-16 rounded-full object-cover"
+            src={initialUser.profilePictureUrl}
+            alt={displayName}
+            width={64}
+            height={64}
+          />
+        ) : (
+          <div className="h-16 w-16 rounded-full bg-gradient-to-t from-blue-500 to-blue-400 flex items-center justify-center">
+            <span className="text-xl font-semibold text-white">
+              {getInitial(displayName)}
+            </span>
+          </div>
         )}
       </div>
+      <div className="flex-1">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          {displayName}
+        </h3>
+        <p className="text-sm text-gray-500 dark:text-text-muted">
+          {initialUser.email}
+        </p>
+      </div>
+      <ProfileFormButton />
+    </div>
+  );
+}
 
-      {/* Profile Form */}
-      {isEditing && (
-        <>
-          <div className="border-b border-gray-200 dark:border-border pb-4"></div>
-          <form onSubmit={onSave} className="space-y-4">
+export function ProfileFormContent() {
+  const {
+    isEditing,
+    firstName,
+    setFirstName,
+    lastName,
+    setLastName,
+    isPending,
+    error,
+    onSave,
+    handleCancel,
+    isDirty,
+    isSubmitCoolingDown,
+    initialUser,
+  } = useProfileForm();
+
+  if (!isEditing) {
+    return null;
+  }
+
+  return (
+    <div className="border-t border-gray-200 dark:border-border pt-4">
+      <form onSubmit={onSave} className="space-y-4">
         <SettingRow label="Correo electrónico" labelClassName="mb-[5px]">
           <SettingsInput
             type="email"
@@ -214,9 +314,6 @@ export function ProfileForm({ initialUser }: { initialUser: ProfileFormUser }) {
           </Button>
         </div>
       </form>
-        </>
-      )}
-      </div>
     </div>
   );
 }
