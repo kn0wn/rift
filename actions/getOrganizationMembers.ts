@@ -2,6 +2,8 @@
 
 import { workos } from "@/app/api/workos";
 import { OrganizationMembership, User, Invitation } from "@workos-inc/node";
+import { fetchQuery } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
 
 export interface OrganizationMembershipWithUser extends OrganizationMembership {
   user: User | null;
@@ -69,6 +71,22 @@ export async function getOrganizationMemberCount(organizationId: string): Promis
     countPendingInvitations(organizationId)
   ]);
   return membershipCount + invitationCount;
+}
+
+export async function getOrganizationSeatsAndPlan(organizationId: string): Promise<{
+  seatQuantity: number | null;
+  plan: "free" | "plus" | "pro" | "enterprise" | null;
+}> {
+  try {
+    const result = await fetchQuery(api.organizations.getOrganizationSeatsAndPlan, {
+      workos_id: organizationId,
+      secret: process.env.CONVEX_SECRET_TOKEN!,
+    });
+    return result;
+  } catch (error) {
+    console.error("Error fetching seat quantity and plan:", error);
+    return { seatQuantity: null, plan: null };
+  }
 }
 
 async function countAllMemberships(organizationId: string): Promise<number> {

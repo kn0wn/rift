@@ -43,18 +43,24 @@ function InstructionGrid({
   emptyMessage,
   currentUserId,
   onEdit,
+  isLoading,
 }: {
   items: InstructionItem[];
   emptyMessage: string;
   currentUserId: string;
   onEdit: (id: string) => void;
+  isLoading?: boolean;
 }) {
-  return items.length === 0 ? (
-    <div className="col-span-full text-center py-10 px-4 text-sm text-muted-foreground border border-dashed rounded-3xl bg-muted/20">
-      {emptyStateIcon}
-      {emptyMessage}
-    </div>
-  ) : (
+  if (isLoading || items.length === 0) {
+    return (
+      <div className="col-span-full text-center py-10 px-4 text-sm text-muted-foreground border border-dashed rounded-3xl bg-muted/20">
+        {emptyStateIcon}
+        {emptyMessage}
+      </div>
+    );
+  }
+
+  return (
     <div className="grid gap-3 md:grid-cols-1 lg:grid-cols-2 items-stretch">
       {items.map((instruction) => (
         <InstructionCard
@@ -77,6 +83,9 @@ export function InstructionManager() {
   );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const isLoading = instructions === undefined;
+  const hasUser = !!user;
 
   const { myInstructions, sharedWithMe, orgInstructions } = useMemo(() => {
     if (!instructions || !user) {
@@ -109,10 +118,6 @@ export function InstructionManager() {
     setIsDialogOpen(true);
   }, []);
 
-  if (!user) {
-    return null;
-  }
-
   return (
     <div className="space-y-6">
       <div className="space-y-4">
@@ -134,6 +139,7 @@ export function InstructionManager() {
                   <Button 
                     variant="ghost"
                     onClick={handleCreateClick}
+                    disabled={!hasUser || isLoading}
                     className="gap-2 border border-border/60 bg-white/90 dark:bg-popover-secondary/75 dark:shadow-black/30 hover:bg-black/[0.04] dark:hover:bg-hover/30 hover:text-foreground dark:hover:text-popover-text disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <PlusIcon className="size-4" />
@@ -166,8 +172,9 @@ export function InstructionManager() {
           <InstructionGrid 
             items={myInstructions}
             emptyMessage="No has creado instrucciones todavía. Crea una para personalizar tus respuestas."
-            currentUserId={user.id}
+            currentUserId={hasUser ? user.id : ""}
             onEdit={handleEdit}
+            isLoading={isLoading}
           />
         </div>
       </div>
@@ -189,8 +196,9 @@ export function InstructionManager() {
           <InstructionGrid 
             items={sharedWithMe}
             emptyMessage="Nadie ha compartido instrucciones directamente contigo aún."
-            currentUserId={user.id}
+            currentUserId={hasUser ? user.id : ""}
             onEdit={handleEdit}
+            isLoading={isLoading}
           />
         </div>
       </div>
@@ -212,8 +220,9 @@ export function InstructionManager() {
           <InstructionGrid 
             items={orgInstructions}
             emptyMessage="No hay instrucciones globales en tu organización actualmente."
-            currentUserId={user.id}
+            currentUserId={hasUser ? user.id : ""}
             onEdit={handleEdit}
+            isLoading={isLoading}
           />
         </div>
       </div>

@@ -1,5 +1,6 @@
+"use client";
+
 import { SettingsSection } from "@/components/settings/SettingsSection";
-import { withAuth } from "@workos-inc/authkit-nextjs";
 import { MODELS } from "@/lib/ai/ai-providers";
 import { type BaseModelConfig } from "@/lib/ai/config/base";
 import { AnthropicIcon } from "@/components/ui/icons/anthropic-icon";
@@ -67,8 +68,8 @@ const GROUPED_MODELS: Record<string, BaseModelConfig[]> = (() => {
   return grouped;
 })();
 
-export default async function ModelsPage() {
-  await withAuth({ ensureSignedIn: true });
+
+export default function ModelsPage() {
 
   return (
     <div className="py-6 px-4 md:py-12 md:px-12 flex flex-col max-w-4xl min-w-0 md:min-w-[520px] w-full min-h-full box-border">

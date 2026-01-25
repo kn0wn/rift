@@ -1,9 +1,10 @@
 "use client";
 
-import { usePreloadedQuery, Preloaded } from "convex/react";
+import { useQuery, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AlertTriangle, CreditCard } from "lucide-react";
 import { BillingButton } from "./BillingButton";
+import { BillingSkeleton } from "./BillingSkeleton";
 
 // Precios estimados en MXN (Hardcoded para visualización)
 // Plus: ~$10 USD -> $200 MXN
@@ -58,29 +59,21 @@ function formatPrice(amount: number): string {
   }).format(amount);
 }
 
-export function BillingContent({
-  preloadedBillingInfo,
-}: {
-  preloadedBillingInfo: Preloaded<typeof api.organizations.getOrganizationBillingInfo> | null;
-}) {
-  // If no preloaded data, show error
-  if (!preloadedBillingInfo) {
-    return (
-      <div className="p-6 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-900/50 flex items-start space-x-3">
-        <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5" />
-        <div>
-          <h3 className="text-sm font-medium text-red-800 dark:text-red-300">Error de autenticación</h3>
-          <p className="text-sm text-red-700 dark:text-red-400 mt-1">
-            No se pudo autenticar la sesión. Por favor intenta más tarde.
-          </p>
-        </div>
-      </div>
-    );
+export function BillingContent() {
+  const { isAuthenticated } = useConvexAuth();
+  
+  // Fetch billing info using useQuery
+  const billingInfo = useQuery(
+    api.organizations.getOrganizationBillingInfo,
+    isAuthenticated ? {} : "skip"
+  );
+
+  // Show skeleton while loading
+  if (billingInfo === undefined) {
+    return <BillingSkeleton />;
   }
 
-  // usePreloadedQuery provides reactivity after initial load
-  const billingInfo = usePreloadedQuery(preloadedBillingInfo);
-
+  // Show error if query failed or no data
   if (billingInfo === null) {
     return (
       <div className="p-6 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-900/50 flex items-start space-x-3">

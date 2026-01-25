@@ -59,11 +59,8 @@ export function useSelectedThreadUrlSync() {
 
   const skipNextUrlWriteRef = useRef(false);
   const hasInitializedRef = useRef(false);
-  // Store setSelectedThreadId in ref to avoid re-subscribing event listeners
-  // when the function reference changes (following best practice 8.1)
   const setSelectedThreadIdRef = useRef(setSelectedThreadId);
 
-  // Keep ref updated with latest function
   useEffect(() => {
     setSelectedThreadIdRef.current = setSelectedThreadId;
   }, [setSelectedThreadId]);
@@ -84,7 +81,6 @@ export function useSelectedThreadUrlSync() {
     const syncFromLocation = () => {
       const fromUrl = parseThreadIdFromPathname(window.location.pathname);
       skipNextUrlWriteRef.current = true;
-      // Use ref to access latest setSelectedThreadId without re-subscribing
       setSelectedThreadIdRef.current(fromUrl);
     };
 
@@ -97,7 +93,6 @@ export function useSelectedThreadUrlSync() {
       window.removeEventListener("popstate", onPopState);
       window.removeEventListener(RIFT_NAV_EVENT, onNavEvent);
     };
-    // Empty deps: event listeners are stable, setSelectedThreadId accessed via ref
   }, []);
 
   // Write URL when selection changes (in-app thread switching).
@@ -108,33 +103,22 @@ export function useSelectedThreadUrlSync() {
     const nextPath = pathnameForThreadId(selectedThreadId);
     const currentPath = window.location.pathname;
     
-    // If we're already at the correct path, no update needed
     if (currentPath === nextPath) {
-      // Reset skip flag if it was set, since we're in sync
       if (skipNextUrlWriteRef.current) {
         skipNextUrlWriteRef.current = false;
       }
       return;
     }
 
-    // If skipNextUrlWriteRef is set, it means we're syncing from a URL change.
-    // However, if the selectedThreadId doesn't match the current URL, we need to update.
-    // This handles the case where setSelectedThreadId is called directly (e.g., "Nuevo Chat" button).
     if (skipNextUrlWriteRef.current) {
       const currentUrlThreadId = parseThreadIdFromPathname(currentPath);
-      // If the store state doesn't match the current URL, we need to update the URL
-      // This ensures URL updates when clicking "Nuevo Chat" even if skipNextUrlWriteRef is set
       if (currentUrlThreadId === selectedThreadId) {
-        // They match, so this was a URL-initiated change - skip the write
         skipNextUrlWriteRef.current = false;
         return;
       }
-      // They don't match - this is a programmatic change, so update the URL
       skipNextUrlWriteRef.current = false;
     }
 
-    // Use replaceState for navigation to /chat (welcome page) to avoid unnecessary history entries
-    // Use pushState for thread selection to allow back button navigation
     if (selectedThreadId === null) {
       window.history.replaceState({ threadId: selectedThreadId }, "", nextPath);
     } else {

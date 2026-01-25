@@ -5,7 +5,6 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Skeleton } from "@/components/ai/ui/skeleton";
 
-// Hoist static JSX element outside component (best practice 6.3)
 const toggleSkeleton = (
   <div className="flex items-center">
     <Skeleton className="w-11 h-6 rounded-full" />
@@ -30,7 +29,6 @@ export function MemoriaSettings() {
     }
   }, [updatePreference]);
 
-  // Show skeleton while loading - Convex queries don't suspend, so we handle it here
   if (config === undefined) {
     return toggleSkeleton;
   }

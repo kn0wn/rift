@@ -1,8 +1,6 @@
 import { SettingsSection } from "@/components/settings";
 import { EarlyAccessIcon } from "@/components/ui/icons/landing-icons";
 
-export const dynamic = 'force-static';
-
 interface UpdateItem {
   id: string;
   version: string;

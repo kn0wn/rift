@@ -1,23 +1,12 @@
 "use client";
 
-import { usePreloadedQuery, Preloaded } from "convex/react";
+import { useQuery, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AlertTriangle } from "lucide-react";
 import { QuotaCard } from "./QuotaCard";
+import { UsageSkeleton } from "./UsageSkeleton";
 
 // Hoist static error JSX (Vercel best practice: rendering-hoist-jsx)
-const authError = (
-  <div className="p-6 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-900/50 flex items-start space-x-3">
-    <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5" />
-    <div>
-      <h3 className="text-sm font-medium text-red-800 dark:text-red-300">Error de autenticación</h3>
-      <p className="text-sm text-red-700 dark:text-red-400 mt-1">
-        No se pudo autenticar la sesión. Por favor intenta más tarde.
-      </p>
-    </div>
-  </div>
-);
-
 const dataError = (
   <div className="p-6 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-900/50">
     <p className="text-sm text-red-700 dark:text-red-400">
@@ -26,17 +15,21 @@ const dataError = (
   </div>
 );
 
-export function UsageDataClient({
-  preloadedQuotaInfo,
-}: {
-  preloadedQuotaInfo: Preloaded<typeof api.users.getUserFullQuotaInfo> | null;
-}) {
-  if (!preloadedQuotaInfo) {
-    return authError;
+export function UsageDataClient() {
+  const { isAuthenticated } = useConvexAuth();
+  
+  // Fetch quota info using useQuery
+  const quotaInfo = useQuery(
+    api.users.getUserFullQuotaInfo,
+    isAuthenticated ? {} : "skip"
+  );
+
+  // Show skeleton while loading
+  if (quotaInfo === undefined) {
+    return <UsageSkeleton />;
   }
 
-  const quotaInfo = usePreloadedQuery(preloadedQuotaInfo);
-
+  // Show error if query failed or no data
   if (!quotaInfo) {
     return dataError;
   }

@@ -2,25 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import { Skeleton } from "@/components/ai/ui/skeleton";
 import { Monitor } from "lucide-react";
 
 type Theme = "light" | "dark" | "system";
-
-const themeSkeleton = (
-  <div className="grid grid-cols-3 gap-4">
-    {[1, 2, 3].map((i) => (
-      <div
-        key={i}
-        className="border-2 border-gray-200 dark:border-border rounded-lg p-4"
-      >
-        <Skeleton className="h-20 w-full rounded mb-3" />
-        <Skeleton className="h-5 w-16 mx-auto mb-2" />
-        <Skeleton className="h-4 w-24 mx-auto" />
-      </div>
-    ))}
-  </div>
-);
 
 const themeOptions = [
   {
@@ -71,14 +55,11 @@ export function AppearanceSettings() {
     [handleThemeChange]
   );
 
-  if (!mounted) {
-    return themeSkeleton;
-  }
-
   return (
     <div className="grid grid-cols-3 gap-4">
       {themeOptions.map((themeOption) => {
-        const isSelected = theme === themeOption.id;
+        // Only show as selected once mounted and theme is available
+        const isSelected = mounted && theme === themeOption.id;
         const borderColor = isSelected
           ? "border-blue-500"
           : "border-gray-200 dark:border-border";

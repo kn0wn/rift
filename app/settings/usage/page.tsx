@@ -1,24 +1,7 @@
-import { Suspense } from "react";
-import { withAuth } from "@workos-inc/authkit-nextjs";
-import { preloadQuery } from "convex/nextjs";
-import { api } from "@/convex/_generated/api";
+"use client";
+
 import { SettingsSection } from "@/components/settings";
 import { UsageDataClient } from "./UsageDataClient";
-import { UsageSkeleton } from "./UsageSkeleton";
-
-async function UsageDataLoader() {
-  const session = await withAuth();
-  
-  const preloadedQuotaInfo = session?.accessToken
-    ? await preloadQuery(
-        api.users.getUserFullQuotaInfo,
-        {},
-        { token: session.accessToken }
-      )
-    : null;
-
-  return <UsageDataClient preloadedQuotaInfo={preloadedQuotaInfo} />;
-}
 
 export default function UsagePage() {
   return (
@@ -28,9 +11,7 @@ export default function UsagePage() {
         description="Monitorea el uso actual de tu cuota de mensajes Standard y Premium."
       >
         <div className="space-y-6">
-          <Suspense fallback={<UsageSkeleton />}>
-            <UsageDataLoader />
-          </Suspense>
+          <UsageDataClient />
 
           {/* Info Card */}
           <div className="p-6 bg-white dark:bg-popover-secondary rounded-lg border border-gray-200 dark:border-border shadow-sm">

@@ -1,6 +1,7 @@
+import { Suspense } from "react";
 import { SettingsSidebar } from "@/components/settings/settings-sidebar";
+import { SettingsSidebarSkeleton } from "@/components/settings/settings-sidebar-skeleton";
 import Link from 'next/link';
-import { withAuth } from "@workos-inc/authkit-nextjs";
 import { hasPermissions } from "@/lib/permissions";
 import { SettingsShell } from "@/components/settings/settings-shell";
 
@@ -44,11 +45,7 @@ const scrollbarStyles = `
   }
 `;
 
-export default async function SettingsLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+async function SettingsSidebarLoader() {
   // Batch permission checks to avoid duplicate JWT parsing within this request
   const batch = await hasPermissions([
     "WIDGETS_USERS_TABLE_MANAGE",
@@ -64,16 +61,28 @@ export default async function SettingsLayout({
   const canManageBilling = batch.MANAGE_BILLING;
   
   return (
+    <SettingsSidebar 
+      canManageMembers={canManageMembers}
+      canManageDomainSso={canManageDomainSso}
+      canViewAnalytics={canViewAnalytics}
+      canManageBilling={canManageBilling}
+    />
+  );
+}
+
+export default async function SettingsLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
     <>
       <style dangerouslySetInnerHTML={{ __html: scrollbarStyles }} />
       <SettingsShell
         sidebar={
-          <SettingsSidebar 
-            canManageMembers={canManageMembers}
-            canManageDomainSso={canManageDomainSso}
-            canViewAnalytics={canViewAnalytics}
-            canManageBilling={canManageBilling}
-          />
+          <Suspense fallback={<SettingsSidebarSkeleton />}>
+            <SettingsSidebarLoader />
+          </Suspense>
         }
       >
         {/* Close button - positioned fixed in top right to stay visible when scrolling */}

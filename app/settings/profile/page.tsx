@@ -6,6 +6,8 @@ import { ProfileDisplay, ProfileFormContent } from "@/components/settings/Profil
 import { Skeleton } from "@/components/ai/ui/skeleton";
 import { Button } from "@/components/ai/ui/button";
 
+export const dynamic = 'force-dynamic';
+
 const profileSkeleton = (
   <div className="p-6 bg-white dark:bg-popover-secondary rounded-lg border border-gray-200 dark:border-border shadow-sm">
     <div className="space-y-4">

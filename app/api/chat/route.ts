@@ -427,7 +427,6 @@ const handleChatRequest = (
             return fallbackProvider;
           })();
 
-    // Fetch user's supermemory preference
     const userConfig = yield* Effect.tryPromise({
       try: () =>
         fetchQuery(api.userConfiguration.serverGetUserConfiguration, {
@@ -442,7 +441,6 @@ const handleChatRequest = (
         }),
     });
 
-    // Supermemory is enabled only if both env var exists AND user preference is enabled
     const supermemoryEnabled = Boolean(process.env.SUPERMEMORY_API_KEY) && userConfig.supermemoryEnabled;
     const modelWithMemory = yield* Effect.try({
       try: () =>
