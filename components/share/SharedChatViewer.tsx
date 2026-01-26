@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQuery, useConvexAuth, useMutation, Unauthenticated } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import type { UIMessage } from "@ai-sdk-tools/store";
+import type { UIMessage } from "ai";
 import { isTextUIPart } from "ai";
 import {
   Conversation,

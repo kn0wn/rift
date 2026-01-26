@@ -4,7 +4,7 @@ import {
   AvatarImage,
 } from '@/components/ai/ui/avatar';
 import { cn } from '@/lib/utils';
-import type { UIMessage } from '@ai-sdk-tools/store';
+import type { UIMessage } from 'ai';
 import type { ComponentProps, HTMLAttributes } from 'react';
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {

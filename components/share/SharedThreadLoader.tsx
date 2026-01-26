@@ -10,7 +10,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Conversation, ConversationContent } from "@/components/ai/conversation";
 import { MessageRenderer } from "@/components/chat/components/message-renderer";
 import { ChatStoreProvider } from "@/lib/stores/hooks";
-import type { UIMessage } from "@ai-sdk-tools/store";
+import type { UIMessage } from "ai";
 
 const PAGE_SIZE = 30;
 

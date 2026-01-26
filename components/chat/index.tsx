@@ -1,6 +1,7 @@
 "use client";
 
-import { useChat, type UIMessage } from "@ai-sdk-tools/store";
+import { useChat } from "@ai-sdk/react";
+import type { UIMessage } from "ai";
 import { DefaultChatTransport } from "ai";
 import { usePathname, useRouter } from "next/navigation";
 import { generateUUID } from "@/lib/utils";

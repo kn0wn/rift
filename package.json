@@ -9,8 +9,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@ai-sdk-tools/store": "^0.8.2",
-    "@ai-sdk/react": "^2.0.118",
+    "@ai-sdk/react": "2.0.125",
     "@aws-sdk/client-s3": "^3.957.0",
     "@convex-dev/rate-limiter": "^0.2.14",
     "@convex-dev/workos": "^0.0.1",
@@ -63,8 +62,7 @@
     "@zxcvbn-ts/core": "^3.0.4",
     "@zxcvbn-ts/language-common": "^3.0.4",
     "@zxcvbn-ts/language-en": "^3.0.2",
-    "ai": "^5.0.116",
-    "ai-sdk-tools": "^0.4.7",
+    "ai": "5.0.123",
     "axiom": "^0.35.0",
     "botid": "^1.5.10",
     "class-variance-authority": "^0.7.1",
@@ -129,7 +127,6 @@
   },
   "trustedDependencies": [
     "@tailwindcss/oxide",
-    "ai-sdk-tools",
     "core-js",
     "esbuild",
     "unrs-resolver"

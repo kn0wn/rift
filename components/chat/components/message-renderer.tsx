@@ -29,7 +29,7 @@ import {
   SourcesTrigger,
 } from "@/components/ai/sources";
 import { Loader } from "@/components/ai/loader";
-import type { UIMessage } from "@ai-sdk-tools/store";
+import type { UIMessage } from "ai";
 import React, { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import Image from "next/image";
 
