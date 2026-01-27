@@ -316,10 +316,10 @@ export const ChatInputArea = React.memo(function ChatInputArea({
                     onClick={handleSearchToggle}
                     aria-label="Activar búsqueda web"
                     disabled={disableInput}
-                    variant={isSearchEnabled ? "default" : "ghost"}
+                    variant={isSearchEnabled ? "accent" : "ghost"}
                     className={
                       isSearchEnabled
-                        ? "bg-blue-600 hover:bg-blue-700 border-blue-600 text-white"
+                        ? "hover:bg-accent/50"
                         : undefined
                     }
                   >
