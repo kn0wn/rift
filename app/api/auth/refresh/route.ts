@@ -1,8 +1,8 @@
 /**
- * Create API route to refresh WorkOS session explicitly after Stripe return
+ * Create API route to refresh WorkOS session explicitly after payment provider checkout
  *
  * This endpoint forces an immediate session refresh using AuthKit's refreshSession.
- * It’s useful right after returning from Stripe so the new JWT reflects updated
+ * It’s useful right after returning from payment provider checkout (previously Stripe) so the new JWT reflects updated
  * roles/entitlements without signing the user out and back in.
  *
  * Usage (client):

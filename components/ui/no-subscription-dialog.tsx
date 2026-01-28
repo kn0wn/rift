@@ -10,6 +10,7 @@ import {
 } from "@/components/ai/ui/dialog";
 import { Button } from "@/components/ai/ui/button";
 import Link from "next/link";
+// "Renovar Plan" used to open Stripe portal via createStripePortalSession. Stripe removed.
 import { createStripePortalSession } from "@/actions/createStripePortalSession";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";

@@ -1,13 +1,9 @@
 import { NextResponse } from "next/server";
 
 /**
- * Server-side proxy to call Convex /stripe-success securely.
- *
- * Clients should POST here with:
- *   { "workosOrganizationId": "org_123" }
- *
- * This API will forward the request to your Convex HTTP endpoint with the
- * required Authorization header so you don't expose the secret in the browser.
+ * Server-side proxy to Convex /stripe-success. Previously ran syncStripeDataWithPeriod after Stripe Checkout success.
+ * Stripe removed; replace with new provider's success callback when migrating.
+ * Clients POST { "workosOrganizationId": "org_123" }; we forward to Convex with Authorization.
  */
 export async function POST(req: Request) {
   try {

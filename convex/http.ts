@@ -5,6 +5,7 @@ import { internal } from "./_generated/api";
 const http = httpRouter();
 
 // Protected endpoint to sync Stripe customer ID to an organization by WorkOS ID
+// STRIPE: Received { workos_id, stripeCustomerId }. Called setStripeCustomerIdByWorkOSId(workos_id, stripeCustomerId) to store payment-provider customer ID in Convex. Replace with new-provider sync when migrating.
 http.route({
   path: "/sync-stripe-customer",
   method: "POST",
@@ -26,14 +27,6 @@ http.route({
         headers: { "Content-Type": "application/json" },
       });
     }
-
-    await ctx.runMutation(
-      internal.organizations.setStripeCustomerIdByWorkOSId,
-      {
-        workos_id,
-        stripeCustomerId,
-      },
-    );
 
     return new Response(JSON.stringify({ status: "ok" }), {
       status: 200,
@@ -70,7 +63,7 @@ http.route({
       { workos_id },
     );
 
-    // Return only the stripeCustomerId to minimize data transfer
+    // stripeCustomerId was the Stripe customer ID; reuse this field for new provider's customer ID when migrating.
     const response = {
       stripeCustomerId: organization?.stripeCustomerId || null,
     };
@@ -154,11 +147,11 @@ http.route({
 
           break;
         }
+        // STRIPE: WorkOS may send stripe_customer_id; we stored it. Omit when migrating to new provider.
         case "organization.created": {
           await ctx.runMutation(internal.organizations.createOrganization, {
             name: data.name,
             workos_id: data.id,
-            stripeCustomerId: data.stripe_customer_id || undefined,
           });
           break;
         }
@@ -198,12 +191,8 @@ http.route({
             );
           }
 
-          const patch: { name: string; stripeCustomerId?: string } = {
-            name: data.name,
-          };
-          if (data.stripe_customer_id) {
-            patch.stripeCustomerId = data.stripe_customer_id;
-          }
+          // STRIPE: optionally update stripeCustomerId from WorkOS. Omit when migrating.
+          const patch = { name: data.name };
 
           await ctx.runMutation(internal.organizations.updateOrganization, {
             id: organization._id,
@@ -259,11 +248,12 @@ http.route({
 });
 
 // Stripe webhook endpoint
+// STRIPE: 1) Verify: stripe.webhooks.constructEvent(payload, stripe-signature, STRIPE_WEBHOOK_SECRET)
+// STRIPE: 2) Process: switch on event.type (checkout.session.completed, customer.subscription.*, invoice.*, payment_intent.*). For checkout.session.completed / customer.subscription.created: if paid sub, list and cancel free subs. For all: extract billing period from event, run syncStripeDataWithPeriod(stripeCustomerId, billingPeriod). Return 200.
 http.route({
   path: "/stripe-webhook",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
-    const bodyText = await request.text();
     const sigHeader = request.headers.get("stripe-signature");
 
     if (!sigHeader) {
@@ -276,50 +266,23 @@ http.route({
       );
     }
 
-    try {
-      // Verify the webhook signature
-      const event = await ctx.runAction(internal.stripe.verifyStripeWebhook, {
-        payload: bodyText,
-        signature: sigHeader,
-      });
-
-      // Handle the webhook event
-      const result = await ctx.runAction(internal.stripe.processStripeEvent, {
-        event,
-      });
-
-      return new Response(
-        JSON.stringify({
-          status: "success",
-          eventType: result.eventType,
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
-    } catch (error) {
-      console.error("Stripe webhook error:", error);
-
-      return new Response(
-        JSON.stringify({ error: "Webhook processing failed" }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
-    }
+    return new Response(
+      JSON.stringify({ status: "ok", message: "Stripe removed; webhook not processed" }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }),
 });
 
 // Stripe success endpoint
-// Eagerly sync Stripe subscription data to minimize race with webhooks
+// STRIPE: After Stripe Checkout success, eagerly ran syncStripeDataWithPeriod(organization.stripeCustomerId) to sync subscription into Convex before webhooks. Replace with new provider's post-checkout sync when migrating.
 http.route({
   path: "/stripe-success",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     try {
-      // Protect with shared secret
       const authHeader = request.headers.get("authorization") || "";
       const expected = `Bearer ${process.env.CONVEX_SYNC_SECRET ?? ""}`;
       if (!process.env.CONVEX_SYNC_SECRET || authHeader !== expected) {
@@ -342,12 +305,9 @@ http.route({
         );
       }
 
-      // Confirm the organization exists
       const organization = await ctx.runQuery(
         internal.organizations.getByWorkOSId,
-        {
-          workos_id: workosOrganizationId,
-        },
+        { workos_id: workosOrganizationId },
       );
 
       if (!organization) {
@@ -360,32 +320,8 @@ http.route({
         );
       }
 
-      if (!organization.stripeCustomerId) {
-        return new Response(
-          JSON.stringify({
-            error: "Organization missing Stripe customer ID",
-          }),
-          {
-            status: 400,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
-
-      // Eagerly sync latest subscription snapshot from Stripe
-      const synced = await ctx.runAction(
-        internal.organizations.syncStripeDataWithPeriod,
-        {
-          stripeCustomerId: organization.stripeCustomerId,
-          // billingPeriod can be omitted; current period derived from Stripe
-        },
-      );
-
       return new Response(
-        JSON.stringify({
-          status: "success",
-          synced,
-        }),
+        JSON.stringify({ status: "ok", message: "Stripe removed" }),
         {
           status: 200,
           headers: { "Content-Type": "application/json" },

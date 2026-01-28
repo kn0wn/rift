@@ -22,7 +22,8 @@ import {
   } as const;
     
   /**
-   * List all organizations with their data for admin dashboard
+   * List all organizations with their data for admin dashboard.
+   * stripeCustomerId was from Stripe; reuse for new provider when migrating.
    */
   export const listAllOrganizations = internalQuery({
     args: {},

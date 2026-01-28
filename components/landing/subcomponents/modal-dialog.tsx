@@ -7,8 +7,7 @@ import { useRouter } from "next/navigation";
 import { SettingsInput } from "@/components/settings";
 
 /**
- * The 'subscriptionLevel' prop is the name of the subscription plan and is directly tied to the Stripe price lookup key.
- * We need to have a price in Stripe with the same lookup key as the subscriptionLevel.
+ * subscriptionLevel was used as Stripe price lookup key. Replace with new provider's plan/price mapping when migrating.
  */
 export function ModalDialog({
   subscriptionLevel,
@@ -43,7 +42,6 @@ export function ModalDialog({
     }
 
     // Call API to create a new organization and subscribe to plan
-    // The user will be redirected to Stripe Checkout
     const res = await fetch("/api/subscribe", {
       method: "POST",
       headers: {

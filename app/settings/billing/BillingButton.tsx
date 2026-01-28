@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+// createStripePortalSession opens payment-provider billing portal (Stripe removed, currently throws).
 import { createStripePortalSession } from "@/actions/createStripePortalSession";
 
 export function BillingButton({ stripeCustomerId }: { stripeCustomerId?: string }) {

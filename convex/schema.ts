@@ -30,15 +30,15 @@ export default defineSchema({
   organizations: defineTable({
     workos_id: v.string(),
     name: v.string(),
+    // Payment-provider customer ID (was Stripe). Replace with new provider's field when migrating.
     stripeCustomerId: v.optional(v.string()),
     billingCycleStart: v.optional(v.number()),
     billingCycleEnd: v.optional(v.number()),
     standardQuotaLimit: v.optional(v.number()),
     premiumQuotaLimit: v.optional(v.number()),
-    // Plan field based on Stripe price lookup key
+    // Plan; was based on Stripe price lookup key. Subscription data below was synced from Stripe; repurpose for new provider.
     plan: v.optional(v.union(v.literal("free"), v.literal("plus"), v.literal("pro"), v.literal("enterprise"))),
     seatQuantity: v.optional(v.number()),
-    // Stripe subscription data
     subscriptionId: v.optional(v.string()),
     subscriptionStatus: v.optional(
       v.union(
@@ -58,6 +58,7 @@ export default defineSchema({
     paymentMethodLast4: v.optional(v.string()),
   })
     .index("by_workos_id", ["workos_id"])
+    // Reuse for new provider's customer ID when migrating.
     .index("by_stripe_customer_id", ["stripeCustomerId"]),
   threads: defineTable({
     threadId: v.string(), // User client Defined

@@ -10,7 +10,6 @@ import { Id } from "./_generated/dataModel";
 import { getAuthUserIdentity } from "./helpers/getUser";
 import { extractOrganizationIdFromJWT } from "./helpers/quota";
 import { PermissionQuery, AuthOrgQuery } from "./helpers/authenticated";
-import type Stripe from "stripe";
 import { serverSecretArg, ensureServerSecret } from "./helpers/auth";
 
 // Plan quota configuration // Could remove and use stripe metadata to fetch plan details
@@ -188,6 +187,7 @@ export const getOrganizationInfo = internalQuery({
   },
 });
 
+// Previously set Stripe customer ID. Reuse for new provider's customer ID when migrating.
 export const setStripeCustomerIdByWorkOSId = internalMutation({
   args: { workos_id: v.string(), stripeCustomerId: v.string() },
   handler: async (ctx, args) => {
@@ -211,6 +211,7 @@ export const setStripeCustomerIdByWorkOSId = internalMutation({
   },
 });
 
+// Lookup org by payment-provider customer ID (was Stripe). Reuse index for new provider.
 export const getOrganizationByStripeCustomerId = internalQuery({
   args: { stripeCustomerId: v.string() },
   handler: async (ctx, args) => {
@@ -224,6 +225,7 @@ export const getOrganizationByStripeCustomerId = internalQuery({
   },
 });
 
+// Writes subscription fields (plan, status, billing cycle, payment method, etc.) from payment-provider. Was driven by Stripe data.
 export const syncStripeSubscriptionData = internalMutation({
   args: {
     stripeCustomerId: v.string(),
@@ -319,6 +321,10 @@ export const syncStripeSubscriptionData = internalMutation({
   },
 });
 
+// STRIPE: 1) org = getOrganizationByStripeCustomerId(stripeCustomerId). If !org: customer = stripe.customers.retrieve(stripeCustomerId), workOSOrganizationId = customer.metadata.workOSOrganizationId; getOrCreate org by workos_id, set stripeCustomerId.
+// STRIPE: 2) subscriptions = stripe.subscriptions.list({ customer, limit: 1, status: 'all', expand: [default_payment_method, items.data.price] })
+// STRIPE: 3) If none: subscriptionData = { status: 'none', billingCycleStart: billingPeriod?.start, billingCycleEnd: billingPeriod?.end }. Else: subscriptionData = { subscriptionId, status, priceId, lookupKey, billingCycleStart/End, cancelAtPeriodEnd, paymentMethodBrand/Last4, seatQuantity } from subscription and first item.
+// STRIPE: 4) await syncStripeSubscriptionData(stripeCustomerId, subscriptionData). Return subscriptionData.
 export const syncStripeDataWithPeriod = internalAction({
   args: {
     stripeCustomerId: v.string(),
@@ -329,187 +335,8 @@ export const syncStripeDataWithPeriod = internalAction({
       }),
     ),
   },
-  handler: async (
-    ctx,
-    args,
-  ): Promise<{
-    subscriptionId?: string;
-    status: string;
-    priceId?: string;
-    billingCycleStart?: number;
-    billingCycleEnd?: number;
-    cancelAtPeriodEnd?: boolean;
-    paymentMethodBrand?: string;
-    paymentMethodLast4?: string;
-    seatQuantity?: number;
-  }> => {
-    const { default: Stripe } = await import("stripe");
-    const stripe = new Stripe(process.env.STRIPE_API_KEY!);
-    const secondsToMillis = (value?: number | null) =>
-      typeof value === "number" ? value * 1000 : undefined;
-
-    try {
-      // Check if organization exists by stripeCustomerId, if not, fetch customer metadata
-      let organization = await ctx.runQuery(
-        internal.organizations.getOrganizationByStripeCustomerId,
-        {
-          stripeCustomerId: args.stripeCustomerId,
-        },
-      );
-
-      // If organization not found, try to find/create it using Stripe customer metadata
-      if (!organization) {
-        console.warn(
-          `[Stripe Sync Fallback] Organization not found by stripeCustomerId: ${args.stripeCustomerId}. Attempting fallback lookup via Stripe customer metadata.`,
-        );
-        try {
-          const customer = await stripe.customers.retrieve(args.stripeCustomerId);
-          if (customer && typeof customer === "object" && !customer.deleted) {
-            const workOSOrganizationId =
-              customer.metadata?.workOSOrganizationId;
-            if (workOSOrganizationId) {
-              // Find or create organization by workos_id
-              let org = await ctx.runQuery(
-                internal.organizations.getByWorkOSId,
-                {
-                  workos_id: workOSOrganizationId,
-                },
-              );
-
-              if (!org) {
-                // Organization doesn't exist yet, create it
-                // We'll need to fetch the org name from WorkOS or use a placeholder
-                // For now, create with empty name - it will be updated by WorkOS webhook
-                console.warn(
-                  `[Stripe Sync Fallback] Creating organization for workos_id: ${workOSOrganizationId} (stripeCustomerId: ${args.stripeCustomerId})`,
-                );
-                await ctx.runMutation(
-                  internal.organizations.setStripeCustomerIdByWorkOSId,
-                  {
-                    workos_id: workOSOrganizationId,
-                    stripeCustomerId: args.stripeCustomerId,
-                  },
-                );
-                org = await ctx.runQuery(
-                  internal.organizations.getByWorkOSId,
-                  {
-                    workos_id: workOSOrganizationId,
-                  },
-                );
-              } else if (!org.stripeCustomerId) {
-                // Organization exists but missing stripeCustomerId, update it
-                console.warn(
-                  `[Stripe Sync Fallback] Updating existing organization ${org._id} with stripeCustomerId: ${args.stripeCustomerId}`,
-                );
-                await ctx.runMutation(internal.organizations.updateOrganization, {
-                  id: org._id,
-                  patch: { stripeCustomerId: args.stripeCustomerId },
-                });
-              }
-              organization = org;
-            }
-          }
-        } catch (error) {
-          console.error(
-            `Failed to fetch Stripe customer ${args.stripeCustomerId} for fallback lookup:`,
-            error,
-          );
-        }
-      }
-
-      // If still no organization found, throw error
-      if (!organization) {
-        throw new Error(
-          `Organization not found for Stripe customer ID: ${args.stripeCustomerId}. Could not find or create organization.`,
-        );
-      }
-
-      // Fetch latest subscription data from Stripe
-      const subscriptions = await stripe.subscriptions.list({
-        customer: args.stripeCustomerId,
-        limit: 1,
-        status: "all",
-        expand: ["data.default_payment_method", "data.items.data.price"],
-      });
-
-      let subscriptionData;
-
-      if (subscriptions.data.length === 0) {
-        subscriptionData = {
-          status: "none",
-          billingCycleStart: args.billingPeriod?.start,
-          billingCycleEnd: args.billingPeriod?.end,
-          seatQuantity: null,
-        };
-      } else {
-        const subscription = subscriptions.data[0] as Stripe.Subscription;
-        const price = subscription.items.data[0]?.price;
-        const lookupKey = price?.lookup_key || null;
-        const firstItem = subscription.items.data[0];
-        const billingCycleStart =
-          args.billingPeriod?.start ??
-          secondsToMillis(firstItem?.current_period_start ?? null);
-        const billingCycleEnd =
-          args.billingPeriod?.end ??
-          secondsToMillis(firstItem?.current_period_end ?? null);
-
-        subscriptionData = {
-          subscriptionId: subscription.id,
-          status: subscription.status,
-          priceId: price?.id || null,
-          lookupKey,
-          billingCycleStart,
-          billingCycleEnd,
-          cancelAtPeriodEnd: subscription.cancel_at_period_end,
-          paymentMethodBrand:
-            subscription.default_payment_method &&
-            typeof subscription.default_payment_method !== "string"
-              ? (
-                  subscription.default_payment_method as {
-                    card?: { brand?: string };
-                  }
-                ).card?.brand || null
-              : null,
-          paymentMethodLast4:
-            subscription.default_payment_method &&
-            typeof subscription.default_payment_method !== "string"
-              ? (
-                  subscription.default_payment_method as {
-                    card?: { last4?: string };
-                  }
-                ).card?.last4 || null
-              : null,
-          seatQuantity: subscription.items.data[0]?.quantity ?? null,
-        };
-      }
-
-      // Store the data in Convex
-      await ctx.runMutation(internal.organizations.syncStripeSubscriptionData, {
-        stripeCustomerId: args.stripeCustomerId,
-        subscriptionData,
-      });
-
-      // Convert null values to undefined for return type compatibility
-      return {
-        ...subscriptionData,
-        priceId: subscriptionData.priceId || undefined,
-        billingCycleStart: subscriptionData.billingCycleStart || undefined,
-        billingCycleEnd: subscriptionData.billingCycleEnd || undefined,
-        paymentMethodBrand: subscriptionData.paymentMethodBrand || undefined,
-        paymentMethodLast4: subscriptionData.paymentMethodLast4 || undefined,
-        seatQuantity:
-          typeof subscriptionData.seatQuantity === "number"
-            ? subscriptionData.seatQuantity
-            : undefined,
-      };
-    } catch (error) {
-      console.error(
-        "Failed to sync Stripe data for customer:",
-        args.stripeCustomerId,
-      );
-      console.error("Error details:", error);
-      throw error;
-    }
+  handler: async (_ctx, _args) => {
+    throw new Error("Stripe removed. Replace with new provider sync. See pseudocode above.");
   },
 });
 

@@ -196,7 +196,8 @@ function SubscribePageContent() {
         <div className="flex items-center justify-center min-h-screen">
             <div className="flex flex-col items-center space-y-4">
                 {!error && <LoadingIcon className="size-8 animate-spin" />}
-                {!error && <p className="text-sm text-muted-foreground">Redirigiendo a Stripe...</p>}
+                {/* Previously: "Redirigiendo a Stripe...". Replace with new provider when migrating. */}
+                {!error && <p className="text-sm text-muted-foreground">Redirigiendo a checkout…</p>}
                 {error && (
                     <>
                         <p className="text-red-500 text-sm text-center max-w-md">{error}</p>

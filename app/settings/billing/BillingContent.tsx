@@ -127,6 +127,7 @@ export function BillingContent() {
             </div>
             {billingInfo.plan !== "enterprise" && (
               <div className="mt-4">
+                {/* BillingButton opened Stripe Billing Portal; Stripe removed. */}
                 <BillingButton stripeCustomerId={billingInfo.stripeCustomerId} />
               </div>
             )}

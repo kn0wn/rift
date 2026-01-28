@@ -19,7 +19,6 @@ import type * as http from "../http.js";
 import type * as organizations from "../organizations.js";
 import type * as share from "../share.js";
 import type * as storageActions from "../storageActions.js";
-import type * as stripe from "../stripe.js";
 import type * as threads from "../threads.js";
 import type * as userConfiguration from "../userConfiguration.js";
 import type * as users from "../users.js";
@@ -43,7 +42,6 @@ declare const fullApi: ApiFromModules<{
   organizations: typeof organizations;
   share: typeof share;
   storageActions: typeof storageActions;
-  stripe: typeof stripe;
   threads: typeof threads;
   userConfiguration: typeof userConfiguration;
   users: typeof users;

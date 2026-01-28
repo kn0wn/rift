@@ -40,6 +40,7 @@ interface Organization {
   billingCycleStart?: number;
   billingCycleEnd?: number;
   subscriptionStatus?: string;
+  /** (formerly Stripe) payment-provider customer ID */
   stripeCustomerId?: string;
   cancelAtPeriodEnd?: boolean;
 }
