@@ -36,6 +36,7 @@ import {
   AuthenticationError,
   NoOrganizationError,
   NoSubscriptionError,
+  SeatLimitError,
   QuotaExceededError,
   DatabaseError,
   AbortError,
@@ -58,15 +59,14 @@ import {
   validateRegenerateRequest,
   filterMessagesForModel,
   getAuthContext,
-  checkUserQuota,
   handleRegeneration,
   sendUserMessage,
-  incrementUserQuota,
   startAssistantMessage,
   appendMessageDelta,
   finalizeAssistantMessage,
   addSourcesToMessage,
-  incrementToolCallQuota,
+  UserQuota,
+  setThreadFailedToFailed,
   databaseRetrySchedule,
   classifyProviderError,
   generateIdempotencyKey,
@@ -174,6 +174,16 @@ const errorToResponse = (
         },
         403,
         "NO_SUBSCRIPTION"
+      );
+
+    case "SeatLimitError":
+      return makeResponse(
+        {
+          error: "Seat limit reached",
+          message: error.message,
+        },
+        403,
+        "SEAT_LIMIT"
       );
 
     case "QuotaExceededError":
@@ -380,8 +390,26 @@ const handleChatRequest = (
     const auth = yield* getAuthContext();
     logContext.userId = auth.userId;
 
+    // Fetch org plan to branch quota: Enterprise = entity-level; Plus/Pro/Free = customer-level
+    const plan = yield* Effect.tryPromise({
+      try: () =>
+        fetchQuery(api.organizations.getOrganizationPlan, {
+          workos_id: auth.orgId,
+          secret: process.env.CONVEX_SECRET_TOKEN!,
+        }),
+      catch: (error) =>
+        new DatabaseError({
+          message: "Failed to fetch organization plan",
+          operation: "getOrganizationPlan",
+          cause: error,
+        }),
+    }).pipe(Effect.catchAll(() => Effect.succeed(null)));
+    const isEnterprise = plan === "enterprise";
+
     logger.debug("Authentication complete", logContext, { 
-      timeMs: Date.now() - start 
+      timeMs: Date.now() - start,
+      plan: plan ?? null,
+      isEnterprise,
     });
 
     // Validate thread ownership and custom instruction access
@@ -399,6 +427,7 @@ const handleChatRequest = (
       });
     }
 
+    const rest: Effect.Effect<Response, ChatRouteError, Scope.Scope> = Effect.gen(function* () {
     const customInstructionsContent = customInstruction?.instructions;
     const validatedCustomInstructionId = customInstruction ? customInstructionId : undefined;
 
@@ -553,7 +582,20 @@ const handleChatRequest = (
       }),
       // Quota check
       lastUser && (userText || userFiles.length > 0)
-        ? checkUserQuota(auth.userId, auth.orgId, modelId)
+        ? Effect.gen(function* () {
+            const quotaType = isPremium(modelId) ? "premium" : "standard";
+            const featureId = quotaType;
+            yield* UserQuota.check({
+              customer_id: auth.orgId,
+              feature_id: featureId,
+              ...(isEnterprise
+                ? { entity_id: auth.userId, entity_name: auth.userName }
+                : {}),
+              quotaType,
+            });
+
+            return { allowed: true as const, quotaType };
+          })
         : Effect.succeed({ allowed: true as const, quotaType }),
     ], { concurrency: 2 });
 
@@ -632,14 +674,6 @@ const handleChatRequest = (
           )
         );
       } else {
-        // Run synchronously for regeneration quota increment
-        yield* incrementUserQuota(auth.userId, auth.orgId, quotaType).pipe(
-          Effect.tapError((error) =>
-            Effect.sync(() => {
-              logger.error(`Failed to increment quota: ${idempotencyKey}`, logContext, error);
-            })
-          )
-        );
       }
     }
 
@@ -795,10 +829,15 @@ const handleChatRequest = (
               });
               try {
                 await Effect.runPromise(
-                  incrementToolCallQuota(auth.userId, finalState.searchToolCallCount)
+                  UserQuota.track({
+                    customer_id: auth.orgId,
+                    feature_id: quotaType,
+                    ...(isEnterprise ? { entity_id: auth.userId } : {}),
+                    value: finalState.searchToolCallCount,
+                  })
                 );
               } catch (err) {
-                logger.error("Failed to increment tool quota", logContext, err);
+                logger.error("Failed to track tool quota (Autumn)", logContext, err);
               }
             }
 
@@ -816,6 +855,16 @@ const handleChatRequest = (
         logger.debug("Starting AI stream", logContext, { timeMs: Date.now() - start });
 
         try {
+          // Track message usage (+1) whenever generation starts.
+          await Effect.runPromise(
+            UserQuota.track({
+              customer_id: auth.orgId,
+              feature_id: quotaType,
+              ...(isEnterprise ? { entity_id: auth.userId } : {}),
+              value: 1,
+            })
+          );
+
           const result = streamText({
             model,
             messages: await convertToModelMessages(
@@ -956,10 +1005,15 @@ const handleChatRequest = (
                 });
                 try {
                   await Effect.runPromise(
-                    incrementToolCallQuota(auth.userId, finalState.searchToolCallCount)
+                    UserQuota.track({
+                      customer_id: auth.orgId,
+                      feature_id: quotaType,
+                      ...(isEnterprise ? { entity_id: auth.userId } : {}),
+                      value: finalState.searchToolCallCount,
+                    })
                   );
                 } catch (err) {
-                  logger.error("Failed to increment tool quota", logContext, err);
+                  logger.error("Failed to track tool quota (Autumn)", logContext, err);
                 }
               }
 
@@ -1094,6 +1148,15 @@ const handleChatRequest = (
         "X-Request-ID": requestId,
       },
     });
+    });
+    return yield* rest.pipe(
+      Effect.catchAll((err: ChatRouteError) =>
+        setThreadFailedToFailed({ userId: auth.userId, threadId }).pipe(
+          Effect.catchAll(() => Effect.succeed(undefined)),
+          Effect.flatMap(() => Effect.fail(err))
+        )
+      )
+    );
   });
 
 // ============================================================================
@@ -1145,6 +1208,7 @@ export async function POST(req: Request): Promise<Response> {
       // BotDetectionError: (e: BotDetectionError) => Effect.succeed(errorToResponse(e, start, requestId, logContext)),
       NoOrganizationError: (e: NoOrganizationError) => Effect.succeed(errorToResponse(e, start, requestId, logContext)),
       NoSubscriptionError: (e: NoSubscriptionError) => Effect.succeed(errorToResponse(e, start, requestId, logContext)),
+      SeatLimitError: (e: SeatLimitError) => Effect.succeed(errorToResponse(e, start, requestId, logContext)),
       QuotaExceededError: (e: QuotaExceededError) => Effect.succeed(errorToResponse(e, start, requestId, logContext)),
       AbortError: (e: AbortError) => Effect.succeed(errorToResponse(e, start, requestId, logContext)),
       DatabaseError: (e: DatabaseError) => Effect.succeed(errorToResponse(e, start, requestId, logContext)),

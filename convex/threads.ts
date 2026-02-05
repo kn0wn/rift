@@ -2,13 +2,7 @@ import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId, getAuthUserIdentity } from "./helpers/getUser";
 import { paginationOptsValidator } from "convex/server";
-import {
-  extractOrganizationIdFromJWT,
-  checkQuotaLimit,
-  incrementQuotaUsage,
-  incrementToolCallQuota,
-  getOrganizationBillingCycle,
-} from "./helpers/quota";
+import { extractOrganizationIdFromJWT } from "./helpers/identity";
 import { ensureServerSecret } from "./helpers/auth";
 import { AuthMutation, AuthOrgMutation, AuthQuery } from "./helpers/authenticated";
 
@@ -659,7 +653,6 @@ export const serverSendMessage = mutation({
       );
     }
 
-    const billingCycle = await getOrganizationBillingCycle(ctx, args.orgId);
     const now = Date.now();
 
     // Idempotency: if a message with this messageId already exists for this user, return it
@@ -684,13 +677,6 @@ export const serverSendMessage = mutation({
     if (!thread) {
       throw new Error("Thread not found or access denied");
     }
-
-    await incrementQuotaUsage(
-      ctx,
-      args.userId,
-      args.quotaType,
-      billingCycle?.billingCycleStart,
-    );
 
     const messageDocId = await ctx.db.insert("messages", {
       messageId: args.messageId,
@@ -971,6 +957,41 @@ export const serverFinalizeAssistantMessage = mutation({
 });
 
 /**
+ * Set thread generation status (e.g. to "failed" when the chat route returns an error
+ * before or without calling serverFinalizeAssistantMessage). Called from the Next.js chat API.
+ * Only updates if current status is "pending" or "generation" so we do not overwrite "completed".
+ */
+export const serverSetThreadGenerationStatus = mutation({
+  args: {
+    secret: v.string(),
+    userId: v.string(),
+    threadId: v.string(),
+    status: v.union(v.literal("failed"), v.literal("completed")),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    ensureServerSecret(args.secret);
+    const thread = await ctx.db
+      .query("threads")
+      .withIndex("by_user_and_threadId", (q) =>
+        q.eq("userId", args.userId).eq("threadId", args.threadId),
+      )
+      .unique();
+    if (!thread) return null;
+    if (thread.generationStatus !== "pending" && thread.generationStatus !== "generation") {
+      return null;
+    }
+    const now = Date.now();
+    await ctx.db.patch(thread._id, {
+      generationStatus: args.status,
+      updatedAt: now,
+      lastMessageAt: now,
+    });
+    return null;
+  },
+});
+
+/**
  * Delete a specific message by messageId
  */
 export const deleteMessage = AuthMutation({
@@ -1041,24 +1062,6 @@ export const updateUserMessageContent = AuthMutation({
       });
     }
 
-    return null;
-  },
-});
-
-/**
- * Increment tool call quota for a user (server-side only)
- * This mutation is secured with a secret token to prevent client-side abuse
- */
-export const serverIncrementToolCallQuota = mutation({
-  args: {
-    secret: v.string(),
-    userId: v.string(),
-    toolCallCount: v.number(),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    ensureServerSecret(args.secret);
-    await incrementToolCallQuota(ctx, args.userId, args.toolCallCount);
     return null;
   },
 });
