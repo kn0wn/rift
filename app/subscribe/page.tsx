@@ -11,7 +11,6 @@ import { Button } from "@/components/ai/ui/button";
 import { landingPlans } from "@/components/landing/data/pricing";
 import { ensureWorkosOrganization } from "@/actions/ensureWorkosOrganization";
 import { getSubscribeCheckoutUrl } from "@/actions/getSubscribeCheckoutUrl";
-import { useHasPermission } from "@/lib/permissions-client";
 
 const GRADIENTS: Record<string, React.ReactNode> = {
     "1": (
@@ -124,7 +123,6 @@ const BILLING_PERMISSION_MESSAGE =
 
 function SubscribePageContent() {
   const { user, organizationId, switchToOrganization } = useAuth();
-  const canManageBilling = useHasPermission("MANAGE_BILLING");
   const searchParams = useSearchParams();
   const planParam = searchParams.get("plan")?.toLowerCase() ?? null;
   const router = useRouter();
@@ -145,16 +143,14 @@ function SubscribePageContent() {
     }
   }, [planParam, router]);
 
-  // Has org + valid plan: run checkout (requires MANAGE_BILLING)
+  // Has org + valid plan: run checkout (server enforces MANAGE_BILLING)
+  // We don't block on client canManageBilling — after org creation the token can be stale
+  // and show no permission yet; the server has the authoritative session and will redirect.
   const userId = user?.id ?? null;
   const orgId = organizationId ?? null;
   useEffect(() => {
     if (!userId || !orgId || !isValidPlan(planParam)) return;
     if (startedRef.current) return;
-    if (!canManageBilling) {
-      setError(BILLING_PERMISSION_MESSAGE);
-      return;
-    }
 
     startedRef.current = true;
     setLoading(true);
@@ -191,7 +187,7 @@ function SubscribePageContent() {
         setLoading(false);
       }
     })();
-  }, [userId, orgId, planParam, canManageBilling, router]);
+  }, [userId, orgId, planParam, router]);
 
   if (!user || !planParam || !isValidPlan(planParam)) return null;
 
