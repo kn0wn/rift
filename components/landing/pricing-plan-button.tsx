@@ -21,21 +21,43 @@ type PlanButtonConfig = {
   openBillingPortal?: boolean;
 };
 
+type PricingButtonLabels = {
+  loading: string;
+  subscribe: string;
+  activeSubscription: string;
+  manage: string;
+  active: string;
+  changeToPro: string;
+  changeToPlan: string;
+};
+
+const DEFAULT_BUTTON_LABELS: PricingButtonLabels = {
+  loading: "Suscribirse",
+  subscribe: "Suscribirse",
+  activeSubscription: "Suscripción activa",
+  manage: "Administrar",
+  active: "Activa",
+  changeToPro: "Cambiar a Pro",
+  changeToPlan: "Cambiar a {planName}",
+};
+
 type PricingPlanButtonProps = {
   plan: LandingPlan;
   slug: PlanSlug;
+  buttonLabels?: Partial<PricingButtonLabels>;
 };
 
 const PAID_PLAN_SLUGS = new Set<PlanSlug>(["plus", "pro"]);
 
-export function PricingPlanButton({ plan, slug }: PricingPlanButtonProps) {
+export function PricingPlanButton({ plan, slug, buttonLabels }: PricingPlanButtonProps) {
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const [isPortalLoading, setIsPortalLoading] = useState(false);
   const { checkout } = useCustomer();
   const resolvedContext = usePricingContext();
   const canManageBilling = resolvedContext.canManageBilling;
+  const labels = { ...DEFAULT_BUTTON_LABELS, ...buttonLabels };
 
-  const cta = buildPlanCta(slug, plan, resolvedContext);
+  const cta = buildPlanCta(slug, plan, resolvedContext, labels);
 
   let linkHref: string | null =
     !cta.disabled && typeof cta.href === "string" ? cta.href : null;
@@ -56,7 +78,7 @@ export function PricingPlanButton({ plan, slug }: PricingPlanButtonProps) {
     return (
       <div className="flex w-full flex-col gap-3">
         <Button className={CTA_BUTTON_CLASS} disabled aria-busy="true" aria-live="polite">
-          Suscribirse
+          {labels.loading}
         </Button>
       </div>
     );
@@ -149,6 +171,7 @@ function buildPlanCta(
   slug: PlanSlug,
   plan: LandingPlan,
   context: PricingContext,
+  labels: PricingButtonLabels,
 ): PlanButtonConfig {
   const defaultHref = getDefaultPlanHref(slug, context.isAuthenticated, plan);
   const isEnterprisePlan = slug === "enterprise";
@@ -160,7 +183,7 @@ function buildPlanCta(
       !context.canManageBilling
     ) {
       return {
-        label: "Suscribirse",
+        label: labels.subscribe,
         disabled: true,
       };
     }
@@ -175,7 +198,7 @@ function buildPlanCta(
 
   if (!context.activePlan) {
     return {
-      label: "Suscripción activa",
+      label: labels.activeSubscription,
       disabled: true,
     };
   }
@@ -187,7 +210,7 @@ function buildPlanCta(
   if (isSamePlan) {
     if (context.canManageBilling) {
       return {
-        label: "Administrar",
+        label: labels.manage,
         href: "/settings/billing",
         external: false,
         disabled: false,
@@ -196,14 +219,14 @@ function buildPlanCta(
     }
 
     return {
-      label: "Activa",
+      label: labels.active,
       disabled: true,
     };
   }
 
   if (targetRank < userRank) {
     return {
-      label: "Suscribirse",
+      label: labels.subscribe,
       disabled: true,
     };
   }
@@ -219,8 +242,8 @@ function buildPlanCta(
 
   const upgradeLabel =
     slug === "pro" && context.activePlan === "plus"
-      ? "Cambiar a Pro"
-      : `Cambiar a ${plan.name}`;
+      ? labels.changeToPro
+      : labels.changeToPlan.replace("{planName}", plan.name);
 
   if (!context.canManageBilling) {
     return {

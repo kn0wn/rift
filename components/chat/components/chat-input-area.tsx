@@ -1,4 +1,5 @@
 import { useMemo, useCallback } from "react";
+import { useChatTranslations } from "@/contexts/locale-context";
 import { NoSubscriptionDialog } from "@/components/ui/no-subscription-dialog";
 import {
   AttachmentsIcon,
@@ -60,6 +61,7 @@ export const ChatInputArea = React.memo(function ChatInputArea({
   showScrollToBottom,
   status,
 }: ChatInputAreaProps) {
+  const t = useChatTranslations();
   const input = useChatUIStore((s) => s.input);
   const isSearchEnabled = useChatUIStore((s) => s.isSearchEnabled);
   const quotaError = useChatUIStore((s) => s.quotaError);
@@ -282,7 +284,7 @@ export const ChatInputArea = React.memo(function ChatInputArea({
             onChange={handleInputChange}
             value={input}
             disabled={disableInput || isUploading}
-            placeholder="Escribe tu mensaje..."
+            placeholder={t.inputPlaceholder}
           />
           <PromptInputToolbar>
             <PromptInputTools>

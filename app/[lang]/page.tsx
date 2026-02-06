@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import Script from "next/script";
 import {
   HeroSection,
@@ -12,7 +13,7 @@ import {
   FaqSection,
 } from "@/components/landing";
 import { landingPlans } from "@/components/landing/data/pricing";
-import { faqs } from "@/components/landing/data/faqs";
+import { getDictionary, hasLocale, type Dictionary } from "./dictionaries";
 
 const deploymentDomain =
   process.env.NEXT_PUBLIC_SITE_URL ||
@@ -84,69 +85,78 @@ const softwareApplicationStructuredData = {
   })),
 };
 
-const whatIsRiftStructuredData = {
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  name: "¿Qué es RIFT?",
-  url: new URL("/#about", siteUrl).toString(),
-  description:
-    "RIFT es la plataforma global que reúne modelos de OpenAI, Anthropic, Google, Mistral, DeepSeek y más en una sola interfaz enfocada a escuelas, empresas y profesionales.",
-  isPartOf: siteUrl,
-  inLanguage: "es",
-  about: {
-    "@type": "SoftwareApplication",
-    name: "RIFT",
-    applicationCategory: "BusinessApplication",
-    offers: softwareApplicationStructuredData.offers,
-    },
-  mainEntity: {
-    "@type": "Organization",
-    name: "RIFT",
-    areaServed: "Worldwide",
-  },
-};
+export default async function LandingPage({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}) {
+  const { lang } = await params;
 
-const faqStructuredData = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: faqs.map((faq) => ({
-    "@type": "Question",
-    name: faq.question,
-    acceptedAnswer: {
-      "@type": "Answer",
-      text: faq.answer,
-    },
-  })),
-};
+  if (!hasLocale(lang)) notFound();
 
-export default function LandingPage() {
+  const dict: Dictionary = await getDictionary(lang);
+
+  const whatIsRiftStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: dict.whatIsRift.heading,
+    url: new URL(`/${lang}#about`, siteUrl).toString(),
+    description: dict.whatIsRift.body,
+    isPartOf: siteUrl,
+    inLanguage: lang,
+    about: {
+      "@type": "SoftwareApplication",
+      name: "RIFT",
+      applicationCategory: "BusinessApplication",
+      offers: softwareApplicationStructuredData.offers,
+    },
+    mainEntity: {
+      "@type": "Organization",
+      name: "RIFT",
+      areaServed: "Worldwide",
+    },
+  };
+
+  const faqStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: dict.faq.items.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.answer,
+      },
+    })),
+  };
+
   return (
     <div className="min-h-screen bg-background selection:bg-amber-100 selection:text-amber-900 dark:selection:bg-amber-900 dark:selection:text-amber-50 overflow-x-hidden">
       <a
         href="#contenido-principal"
         className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-4 focus:left-4 focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-foreground focus:shadow-lg dark:focus:bg-slate-900"
       >
-        Saltar al contenido principal
+        {dict.skipToContent}
       </a>
 
-      <Navbar />
+      <Navbar dict={dict.navbar} lang={lang} />
 
       <main
         id="contenido-principal"
         className="max-w-5xl mx-auto px-4 mt-28 sm:px-6 lg:px-8 space-y-20 md:space-y-32"
         role="main"
       >
-        <HeroSection />
-        <WhatIsRIFTSection />
-        <PricingSection />
-        <ArchitectureSection />
-        <PerformanceSection />
-        <IntegrationsSection />
-        <FaqSection />
-        <CTASection />
+        <HeroSection dict={dict.hero} lang={lang} />
+        <WhatIsRIFTSection dict={dict.whatIsRift} />
+        <PricingSection dict={dict.pricing} lang={lang} />
+        <ArchitectureSection dict={dict.architecture} />
+        <PerformanceSection dict={dict.performance} lang={lang} />
+        <IntegrationsSection dict={dict.integrations} />
+        <FaqSection dict={dict.faq} />
+        <CTASection dict={dict.cta} />
       </main>
 
-      <Footer />
+      <Footer dict={dict.footer} lang={lang} />
 
       <Script id="rift-org-schema" type="application/ld+json" strategy="afterInteractive">
         {JSON.stringify(organizationStructuredData)}
