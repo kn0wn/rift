@@ -149,7 +149,6 @@ export function useStickToBottom(
       const height = entries[0]?.contentRect.height ?? 0;
       const grew = height > prevHeight;
       const shrank = height < prevHeight;
-      const heightDelta = height - prevHeight;
       prevHeight = height;
 
       // Keep pinned to bottom when content changes size, as long as the user hasn't escaped the lock.
