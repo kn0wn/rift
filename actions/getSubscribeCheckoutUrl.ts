@@ -40,12 +40,18 @@ export async function getSubscribeCheckoutUrl(
     return { error: "AUTUMN_SECRET_KEY is not set" };
   }
 
+  // Wrap success URL through /api/subscribe-success to track the sale event
   const validatedSuccessUrl = getAllowedReturnUrl(successUrl);
+  const successRoute = new URL("/api/subscribe-success", validatedSuccessUrl);
+  successRoute.searchParams.set("plan", plan);
+  successRoute.searchParams.set("redirect", validatedSuccessUrl);
+  const finalSuccessUrl = successRoute.toString();
+
   const autumn = new Autumn({ secretKey });
   const result = await autumn.attach({
     customer_id: orgId,
     product_id: plan,
-    success_url: validatedSuccessUrl,
+    success_url: finalSuccessUrl,
   });
 
   if ("error" in result && result.error) {
