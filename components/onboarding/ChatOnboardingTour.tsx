@@ -168,6 +168,7 @@ export function ChatOnboardingTour() {
     ready,
     dict.onboarding,
     updateOnboardingCompleted,
+    isAuthenticated,
   ]);
 
   return null;
