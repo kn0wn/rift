@@ -1,6 +1,5 @@
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId, getAuthUserIdentity } from "./helpers/getUser";
 import { paginationOptsValidator } from "convex/server";
 import { extractOrganizationIdFromJWT } from "./helpers/identity";
 import { ensureServerSecret } from "./helpers/auth";

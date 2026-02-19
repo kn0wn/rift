@@ -1,10 +1,9 @@
-import { internalQuery, internalMutation, query, mutation } from "./_generated/server";
+import { internalQuery, internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUserId, getAuthUserIdentity } from "./helpers/getUser";
+import { getAuthUserIdentity } from "./helpers/getUser";
 import { paginationOptsValidator } from "convex/server";
-import { ensureServerSecret } from "./helpers/auth";
 import { AuthMutation, AuthQuery } from "./helpers/authenticated";
-import { Id, Doc } from "./_generated/dataModel";
+import type { Id, Doc } from "./_generated/dataModel";
 
 export const createUser = internalMutation({
   args: { 

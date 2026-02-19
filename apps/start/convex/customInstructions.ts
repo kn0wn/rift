@@ -3,7 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { AuthMutation, AuthQuery } from "./helpers/authenticated";
 import { extractOrganizationIdFromJWT } from "./helpers/identity";
 import { ensureServerSecret } from "./helpers/auth";
-import { Doc } from "./_generated/dataModel";
+import type { Doc } from "./_generated/dataModel";
 
 export const create = AuthMutation({
   args: {

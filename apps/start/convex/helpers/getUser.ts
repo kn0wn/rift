@@ -1,4 +1,4 @@
-import { QueryCtx, MutationCtx, ActionCtx } from "../_generated/server";
+import type { QueryCtx, MutationCtx, ActionCtx } from "../_generated/server";
 
 /**
  * Helper function to get the authenticated user ID from any Convex context.

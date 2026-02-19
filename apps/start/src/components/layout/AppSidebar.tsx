@@ -5,8 +5,15 @@ import { Compass, Moon, Network, Sun } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { useTheme } from '@rift/ui/hooks/useTheme'
 
-const SIDEBAR_WIDTH = 64
+const SIDEBAR_GROUPS_WIDTH = 64
+const SIDEBAR_AREAS_WIDTH = 240
+const SIDEBAR_WIDTH = SIDEBAR_GROUPS_WIDTH + SIDEBAR_AREAS_WIDTH
 
+const SIDEBAR_STYLE: React.CSSProperties = {
+  '--sidebar-width': `${SIDEBAR_WIDTH}px`,
+  '--sidebar-groups-width': `${SIDEBAR_GROUPS_WIDTH}px`,
+  '--sidebar-areas-width': `${SIDEBAR_AREAS_WIDTH}px`,
+} as React.CSSProperties
 
 export const AppSidebar: ComponentType = () => {
   const { pathname } = useLocation()
@@ -17,16 +24,15 @@ export const AppSidebar: ComponentType = () => {
 
   return (
     <div
-      className="h-full w-[var(--sidebar-width)] bg-neutral-200"
-      style={{ '--sidebar-width': `${SIDEBAR_WIDTH}px` } as React.CSSProperties}
+      className="h-full w-[var(--sidebar-width)] grid grid-cols-[var(--sidebar-groups-width)_1fr] bg-bg-emphasis transition-[width] duration-300"
+      style={SIDEBAR_STYLE}
     >
       <nav className="flex size-full flex-col items-center justify-between p-2">
         <div className="flex flex-col items-center gap-3">
-          <div className="pb-1 pt-2">
-          </div>
+          <div className="pb-1 pt-2" />
           <Button variant="sidebarIcon" size="iconSidebar" aria-label="Workspace">
             <Avatar size="xs">
-              <AvatarFallback className="bg-neutral-400" />
+              <AvatarFallback />
             </Avatar>
           </Button>
           <Button
@@ -36,7 +42,7 @@ export const AppSidebar: ComponentType = () => {
             data-active={shortLinksActive}
           >
             <Link to="/" aria-label="Short Links">
-              <Compass className="size-5 text-neutral-900" />
+              <Compass className="size-5 text-content-default" />
             </Link>
           </Button>
           <Button
@@ -46,7 +52,7 @@ export const AppSidebar: ComponentType = () => {
             data-active={partnerProgramActive}
           >
             <Link to="/" aria-label="Partner Program">
-              <Network className="size-5 text-neutral-900" />
+              <Network className="size-5 text-content-default" />
             </Link>
           </Button>
           <Button
@@ -57,18 +63,23 @@ export const AppSidebar: ComponentType = () => {
             onClick={() => setTheme(isDark ? 'light' : 'dark')}
           >
             {isDark ? (
-              <Sun className="size-5 text-neutral-900 dark:text-neutral-100" />
+              <Sun className="size-5 text-content-default" />
             ) : (
-              <Moon className="size-5 text-neutral-900 dark:text-neutral-100" />
+              <Moon className="size-5 text-content-default" />
             )}
           </Button>
         </div>
         <Button variant="sidebarIcon" size="iconSidebar" aria-label="User menu">
           <Avatar size="xs">
-            <AvatarFallback className="bg-neutral-300" />
+            <AvatarFallback />
           </Avatar>
         </Button>
       </nav>
+      <div className="size-full overflow-hidden py-2 pr-2">
+        <div className="scrollbar-hide relative flex h-full w-[calc(var(--sidebar-areas-width)-0.5rem)] flex-col overflow-y-auto overflow-x-hidden rounded-xl bg-bg-subtle">
+          <div className="relative flex grow flex-col p-3 text-content-muted" />
+        </div>
+      </div>
     </div>
   )
 }

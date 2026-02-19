@@ -1,6 +1,7 @@
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
+import { AuthKitProvider } from '@workos/authkit-tanstack-react-start/client'
 
 import ConvexProvider from '../integrations/convex/provider'
 import { ThemeProvider } from '@rift/ui/hooks/useTheme'
@@ -38,22 +39,24 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <ConvexProvider>
-          <ThemeProvider>
-            {children}
-          <TanStackDevtools
-            config={{
-              position: 'bottom-right',
-            }}
-            plugins={[
-              {
-                name: 'Tanstack Router',
-                render: <TanStackRouterDevtoolsPanel />,
-              },
-            ]}
-          />
-          </ThemeProvider>
-        </ConvexProvider>
+        <AuthKitProvider>
+          <ConvexProvider>
+            <ThemeProvider>
+              {children}
+              <TanStackDevtools
+                config={{
+                  position: 'bottom-right',
+                }}
+                plugins={[
+                  {
+                    name: 'Tanstack Router',
+                    render: <TanStackRouterDevtoolsPanel />,
+                  },
+                ]}
+              />
+            </ThemeProvider>
+          </ConvexProvider>
+        </AuthKitProvider>
         <Scripts />
       </body>
     </html>

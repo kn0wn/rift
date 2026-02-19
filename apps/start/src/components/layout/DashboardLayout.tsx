@@ -6,7 +6,7 @@ import { AppSidebar } from '@/components/layout/AppSidebar'
 export function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <>
-      <div className="min-h-screen w-full bg-white">
+      <div className="min-h-screen w-full bg-bg-default">
         <MainNav sidebar={AppSidebar}>{children}</MainNav>
       </div>
       <div className="fixed bottom-0 right-0 z-40 m-5">

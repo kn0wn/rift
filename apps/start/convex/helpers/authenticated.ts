@@ -1,8 +1,9 @@
-import { query, mutation, QueryCtx, MutationCtx } from "../_generated/server";
+import { query, mutation } from "../_generated/server";
+import type { QueryCtx, MutationCtx } from "../_generated/server";
 import { getAuthUserIdentity } from "./getUser";
 import { extractOrganizationIdFromJWT } from "./identity";
-import { UserIdentity } from "convex/server";
-import { ObjectType, PropertyValidators } from "convex/values";
+import type { UserIdentity } from "convex/server";
+import type { ObjectType, PropertyValidators } from "convex/values";
 
 export const PERMISSIONS = {
   WIDGETS_USERS_TABLE_MANAGE: "widgets:users-table:manage",

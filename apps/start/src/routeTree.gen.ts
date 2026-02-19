@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as appLayoutRouteImport } from './routes/(app)/_layout'
 import { Route as appLayoutIndexRouteImport } from './routes/(app)/_layout.index'
+import { Route as ApiAuthCallbackRouteImport } from './routes/api.auth.callback'
 
 const appLayoutRoute = appLayoutRouteImport.update({
   id: '/(app)/_layout',
@@ -21,28 +22,37 @@ const appLayoutIndexRoute = appLayoutIndexRouteImport.update({
   path: '/',
   getParentRoute: () => appLayoutRoute,
 } as any)
+const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
+  id: '/api/auth/callback',
+  path: '/api/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/': typeof appLayoutIndexRoute
 }
 export interface FileRoutesByTo {
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/': typeof appLayoutIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/(app)/_layout': typeof appLayoutRouteWithChildren
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/(app)/_layout/': typeof appLayoutIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/api/auth/callback' | '/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/(app)/_layout' | '/(app)/_layout/'
+  to: '/api/auth/callback' | '/'
+  id: '__root__' | '/(app)/_layout' | '/api/auth/callback' | '/(app)/_layout/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   appLayoutRoute: typeof appLayoutRouteWithChildren
+  ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -61,6 +71,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appLayoutIndexRouteImport
       parentRoute: typeof appLayoutRoute
     }
+    '/api/auth/callback': {
+      id: '/api/auth/callback'
+      path: '/api/auth/callback'
+      fullPath: '/api/auth/callback'
+      preLoaderRoute: typeof ApiAuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -78,16 +95,18 @@ const appLayoutRouteWithChildren = appLayoutRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   appLayoutRoute: appLayoutRouteWithChildren,
+  ApiAuthCallbackRoute: ApiAuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

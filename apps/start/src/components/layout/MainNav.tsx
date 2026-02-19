@@ -49,7 +49,7 @@ export function MainNav({
         className={cn(
           'fixed left-0 z-50 w-screen transition-[background-color,backdrop-filter] md:sticky md:z-auto md:w-full md:bg-transparent',
           isOpen
-            ? 'bg-black/20 backdrop-blur-sm'
+            ? 'bg-bg-inverted/20 backdrop-blur-sm'
             : 'bg-transparent max-md:pointer-events-none',
           'top-0 h-dvh',
         )}
@@ -62,15 +62,15 @@ export function MainNav({
       >
         <div
           className={cn(
-            'relative h-full w-min max-w-full bg-neutral-200 transition-transform md:translate-x-0',
+            'relative h-full w-min max-w-full bg-bg-emphasis transition-transform md:translate-x-0',
             !isOpen && '-translate-x-full',
           )}
         >
           <Sidebar />
         </div>
       </div>
-      <div className="bg-neutral-200 pb-[var(--page-bottom-margin)] pt-[var(--page-top-margin)] [--page-bottom-margin:0px] [--page-top-margin:0px] h-screen md:pb-2 md:pr-2 md:[--page-bottom-margin:0.5rem] md:[--page-top-margin:0.5rem]">
-        <div className="relative h-full overflow-y-auto bg-neutral-100 pt-px md:rounded-xl md:bg-white">
+      <div className="bg-bg-emphasis pb-[var(--page-bottom-margin)] pt-[var(--page-top-margin)] [--page-bottom-margin:0px] [--page-top-margin:0px] h-screen md:pb-2 md:pr-2 md:[--page-bottom-margin:0.5rem] md:[--page-top-margin:0.5rem]">
+        <div className="relative h-full overflow-y-auto bg-bg-subtle pt-px md:rounded-xl md:bg-bg-default">
           <SideNavContext.Provider value={contextValue}>
             {children}
           </SideNavContext.Provider>

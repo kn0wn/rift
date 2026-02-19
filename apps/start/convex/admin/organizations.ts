@@ -1,12 +1,10 @@
 import {
     internalQuery,
     internalMutation,
-    mutation,
   } from "../_generated/server";
   import { v } from "convex/values";
   import { internal } from "../_generated/api";
   import { productStatusValidator, planValidator } from "../schema";
-  import { serverSecretArg, ensureServerSecret } from "../helpers/auth";
   
   /**
    * List all organizations with their data for admin dashboard.

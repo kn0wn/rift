@@ -5,12 +5,12 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border-default;
   }
   html {
-    background-color: var(--background);
+    background-color: var(--bg-default);
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-bg-default text-content-default;
   }
 }

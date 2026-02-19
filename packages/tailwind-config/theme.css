@@ -7,68 +7,97 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-border: var(--border);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
+  /* Backgrounds */
+  --color-bg-default: var(--bg-default);
+  --color-bg-muted: var(--bg-muted);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-bg-emphasis: var(--bg-emphasis);
+  --color-bg-inverted: var(--bg-inverted);
+  --color-bg-info: var(--bg-info);
+  --color-bg-success: var(--bg-success);
+  --color-bg-attention: var(--bg-attention);
+  --color-bg-error: var(--bg-error);
 
+  /* Borders */
+  --color-border-emphasis: var(--border-emphasis);
+  --color-border-default: var(--border-default);
+  --color-border-muted: var(--border-muted);
+  --color-border-subtle: var(--border-subtle);
+
+  /* Content / text */
+  --color-content-inverted: var(--content-inverted);
+  --color-content-muted: var(--content-muted);
+  --color-content-subtle: var(--content-subtle);
+  --color-content-default: var(--content-default);
+  --color-content-emphasis: var(--content-emphasis);
+  --color-content-info: var(--content-info);
+  --color-content-success: var(--content-success);
+  --color-content-attention: var(--content-attention);
+  --color-content-error: var(--content-error);
+
+  /* Radius (base --radius set on :root) */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-:root {
+:root,
+.light {
   --radius: 0.5rem;
-  --background: #ffffff;
-  --foreground: #0a0a0a;
-  --border: #e5e5e5;
-  --input: #e5e5e5;
-  --ring: #0a0a0a;
-  --primary: #0a0a0a;
-  --primary-foreground: #fafafa;
-  --secondary: #f5f5f5;
-  --secondary-foreground: #0a0a0a;
-  --muted: #f5f5f5;
-  --muted-foreground: #737373;
-  --accent: #f5f5f5;
-  --accent-foreground: #0a0a0a;
-  --destructive: #ef4444;
-  --card: #ffffff;
-  --card-foreground: #0a0a0a;
-  --popover: #ffffff;
-  --popover-foreground: #0a0a0a;
+  --bg-default: rgb(255 255 255);
+  --bg-muted: rgb(250 250 250);
+  --bg-subtle: rgb(245 245 245);
+  --bg-emphasis: rgb(229 229 229);
+  --bg-inverted: rgb(23 23 23);
+
+  --bg-info: rgb(191 219 254);
+  --bg-success: rgb(220 252 231);
+  --bg-attention: rgb(255 237 213);
+  --bg-error: rgb(254 226 226);
+
+  --border-emphasis: rgb(163 163 163);
+  --border-default: rgb(212 212 212);
+  --border-muted: rgb(245 245 245);
+  --border-subtle: rgb(229 229 229);
+
+  --content-inverted: rgb(255 255 255);
+  --content-muted: rgb(163 163 163);
+  --content-subtle: rgb(115 115 115);
+  --content-default: rgb(64 64 64);
+  --content-emphasis: rgb(23 23 23);
+
+  --content-info: rgb(29 78 216);
+  --content-success: rgb(21 128 61);
+  --content-attention: rgb(194 65 12);
+  --content-error: rgb(185 28 28);
 }
 
 .dark {
-  --background: #0a0a0a;
-  --foreground: #fafafa;
-  --border: #262626;
-  --input: #262626;
-  --ring: #fafafa;
-  --primary: #fafafa;
-  --primary-foreground: #0a0a0a;
-  --secondary: #262626;
-  --secondary-foreground: #fafafa;
-  --muted: #262626;
-  --muted-foreground: #a3a3a3;
-  --accent: #262626;
-  --accent-foreground: #fafafa;
-  --destructive: #ef4444;
-  --card: #0a0a0a;
-  --card-foreground: #fafafa;
-  --popover: #0a0a0a;
-  --popover-foreground: #fafafa;
+  --bg-default: rgb(0 0 0);
+  --bg-muted: rgb(23 23 23);
+  --bg-subtle: rgb(38 38 38);
+  --bg-emphasis: rgb(64 64 64);
+  --bg-inverted: rgb(250 250 250);
+
+  --bg-info: rgb(29 78 216);
+  --bg-success: rgb(21 128 61);
+  --bg-attention: rgb(194 65 12);
+  --bg-error: rgb(185 28 28);
+
+  --border-muted: rgb(38 38 38);
+  --border-subtle: rgb(64 64 64);
+  --border-default: rgb(82 82 82);
+  --border-emphasis: rgb(115 115 115);
+
+  --content-inverted: rgb(0 0 0);
+  --content-muted: rgb(82 82 82);
+  --content-subtle: rgb(163 163 163);
+  --content-default: rgb(212 212 212);
+  --content-emphasis: rgb(250 250 250);
+
+  --content-info: rgb(191 219 254);
+  --content-success: rgb(220 252 231);
+  --content-attention: rgb(255 237 213);
+  --content-error: rgb(254 226 226);
 }
