@@ -1,3 +1,5 @@
 export { AppSidebar } from './AppSidebar'
 export { DashboardLayout } from './DashboardLayout'
 export { MainNav, SideNavContext } from './MainNav'
+export { UserProfileAvatar } from './UserProfileAvatar'
+export type { UserProfileAvatarUser, UserProfileAvatarProps } from './UserProfileAvatar'

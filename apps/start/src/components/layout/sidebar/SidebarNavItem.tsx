@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 
 import { cn } from '@rift/utils'
 import { Button } from '@rift/ui/button'
+import { isPathActive } from '@/lib/nav-utils'
 import type { NavItemType } from './app-sidebar-nav.config'
 
 export function SidebarNavItem({
@@ -15,13 +16,13 @@ export function SidebarNavItem({
   const [hovered, setHovered] = useState(false)
   const { name, href, icon: Icon, exact, isActive: customIsActive } = item
 
-  const isActive = useMemo(() => {
-    if (customIsActive) return customIsActive(pathname, href)
-    const hrefWithoutQuery = href.split('?')[0]
-    return exact
-      ? pathname === hrefWithoutQuery
-      : pathname.startsWith(hrefWithoutQuery)
-  }, [pathname, href, exact, customIsActive])
+  const isActive = useMemo(
+    () =>
+      customIsActive
+        ? customIsActive(pathname, href)
+        : isPathActive(pathname, href, exact),
+    [pathname, href, exact, customIsActive],
+  )
 
   return (
     <Button
