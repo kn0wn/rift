@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { ChatProvider, ChatThread, ChatInput } from '@/components/chat'
 
 export const Route = createFileRoute('/(app)/_layout/chat')({
   component: ChatPage,
@@ -6,11 +7,19 @@ export const Route = createFileRoute('/(app)/_layout/chat')({
 
 function ChatPage() {
   return (
-    <div className="min-h-full flex flex-col items-center justify-center p-8">
-      <h1 className="text-2xl font-semibold text-content-emphasis">
-        AI Chat
-      </h1>
-      <p className="mt-2 text-content-muted">Start a new conversation</p>
-    </div>
+    <ChatProvider>
+      <div className="relative flex min-h-full flex-1 flex-col">
+         <div
+          className="flex-1 min-h-0 overflow-y-auto px-4"
+          style={{ scrollbarGutter: 'stable' }}
+        >
+          <ChatThread />
+        </div>
+
+        <div className="sticky bottom-6 z-40 mx-auto w-full max-w-2xl px-4 pt-4 sm:pl-9 sm:pr-5">
+          <ChatInput />
+        </div>
+      </div>
+    </ChatProvider>
   )
 }

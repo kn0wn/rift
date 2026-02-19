@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ApiChatRouteRouteImport } from './routes/api/chat/route'
 import { Route as appLayoutRouteRouteImport } from './routes/(app)/_layout/route'
 import { Route as appLayoutIndexRouteImport } from './routes/(app)/_layout/index'
 import { Route as appLayoutSplatRouteImport } from './routes/(app)/_layout/$'
@@ -19,6 +20,11 @@ import { Route as appLayoutChatRouteRouteImport } from './routes/(app)/_layout/c
 import { Route as appLayoutSettingsIndexRouteImport } from './routes/(app)/_layout/settings/index'
 import { Route as appLayoutSettingsDebugAuthRouteRouteImport } from './routes/(app)/_layout/settings/debug-auth/route'
 
+const ApiChatRouteRoute = ApiChatRouteRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const appLayoutRouteRoute = appLayoutRouteRouteImport.update({
   id: '/(app)/_layout',
   getParentRoute: () => rootRouteImport,
@@ -66,6 +72,7 @@ const appLayoutSettingsDebugAuthRouteRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
+  '/api/chat': typeof ApiChatRouteRoute
   '/chat': typeof appLayoutChatRouteRoute
   '/settings': typeof appLayoutSettingsRouteRouteWithChildren
   '/writer': typeof appLayoutWriterRouteRoute
@@ -76,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof appLayoutSettingsIndexRoute
 }
 export interface FileRoutesByTo {
+  '/api/chat': typeof ApiChatRouteRoute
   '/chat': typeof appLayoutChatRouteRoute
   '/writer': typeof appLayoutWriterRouteRoute
   '/api/auth/callback': typeof ApiAuthCallbackRouteRoute
@@ -87,6 +95,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/(app)/_layout': typeof appLayoutRouteRouteWithChildren
+  '/api/chat': typeof ApiChatRouteRoute
   '/(app)/_layout/chat': typeof appLayoutChatRouteRoute
   '/(app)/_layout/settings': typeof appLayoutSettingsRouteRouteWithChildren
   '/(app)/_layout/writer': typeof appLayoutWriterRouteRoute
@@ -99,6 +108,7 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/api/chat'
     | '/chat'
     | '/settings'
     | '/writer'
@@ -109,6 +119,7 @@ export interface FileRouteTypes {
     | '/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/api/chat'
     | '/chat'
     | '/writer'
     | '/api/auth/callback'
@@ -119,6 +130,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/(app)/_layout'
+    | '/api/chat'
     | '/(app)/_layout/chat'
     | '/(app)/_layout/settings'
     | '/(app)/_layout/writer'
@@ -131,11 +143,19 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   appLayoutRouteRoute: typeof appLayoutRouteRouteWithChildren
+  ApiChatRouteRoute: typeof ApiChatRouteRoute
   ApiAuthCallbackRouteRoute: typeof ApiAuthCallbackRouteRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(app)/_layout': {
       id: '/(app)/_layout'
       path: ''
@@ -240,6 +260,7 @@ const appLayoutRouteRouteWithChildren = appLayoutRouteRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   appLayoutRouteRoute: appLayoutRouteRouteWithChildren,
+  ApiChatRouteRoute: ApiChatRouteRoute,
   ApiAuthCallbackRouteRoute: ApiAuthCallbackRouteRoute,
 }
 export const routeTree = rootRouteImport
