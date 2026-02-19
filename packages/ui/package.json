@@ -84,6 +84,16 @@
       "import": "./src/components/drawer.tsx",
       "default": "./src/components/drawer.tsx"
     },
+    "./hooks/useMediaQuery": {
+      "types": "./src/hooks/useMediaQuery.ts",
+      "import": "./src/hooks/useMediaQuery.ts",
+      "default": "./src/hooks/useMediaQuery.ts"
+    },
+    "./hooks/useTheme": {
+      "types": "./src/hooks/useTheme.tsx",
+      "import": "./src/hooks/useTheme.tsx",
+      "default": "./src/hooks/useTheme.tsx"
+    },
     "./dropdown-menu": {
       "types": "./src/components/dropdown-menu.tsx",
       "import": "./src/components/dropdown-menu.tsx",

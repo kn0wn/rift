@@ -24,6 +24,8 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
         accent:
           "bg-primary text-primary-foreground font-semibold border-border/60 shadow-sm shadow-black/5 dark:shadow-black/30 hover:opacity-90 [a]:hover:opacity-90",
+        sidebarIcon:
+          "hover:bg-black/5 active:bg-black/10 focus-visible:ring-2 focus-visible:ring-black/50 data-[active=true]:bg-white data-[active=true]:hover:bg-white data-[active=true]:active:bg-white",
       },
       size: {
         default:
@@ -39,6 +41,8 @@ const buttonVariants = cva(
         "icon-lg": "size-9",
         iconSm:
           "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3.5",
+        iconSidebar:
+          "size-11 rounded-lg transition-colors duration-150 [&_svg:not([class*='size-'])]:size-5",
       },
     },
     defaultVariants: {
