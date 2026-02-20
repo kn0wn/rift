@@ -4,6 +4,7 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import { AuthKitProvider } from '@workos/authkit-tanstack-react-start/client'
 
 import ConvexProvider from '../integrations/convex/provider'
+import ZeroProvider from '../integrations/zero/provider'
 import { ThemeProvider } from '@rift/ui/hooks/useTheme'
 
 import appCss from '../styles.css?url'
@@ -41,7 +42,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body>
         <AuthKitProvider>
           <ConvexProvider>
-            <ThemeProvider>
+            <ZeroProvider>
+              <ThemeProvider>
               {children}
               <TanStackDevtools
                 config={{
@@ -55,6 +57,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                 ]}
               />
             </ThemeProvider>
+            </ZeroProvider>
           </ConvexProvider>
         </AuthKitProvider>
         <Scripts />

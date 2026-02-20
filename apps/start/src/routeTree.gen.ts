@@ -13,6 +13,8 @@ import { Route as ApiChatRouteRouteImport } from './routes/api/chat/route'
 import { Route as appLayoutRouteRouteImport } from './routes/(app)/_layout/route'
 import { Route as appLayoutIndexRouteImport } from './routes/(app)/_layout/index'
 import { Route as appLayoutSplatRouteImport } from './routes/(app)/_layout/$'
+import { Route as ApiZeroQueryRouteRouteImport } from './routes/api/zero/query/route'
+import { Route as ApiZeroMutateRouteRouteImport } from './routes/api/zero/mutate/route'
 import { Route as ApiAuthCallbackRouteRouteImport } from './routes/api/auth/callback/route'
 import { Route as appLayoutWriterRouteRouteImport } from './routes/(app)/_layout/writer/route'
 import { Route as appLayoutSettingsRouteRouteImport } from './routes/(app)/_layout/settings/route'
@@ -38,6 +40,16 @@ const appLayoutSplatRoute = appLayoutSplatRouteImport.update({
   id: '/$',
   path: '/$',
   getParentRoute: () => appLayoutRouteRoute,
+} as any)
+const ApiZeroQueryRouteRoute = ApiZeroQueryRouteRouteImport.update({
+  id: '/api/zero/query',
+  path: '/api/zero/query',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiZeroMutateRouteRoute = ApiZeroMutateRouteRouteImport.update({
+  id: '/api/zero/mutate',
+  path: '/api/zero/mutate',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthCallbackRouteRoute = ApiAuthCallbackRouteRouteImport.update({
   id: '/api/auth/callback',
@@ -77,6 +89,8 @@ export interface FileRoutesByFullPath {
   '/settings': typeof appLayoutSettingsRouteRouteWithChildren
   '/writer': typeof appLayoutWriterRouteRoute
   '/api/auth/callback': typeof ApiAuthCallbackRouteRoute
+  '/api/zero/mutate': typeof ApiZeroMutateRouteRoute
+  '/api/zero/query': typeof ApiZeroQueryRouteRoute
   '/$': typeof appLayoutSplatRoute
   '/': typeof appLayoutIndexRoute
   '/settings/debug-auth': typeof appLayoutSettingsDebugAuthRouteRoute
@@ -87,6 +101,8 @@ export interface FileRoutesByTo {
   '/chat': typeof appLayoutChatRouteRoute
   '/writer': typeof appLayoutWriterRouteRoute
   '/api/auth/callback': typeof ApiAuthCallbackRouteRoute
+  '/api/zero/mutate': typeof ApiZeroMutateRouteRoute
+  '/api/zero/query': typeof ApiZeroQueryRouteRoute
   '/$': typeof appLayoutSplatRoute
   '/': typeof appLayoutIndexRoute
   '/settings/debug-auth': typeof appLayoutSettingsDebugAuthRouteRoute
@@ -100,6 +116,8 @@ export interface FileRoutesById {
   '/(app)/_layout/settings': typeof appLayoutSettingsRouteRouteWithChildren
   '/(app)/_layout/writer': typeof appLayoutWriterRouteRoute
   '/api/auth/callback': typeof ApiAuthCallbackRouteRoute
+  '/api/zero/mutate': typeof ApiZeroMutateRouteRoute
+  '/api/zero/query': typeof ApiZeroQueryRouteRoute
   '/(app)/_layout/$': typeof appLayoutSplatRoute
   '/(app)/_layout/': typeof appLayoutIndexRoute
   '/(app)/_layout/settings/debug-auth': typeof appLayoutSettingsDebugAuthRouteRoute
@@ -113,6 +131,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/writer'
     | '/api/auth/callback'
+    | '/api/zero/mutate'
+    | '/api/zero/query'
     | '/$'
     | '/'
     | '/settings/debug-auth'
@@ -123,6 +143,8 @@ export interface FileRouteTypes {
     | '/chat'
     | '/writer'
     | '/api/auth/callback'
+    | '/api/zero/mutate'
+    | '/api/zero/query'
     | '/$'
     | '/'
     | '/settings/debug-auth'
@@ -135,6 +157,8 @@ export interface FileRouteTypes {
     | '/(app)/_layout/settings'
     | '/(app)/_layout/writer'
     | '/api/auth/callback'
+    | '/api/zero/mutate'
+    | '/api/zero/query'
     | '/(app)/_layout/$'
     | '/(app)/_layout/'
     | '/(app)/_layout/settings/debug-auth'
@@ -145,6 +169,8 @@ export interface RootRouteChildren {
   appLayoutRouteRoute: typeof appLayoutRouteRouteWithChildren
   ApiChatRouteRoute: typeof ApiChatRouteRoute
   ApiAuthCallbackRouteRoute: typeof ApiAuthCallbackRouteRoute
+  ApiZeroMutateRouteRoute: typeof ApiZeroMutateRouteRoute
+  ApiZeroQueryRouteRoute: typeof ApiZeroQueryRouteRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -176,6 +202,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/$'
       preLoaderRoute: typeof appLayoutSplatRouteImport
       parentRoute: typeof appLayoutRouteRoute
+    }
+    '/api/zero/query': {
+      id: '/api/zero/query'
+      path: '/api/zero/query'
+      fullPath: '/api/zero/query'
+      preLoaderRoute: typeof ApiZeroQueryRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/zero/mutate': {
+      id: '/api/zero/mutate'
+      path: '/api/zero/mutate'
+      fullPath: '/api/zero/mutate'
+      preLoaderRoute: typeof ApiZeroMutateRouteRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/auth/callback': {
       id: '/api/auth/callback'
@@ -262,6 +302,8 @@ const rootRouteChildren: RootRouteChildren = {
   appLayoutRouteRoute: appLayoutRouteRouteWithChildren,
   ApiChatRouteRoute: ApiChatRouteRoute,
   ApiAuthCallbackRouteRoute: ApiAuthCallbackRouteRoute,
+  ApiZeroMutateRouteRoute: ApiZeroMutateRouteRoute,
+  ApiZeroQueryRouteRoute: ApiZeroQueryRouteRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
