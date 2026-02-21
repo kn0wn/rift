@@ -3,6 +3,9 @@ import type { HTMLAttributes } from 'react'
 
 export type PromptInputToolbarProps = HTMLAttributes<HTMLDivElement>
 
+/**
+ * Bottom toolbar row
+ */
 export function PromptInputToolbar({
   className,
   ...props
@@ -10,7 +13,8 @@ export function PromptInputToolbar({
   return (
     <div
       className={cn(
-        'flex items-center justify-between px-3 py-2 md:p-1 pb-[max(env(safe-area-inset-bottom),1rem)] md:pb-1',
+        'flex shrink-0 items-center justify-between gap-2 pt-1',
+        'pb-[max(env(safe-area-inset-bottom),0.25rem)]',
         className
       )}
       {...props}

@@ -74,10 +74,10 @@
 }
 
 .dark {
-  --bg-default: rgb(0 0 0);
+  --bg-default: rgb(22 22 22);
   --bg-muted: rgb(23 23 23);
-  --bg-subtle: rgb(38 38 38);
-  --bg-emphasis: rgb(64 64 64);
+  --bg-subtle: rgb(22 22 22);
+  --bg-emphasis: rgb(17 17 17);
   --bg-inverted: rgb(250 250 250);
 
   --bg-info: rgb(29 78 216);

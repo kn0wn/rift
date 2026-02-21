@@ -37,6 +37,7 @@ export const AppSidebar: ComponentType = () => {
   )
 
   return (
+    // Sidebar Page BG
     <div
       className="h-full w-[var(--sidebar-width)] grid grid-cols-[var(--sidebar-groups-width)_1fr] bg-bg-emphasis transition-[width] duration-300"
       style={sidebarStyle}
@@ -85,7 +86,7 @@ export const AppSidebar: ComponentType = () => {
       <div
         className={`size-full overflow-hidden py-2 pr-2 transition-opacity duration-300 ${showAreaPanel ? '' : 'pointer-events-none opacity-0'}`}
       >
-        <div className="scrollbar-hide relative flex h-full w-[calc(var(--sidebar-areas-width)-0.5rem)] flex-col overflow-y-auto overflow-x-hidden rounded-xl bg-bg-subtle">
+        <div className="scrollbar-hide relative flex h-full w-[calc(var(--sidebar-areas-width)-0.5rem)] flex-col overflow-y-auto overflow-x-hidden rounded-xl dark:border border-border-muted bg-bg-subtle">
           <div className="relative flex grow flex-col p-3 text-content-muted">
             <SidebarAreaPanel
               areas={NAV_AREAS}

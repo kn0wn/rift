@@ -70,7 +70,7 @@ export function MainNav({
         </div>
       </div>
       <div className="bg-bg-emphasis pb-[var(--page-bottom-margin)] pt-[var(--page-top-margin)] [--page-bottom-margin:0px] [--page-top-margin:0px] h-screen md:pb-2 md:pr-2 md:[--page-bottom-margin:0.5rem] md:[--page-top-margin:0.5rem]">
-        <div className="relative h-full overflow-y-auto bg-bg-subtle pt-px md:rounded-xl md:bg-bg-default">
+        <div className="relative h-full overflow-y-auto border border-border-muted pt-px md:rounded-xl md:bg-bg-default">
           <SideNavContext.Provider value={contextValue}>
             {children}
           </SideNavContext.Provider>

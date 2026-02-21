@@ -21,7 +21,7 @@ const isMobileLike = () =>
 export function PromptInputTextarea({
   onChange,
   className,
-  placeholder = 'Ask anything...',
+  placeholder = 'Outline your product, flow, or idea…',
   ...props
 }: PromptInputTextareaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -55,10 +55,10 @@ export function PromptInputTextarea({
     <Textarea
       ref={textareaRef}
       className={cn(
-        'w-full resize-none rounded-none border-none p-3 shadow-none outline-none ring-0',
+        'flex-1 min-h-[40px] w-full resize-none rounded-none border-none p-0 shadow-none outline-none ring-0',
         'field-sizing-content bg-transparent max-h-[200px] overflow-y-auto',
-        'text-[16px] leading-[28px] tracking-[0.015em] proportional-nums whitespace-pre-wrap',
-        'focus-visible:ring-0 placeholder:text-content-muted text-content-emphasis',
+        'text-base leading-[1.4] tracking-[-0.01em] proportional-nums whitespace-pre-wrap',
+        'focus-visible:ring-0 placeholder:text-content-muted/50 text-content-emphasis',
         className
       )}
       name="message"

@@ -43,11 +43,8 @@ export const Route = createFileRoute('/api/zero/query')({
           request,
           'error',
         )
-        const [status, body] =
-          result[0] === 'transformFailed'
-            ? [400, result[1]]
-            : [200, result[1]]
-        return new Response(JSON.stringify(body), {
+        const status = result[0] === 'transformFailed' ? 400 : 200
+        return new Response(JSON.stringify(result), {
           status,
           headers: { 'Content-Type': 'application/json' },
         })
