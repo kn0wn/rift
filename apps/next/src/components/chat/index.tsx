@@ -25,7 +25,7 @@ import { useFirstMessageSendAnimation } from "./first-message-send-animation";
 import { RiftChatThread } from "./chat-thread";
 import type { ChatInterfaceProps } from "./types";
 import { ChatStoreProvider, useChatStateInstance } from "@/store/hooks";
-import { Effect } from "effect";
+import { Effect, Result } from "effect";
 import { saveCachedThreadMessages } from "@/lib/local-first/thread-messages-cache";
 
 import {
@@ -641,7 +641,7 @@ function ChatInterfaceInternal({
             console.error("Edit message failed", error);
           })
         ),
-        Effect.catchAll((error) =>
+        Effect.catch((error) =>
           Effect.sync(() => {
             triggerError(getErrorMessage(error));
           })
@@ -762,9 +762,9 @@ function ChatInterfaceInternal({
         setIsSendingMessage,
       });
 
-      const result = await Effect.runPromise(Effect.either(program));
+      const result = await Effect.runPromise(Effect.result(program));
 
-      if (result._tag === "Right" && result.right) {
+      if (Result.isSuccess(result) && result.success) {
         // Only clear attachments after a successful send
         setUploadedAttachments([]);
         setSelectedFiles([]);
@@ -773,8 +773,8 @@ function ChatInterfaceInternal({
         return;
       }
 
-      if (result._tag === "Left") {
-        const error = result.left as any;
+      if (Result.isFailure(result)) {
+        const error = result.failure as any;
         if (error?._tag !== "AbortError") {
           triggerError(getErrorMessage(error));
           setInput(messageContent);

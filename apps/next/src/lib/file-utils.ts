@@ -239,7 +239,7 @@ const uploadSingle = (
   };
 
   return doUpload.pipe(
-    Effect.catchAll((error) => {
+    Effect.catch((error) => {
       const runtimeError = error as UploadRuntimeError;
       
       // 429 errors fail immediately - bypass timeout/retry
@@ -273,7 +273,7 @@ const uploadSingle = (
         remaining: number,
       ): Effect.Effect<FileAttachment, UploadRuntimeError, never> =>
         timeoutGuard.pipe(
-          Effect.catchAll((error: UploadRuntimeError) => {
+          Effect.catch((error: UploadRuntimeError) => {
             if (!retryable(error)) return Effect.fail(error);
             return remaining > 0
               ? Effect.flatMap(Effect.sleep("200 millis"), () => retryWithBackoff(remaining - 1))

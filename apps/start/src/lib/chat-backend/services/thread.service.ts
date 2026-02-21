@@ -1,4 +1,4 @@
-import { Context, Effect, Layer } from 'effect'
+import { Effect, Layer, ServiceMap } from 'effect'
 import { ThreadForbiddenError, ThreadNotFoundError } from '../domain/errors'
 import { getMemoryState } from '../infra/memory/state'
 
@@ -18,10 +18,10 @@ export type ThreadServiceShape = {
   }) => Effect.Effect<void, ThreadNotFoundError | ThreadForbiddenError>
 }
 
-export class ThreadService extends Context.Tag('chat-backend/ThreadService')<
+export class ThreadService extends ServiceMap.Service<
   ThreadService,
   ThreadServiceShape
->() {}
+>()('chat-backend/ThreadService') {}
 
 export const ThreadServiceMemory = Layer.succeed(ThreadService, {
   createThread: ({ userId }) =>

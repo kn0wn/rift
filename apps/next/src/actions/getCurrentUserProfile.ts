@@ -42,7 +42,7 @@ export async function getCurrentUserProfile(): Promise<GetCurrentUserProfileResu
       },
     } satisfies GetCurrentUserProfileResult;
   }).pipe(
-    Effect.catchAll((error) =>
+    Effect.catch((error) =>
       Effect.sync(() => {
         console.error("[profile] getCurrentUserProfile failed", { error });
         return {
@@ -54,7 +54,7 @@ export async function getCurrentUserProfile(): Promise<GetCurrentUserProfileResu
         } satisfies GetCurrentUserProfileResult;
       }),
     ),
-    Effect.catchAllDefect((defect) =>
+    Effect.catchDefect((defect) =>
       Effect.sync(() => {
         console.error("[profile] getCurrentUserProfile failed (defect)", { defect });
         return {

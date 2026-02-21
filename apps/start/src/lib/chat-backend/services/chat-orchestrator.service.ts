@@ -1,5 +1,5 @@
 import type { UIMessage } from 'ai'
-import { Context, Effect, Layer } from 'effect'
+import { Effect, Layer, ServiceMap } from 'effect'
 import type { ChatDomainError } from '../domain/errors'
 import { chatErrorCodeFromTag } from '../domain/error-codes'
 import type { IncomingUserMessage } from '../domain/schemas'
@@ -29,9 +29,10 @@ export type ChatOrchestratorServiceShape = {
   }) => Effect.Effect<Response, ChatDomainError>
 }
 
-export class ChatOrchestratorService extends Context.Tag(
-  'chat-backend/ChatOrchestratorService',
-)<ChatOrchestratorService, ChatOrchestratorServiceShape>() {}
+export class ChatOrchestratorService extends ServiceMap.Service<
+  ChatOrchestratorService,
+  ChatOrchestratorServiceShape
+>()('chat-backend/ChatOrchestratorService') {}
 
 export const ChatOrchestratorLive = Layer.effect(
   ChatOrchestratorService,
@@ -145,7 +146,7 @@ export const ChatOrchestratorLive = Layer.effect(
                   requestId,
                 })
                 .pipe(
-                  Effect.catchAll((error) =>
+                  Effect.catch((error) =>
                     // Persist failures shouldn't break the response stream.
                     emitWideErrorEvent({
                       eventName: 'chat.stream.persist.failed',
@@ -184,7 +185,7 @@ export const ChatOrchestratorLive = Layer.effect(
             retryable: true,
           }),
         ),
-        Effect.catchAll((error) => Effect.fail(error)),
+        Effect.catch((error) => Effect.fail(error)),
       )
     }
 

@@ -67,7 +67,7 @@ export const createDatabaseQueue = (logContext: LogContext) =>
           );
 
       // Swallow errors so the processor keeps draining
-      return withPolicy.pipe(Effect.catchAll(() => Effect.void));
+      return withPolicy.pipe(Effect.catch(() => Effect.void));
     };
 
     // Use daemon fiber so it stays alive beyond the request scope

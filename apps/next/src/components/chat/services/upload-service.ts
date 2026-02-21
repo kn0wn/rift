@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { Effect, Result } from "effect";
 import {
   MAX_FILE_SIZE_BYTES,
   MAX_TOTAL_FILES,
@@ -60,7 +60,7 @@ export const uploadWithStateEffect = (
     ]);
 
     const result = yield* _(
-      Effect.either(
+      Effect.result(
         uploadFilesEffect(files, {
           alreadyAttached: existingCount,
           maxTotalFiles,
@@ -69,10 +69,10 @@ export const uploadWithStateEffect = (
       ),
     );
 
-    if (result._tag === "Right") {
-      handlers.setUploadedAttachments((prev) => [...prev, ...result.right]);
+    if (Result.isSuccess(result)) {
+      handlers.setUploadedAttachments((prev) => [...prev, ...result.success]);
     } else {
-      handlers.triggerError(describeUploadError(result.left));
+      handlers.triggerError(describeUploadError(result.failure));
       handlers.setSelectedFiles((prev) =>
         prev.filter((file) => !files.includes(file)),
       );
@@ -87,4 +87,3 @@ export const uploadWithStateEffect = (
     ),
   );
 };
-

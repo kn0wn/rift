@@ -262,7 +262,7 @@ const logAuditEvent = (
     try: () => logAttachmentUploaded(attachmentId, file.name, file.type, file.size),
     catch: () => undefined, // Audit logging failures are non-critical
   }).pipe(
-    Effect.catchAll(() => Effect.void) // Silently ignore audit failures
+    Effect.catch(() => Effect.void) // Silently ignore audit failures
   );
 
 // ============================================================================
@@ -446,7 +446,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<UploadRespons
         Effect.succeed(errorToResponse(e, requestId)),
     }),
     // Catch any unexpected errors
-    Effect.catchAll((error: unknown) => {
+    Effect.catch((error: unknown) => {
       logger.error("Unhandled upload error", logContext, error);
       return Effect.succeed(
         NextResponse.json(

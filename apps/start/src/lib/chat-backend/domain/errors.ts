@@ -8,12 +8,12 @@ const ErrorFields = {
   requestId: Schema.String,
 }
 
-export class UnauthorizedError extends Schema.TaggedError<UnauthorizedError>()(
+export class UnauthorizedError extends Schema.TaggedErrorClass<UnauthorizedError>()(
   'UnauthorizedError',
   ErrorFields,
 ) {}
 
-export class InvalidRequestError extends Schema.TaggedError<InvalidRequestError>()(
+export class InvalidRequestError extends Schema.TaggedErrorClass<InvalidRequestError>()(
   'InvalidRequestError',
   {
     ...ErrorFields,
@@ -21,7 +21,7 @@ export class InvalidRequestError extends Schema.TaggedError<InvalidRequestError>
   },
 ) {}
 
-export class ThreadNotFoundError extends Schema.TaggedError<ThreadNotFoundError>()(
+export class ThreadNotFoundError extends Schema.TaggedErrorClass<ThreadNotFoundError>()(
   'ThreadNotFoundError',
   {
     ...ErrorFields,
@@ -29,7 +29,7 @@ export class ThreadNotFoundError extends Schema.TaggedError<ThreadNotFoundError>
   },
 ) {}
 
-export class ThreadForbiddenError extends Schema.TaggedError<ThreadForbiddenError>()(
+export class ThreadForbiddenError extends Schema.TaggedErrorClass<ThreadForbiddenError>()(
   'ThreadForbiddenError',
   {
     ...ErrorFields,
@@ -38,7 +38,7 @@ export class ThreadForbiddenError extends Schema.TaggedError<ThreadForbiddenErro
   },
 ) {}
 
-export class RateLimitExceededError extends Schema.TaggedError<RateLimitExceededError>()(
+export class RateLimitExceededError extends Schema.TaggedErrorClass<RateLimitExceededError>()(
   'RateLimitExceededError',
   {
     ...ErrorFields,
@@ -47,7 +47,7 @@ export class RateLimitExceededError extends Schema.TaggedError<RateLimitExceeded
   },
 ) {}
 
-export class ModelProviderError extends Schema.TaggedError<ModelProviderError>()(
+export class ModelProviderError extends Schema.TaggedErrorClass<ModelProviderError>()(
   'ModelProviderError',
   {
     ...ErrorFields,
@@ -55,7 +55,7 @@ export class ModelProviderError extends Schema.TaggedError<ModelProviderError>()
   },
 ) {}
 
-export class ToolExecutionError extends Schema.TaggedError<ToolExecutionError>()(
+export class ToolExecutionError extends Schema.TaggedErrorClass<ToolExecutionError>()(
   'ToolExecutionError',
   {
     ...ErrorFields,
@@ -64,7 +64,7 @@ export class ToolExecutionError extends Schema.TaggedError<ToolExecutionError>()
   },
 ) {}
 
-export class MessagePersistenceError extends Schema.TaggedError<MessagePersistenceError>()(
+export class MessagePersistenceError extends Schema.TaggedErrorClass<MessagePersistenceError>()(
   'MessagePersistenceError',
   {
     ...ErrorFields,
@@ -73,7 +73,7 @@ export class MessagePersistenceError extends Schema.TaggedError<MessagePersisten
   },
 ) {}
 
-export class StreamProtocolError extends Schema.TaggedError<StreamProtocolError>()(
+export class StreamProtocolError extends Schema.TaggedErrorClass<StreamProtocolError>()(
   'StreamProtocolError',
   {
     ...ErrorFields,

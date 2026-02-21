@@ -1,6 +1,6 @@
 import { convertToModelMessages, streamText } from 'ai'
 import type { UIMessage } from 'ai'
-import { Context, Effect, Layer } from 'effect'
+import { Effect, Layer, ServiceMap } from 'effect'
 import { ModelProviderError } from '../domain/errors'
 
 // Model gateway encapsulates the AI SDK. Keep this isolated to swap providers.
@@ -29,10 +29,10 @@ export type ModelGatewayServiceShape = {
   }) => Effect.Effect<ModelStreamResult, ModelProviderError>
 }
 
-export class ModelGatewayService extends Context.Tag('chat-backend/ModelGatewayService')<
+export class ModelGatewayService extends ServiceMap.Service<
   ModelGatewayService,
   ModelGatewayServiceShape
->() {}
+>()('chat-backend/ModelGatewayService') {}
 
 export const ModelGatewayLive = Layer.succeed(ModelGatewayService, {
   streamResponse: ({ messages, model, requestId, tools }) =>

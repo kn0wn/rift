@@ -284,7 +284,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ModelCallError: (e: ModelCallError) => Effect.succeed(errorToResponse(e, requestId)),
       MutationCallError: (e: MutationCallError) => Effect.succeed(errorToResponse(e, requestId)),
     }),
-    Effect.catchAll((error: unknown) => {
+    Effect.catch((error: unknown) => {
       console.error(`[${requestId}] Unhandled error generating title:`, error);
       return Effect.succeed(
         NextResponse.json(

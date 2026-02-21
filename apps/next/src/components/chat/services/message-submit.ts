@@ -112,8 +112,8 @@ export const submitMessageEffect = (
             cause: error,
           }),
     ),
-    Effect.catchAllCause((cause) => {
-      const failure = Cause.failureOption(cause);
+    Effect.catchCause((cause) => {
+      const failure = Cause.findErrorOption(cause);
       if (Option.isSome(failure)) {
         return Effect.fail(failure.value);
       }

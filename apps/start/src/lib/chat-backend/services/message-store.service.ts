@@ -1,5 +1,5 @@
 import type { UIMessage } from 'ai'
-import { Context, Effect, Layer } from 'effect'
+import { Effect, Layer, ServiceMap } from 'effect'
 import { MessagePersistenceError } from '../domain/errors'
 import type { IncomingUserMessage } from '../domain/schemas'
 import { getUserMessageText } from '../domain/schemas'
@@ -23,9 +23,10 @@ export type MessageStoreServiceShape = {
   }) => Effect.Effect<void, MessagePersistenceError>
 }
 
-export class MessageStoreService extends Context.Tag(
-  'chat-backend/MessageStoreService',
-)<MessageStoreService, MessageStoreServiceShape>() {}
+export class MessageStoreService extends ServiceMap.Service<
+  MessageStoreService,
+  MessageStoreServiceShape
+>()('chat-backend/MessageStoreService') {}
 
 const missingThreadError = (threadId: string, requestId: string) =>
   new MessagePersistenceError({
@@ -43,7 +44,7 @@ export const MessageStoreMemory = Layer.succeed(MessageStoreService, {
       }
       return existing.slice()
     }).pipe(
-      Effect.catchAll((error) =>
+      Effect.catch((error) =>
         Effect.fail(
           new MessagePersistenceError({
             message: 'Failed to load messages',
@@ -71,7 +72,7 @@ export const MessageStoreMemory = Layer.succeed(MessageStoreService, {
       existing.push(uiMessage)
       return uiMessage
     }).pipe(
-      Effect.catchAll((error) =>
+      Effect.catch((error) =>
         Effect.fail(
           new MessagePersistenceError({
             message: 'Failed to append user message',
@@ -95,7 +96,7 @@ export const MessageStoreMemory = Layer.succeed(MessageStoreService, {
         existing.push(lastAssistant)
       }
     }).pipe(
-      Effect.catchAll((error) =>
+      Effect.catch((error) =>
         Effect.fail(
           new MessagePersistenceError({
             message: 'Failed to append assistant message',

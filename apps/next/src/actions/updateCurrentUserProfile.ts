@@ -152,7 +152,7 @@ const runProfileAction = async <T extends UpdateCurrentUserProfileResult>(args: 
           } as T;
         }),
     }),
-    Effect.catchAll((error) =>
+    Effect.catch((error) =>
       Effect.sync(() => {
         console.error(`[profile] ${args.actionName} failed`, { error });
         return {
@@ -161,7 +161,7 @@ const runProfileAction = async <T extends UpdateCurrentUserProfileResult>(args: 
         } as T;
       }),
     ),
-    Effect.catchAllDefect((defect) =>
+    Effect.catchDefect((defect) =>
       Effect.sync(() => {
         console.error(`[profile] ${args.actionName} failed (defect)`, { defect });
         return {

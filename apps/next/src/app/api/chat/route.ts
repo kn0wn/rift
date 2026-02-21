@@ -424,7 +424,7 @@ const handleChatRequest = (
           operation: "getOrganizationPlan",
           cause: error,
         }),
-    }).pipe(Effect.catchAll(() => Effect.succeed(null)));
+    }).pipe(Effect.catch(() => Effect.succeed(null)));
     const usePerSeatEntity = plan != null && PLANS_WITH_SEATS.has(plan);
 
     logger.debug("Authentication complete", logContext, { 
@@ -551,7 +551,7 @@ const handleChatRequest = (
         logger.warn("PostHog initialization failed, analytics disabled", logContext, error);
         return null;
       },
-    }).pipe(Effect.catchAll(() => Effect.succeed(null)));
+    }).pipe(Effect.catch(() => Effect.succeed(null)));
 
     yield* Effect.addFinalizer(() => shutdownPostHog(phClient));
 
@@ -749,7 +749,7 @@ const handleChatRequest = (
           ...args,
         });
       }).pipe(
-        Effect.catchAll((error) =>
+        Effect.catch((error) =>
           Effect.sync(() => {
             logger.error("Failed to finalize message", logContext, error);
           })
@@ -763,7 +763,7 @@ const handleChatRequest = (
         yield* Ref.set(queueShutdownRef, true);
         yield* dbQueue.shutdown;
       }).pipe(
-        Effect.catchAll((error) =>
+        Effect.catch((error) =>
           Effect.sync(() => {
             logger.error("Failed to shutdown dbQueue", { ...logContext, reason }, error);
           })
@@ -1350,9 +1350,9 @@ const handleChatRequest = (
     });
     });
     return yield* rest.pipe(
-      Effect.catchAll((err: ChatRouteError) =>
+      Effect.catch((err: ChatRouteError) =>
         setThreadFailedToFailed({ userId: auth.userId, threadId }).pipe(
-          Effect.catchAll(() => Effect.succeed(undefined)),
+          Effect.catch(() => Effect.succeed(undefined)),
           Effect.flatMap(() => Effect.fail(err))
         )
       )
@@ -1377,13 +1377,13 @@ export async function POST(req: Request): Promise<Response> {
     // Interrupt the main fiber if the request is aborted.
     yield* _(
       abortEffect.pipe(
-        Effect.catchAll(() => Fiber.interrupt(mainFiber)),
+        Effect.catch(() => Fiber.interrupt(mainFiber)),
         Effect.forkScoped
       )
     );
 
     return yield* Fiber.join(mainFiber).pipe(
-      Effect.catchAllCause((cause) =>
+      Effect.catchCause((cause) =>
         Cause.isInterruptedOnly(cause)
           ? Effect.fail(new AbortError({ message: "Request aborted" }))
           : Effect.failCause(cause)
@@ -1417,7 +1417,7 @@ export async function POST(req: Request): Promise<Response> {
       ProviderError: (e: ProviderError) => Effect.succeed(errorToResponse(e, start, requestId, logContext)),
       TimeoutError: (e: TimeoutError) => Effect.succeed(errorToResponse(e, start, requestId, logContext)),
     }),
-    Effect.catchAll((error: unknown) => {
+    Effect.catch((error: unknown) => {
       logger.error("Unhandled error in chat route", logContext, error);
       
       // Capture unknown errors to Sentry

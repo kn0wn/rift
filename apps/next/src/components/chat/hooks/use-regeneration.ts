@@ -83,7 +83,7 @@ export function useRegeneration({
           }),
       }).pipe(
         Effect.retry(retrySchedule),
-        Effect.catchAll((error) =>
+        Effect.catch((error) =>
           Effect.gen(function* () {
             console.error("Regeneration failed after retries:", error);
             onError?.(error);
@@ -109,7 +109,7 @@ export function useRegeneration({
         
         // Wait for completion, ignoring interruption
         yield* Fiber.join(fiber).pipe(
-          Effect.catchAll(() => Effect.void)
+          Effect.catch(() => Effect.void)
         );
         
         // Clear ref when done
@@ -234,7 +234,7 @@ export function useRegeneration({
             onError?.(error);
           })
         ),
-        Effect.catchAll(() => Effect.void)
+        Effect.catch(() => Effect.void)
       );
 
       await Effect.runPromise(program);

@@ -1,4 +1,4 @@
-import { Context, Effect, Layer } from 'effect'
+import { Effect, Layer, ServiceMap } from 'effect'
 import { RateLimitExceededError } from '../domain/errors'
 import { getMemoryState } from '../infra/memory/state'
 
@@ -16,10 +16,10 @@ export type RateLimitServiceShape = {
   >
 }
 
-export class RateLimitService extends Context.Tag('chat-backend/RateLimitService')<
+export class RateLimitService extends ServiceMap.Service<
   RateLimitService,
   RateLimitServiceShape
->() {}
+>()('chat-backend/RateLimitService') {}
 
 export const RateLimitMemory = Layer.succeed(RateLimitService, {
   assertAllowed: ({ userId, requestId }) =>

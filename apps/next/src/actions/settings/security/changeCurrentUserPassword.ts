@@ -73,7 +73,7 @@ export async function changeCurrentUserPassword(
       });
 
       const ipAddress = yield* Effect.promise(() => bestEffortClientIp()).pipe(
-        Effect.catchAll(() => Effect.succeed(undefined)),
+        Effect.catch(() => Effect.succeed(undefined)),
       );
 
       yield* callWorkosApiEffect("userManagement.authenticateWithPassword", () =>

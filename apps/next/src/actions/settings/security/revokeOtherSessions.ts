@@ -1,6 +1,6 @@
 "use server";
 
-import { Effect, Either } from "effect";
+import { Effect, Result } from "effect";
 
 import { getAuthenticatedUserEffect, runSecurityAction, callWorkosApiEffect, workos } from "./security-effect";
 
@@ -27,15 +27,14 @@ export async function revokeOtherSessions(): Promise<
         sessionsToRevoke.map((s) =>
           callWorkosApiEffect("userManagement.revokeSession", () =>
             workos.userManagement.revokeSession({ sessionId: s.id }),
-          ).pipe(Effect.either),
+          ).pipe(Effect.result),
         ),
         { concurrency: 5 },
       );
 
-      const revoked = results.filter((r) => Either.isRight(r)).length;
+      const revoked = results.filter((r) => Result.isSuccess(r)).length;
 
       return { success: true as const, revoked };
     }),
   });
 }
-

@@ -1,4 +1,4 @@
-import { Context, Effect, Layer } from 'effect'
+import { Effect, Layer, ServiceMap } from 'effect'
 
 // Tool registry returns model + enabled tools for a given thread/user.
 export type ToolRegistryResult = {
@@ -14,10 +14,10 @@ export type ToolRegistryServiceShape = {
   }) => Effect.Effect<ToolRegistryResult>
 }
 
-export class ToolRegistryService extends Context.Tag('chat-backend/ToolRegistryService')<
+export class ToolRegistryService extends ServiceMap.Service<
   ToolRegistryService,
   ToolRegistryServiceShape
->() {}
+>()('chat-backend/ToolRegistryService') {}
 
 export const ToolRegistryMemory = Layer.succeed(ToolRegistryService, {
   resolveForThread: () =>

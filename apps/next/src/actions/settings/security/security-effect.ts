@@ -311,7 +311,7 @@ export const runSecurityAction = async <
   const ctx: LogContext = { actionName: args.actionName, requestId: generateRequestId() };
 
   const effect = args.program.pipe(
-    Effect.catchAll((error) =>
+    Effect.catch((error) =>
       Effect.sync(() => {
         logSecurityError(ctx, error);
         return {
@@ -325,7 +325,7 @@ export const runSecurityAction = async <
         } as T;
       }),
     ),
-    Effect.catchAllDefect((defect) =>
+    Effect.catchDefect((defect) =>
       Effect.sync(() => {
         logSecurityError(ctx, defect);
         return {
