@@ -13,6 +13,11 @@ const buttonVariants = cva(
       variant: {
         default:
           "bg-bg-inverted text-content-inverted [a]:hover:bg-bg-inverted/80",
+
+        danger:
+        "border-red-500 bg-red-500 text-white hover:bg-red-600 hover:ring-red-100",
+        dangerLight:
+        "text-content-error hover:bg-content-error/10 hover:text-content-error/80",
         sidebarIcon:
           "hover:bg-bg-inverted/5 active:bg-bg-inverted/10 focus-visible:ring-2 focus-visible:ring-border-emphasis/50 data-[active=true]:bg-bg-default data-[active=true]:hover:bg-bg-default data-[active=true]:active:bg-bg-default",
         sidebarNavItem:

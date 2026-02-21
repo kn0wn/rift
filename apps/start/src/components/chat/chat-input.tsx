@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Mic, Plus } from 'lucide-react'
 import { useChat } from './chat-context'
 import {
@@ -9,19 +9,28 @@ import {
   PromptInputToolbar,
   PromptInputSubmit,
   PromptInputThinking,
+  PromptInputError,
 } from './prompt-input'
 import { cn } from '@rift/utils'
 
 const PLACEHOLDER = 'Outline your product, flow, or idea…'
 
 export function ChatInput() {
-  const { sendMessage, status, stop } = useChat()
+  const { sendMessage, status, stop, error } = useChat()
   const [input, setInput] = useState('')
+  const [errorDismissed, setErrorDismissed] = useState(false)
 
   const isBusy = status === 'submitted' || status === 'streaming'
   const isEmpty = !input.trim()
-  const showThinking = isBusy
+  const errorMessage =
+    error?.message ?? (typeof error === 'string' ? error : null)
+  const showError = !!errorMessage && !errorDismissed
 
+  useEffect(() => {
+    if (error) setErrorDismissed(false)
+  }, [error])
+
+  const handleDismissError = useCallback(() => setErrorDismissed(true), [])
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault()
@@ -38,8 +47,13 @@ export function ChatInput() {
       onSubmit={handleSubmit}
       className="w-full"
       slots={{
-        top: (
-          <PromptInputThinking isVisible={showThinking} onCancel={stop} />
+        top: showError ? (
+          <PromptInputError
+            error={errorMessage}
+            onDismiss={handleDismissError}
+          />
+        ) : (
+          <PromptInputThinking isVisible={isBusy} onCancel={stop} />
         ),
       }}
     >

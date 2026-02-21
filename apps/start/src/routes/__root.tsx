@@ -6,6 +6,7 @@ import { AuthKitProvider } from '@workos/authkit-tanstack-react-start/client'
 import ConvexProvider from '../integrations/convex/provider'
 import ZeroProvider from '../integrations/zero/provider'
 import { ThemeProvider } from '@rift/ui/hooks/useTheme'
+import { Toaster } from '@rift/ui/sonner'
 
 import appCss from '../styles.css?url'
 
@@ -45,6 +46,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             <ZeroProvider>
               <ThemeProvider>
               {children}
+              <Toaster />
               <TanStackDevtools
                 config={{
                   position: 'bottom-right',
