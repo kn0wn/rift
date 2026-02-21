@@ -16,6 +16,7 @@ export function ChatInput() {
   const { sendMessage, status, stop, error } = useChat()
   const [input, setInput] = useState('')
   const [errorDismissed, setErrorDismissed] = useState(false)
+  const [uploadErrorDismissed, setUploadErrorDismissed] = useState(false)
   const inputRef = useRef<{ focus: () => void }>(null)
 
   // File upload: images and PDF, max 10 files.
@@ -28,15 +29,31 @@ export function ChatInput() {
 
   const isBusy = status === 'submitted' || status === 'streaming'
   const isEmpty = !input.trim()
-  const errorMessage =
+  const chatErrorMessage =
     error?.message ?? (typeof error === 'string' ? error : null)
-  const showError = !!errorMessage && !errorDismissed
+  const uploadErrorMessage =
+    files.find((file) => !!file.uploadError)?.uploadError ?? null
+  const showChatError = !!chatErrorMessage && !errorDismissed
+  const showUploadError = !!uploadErrorMessage && !uploadErrorDismissed
+  const activeErrorMessage = showChatError
+    ? chatErrorMessage
+    : showUploadError
+      ? uploadErrorMessage
+      : null
 
   useEffect(() => {
     if (error) setErrorDismissed(false)
   }, [error])
 
+  useEffect(() => {
+    if (uploadErrorMessage) setUploadErrorDismissed(false)
+  }, [uploadErrorMessage])
+
   const handleDismissError = useCallback(() => setErrorDismissed(true), [])
+  const handleDismissUploadError = useCallback(
+    () => setUploadErrorDismissed(true),
+    []
+  )
 
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
@@ -51,17 +68,18 @@ export function ChatInput() {
 
   const topSlot = (
     <>
+      {activeErrorMessage ? (
+        <PromptInputError
+          error={activeErrorMessage}
+          onDismiss={showChatError ? handleDismissError : handleDismissUploadError}
+        />
+      ) : null}
       {files.length > 0 && (
         <PromptInputAttachments files={files} onRemove={handleRemoveFile} />
       )}
-      {showError ? (
-        <PromptInputError
-          error={errorMessage}
-          onDismiss={handleDismissError}
-        />
-      ) : (
+      {!activeErrorMessage ? (
         <PromptInputThinking isVisible={isBusy} onCancel={stop} />
-      )}
+      ) : null}
     </>
   )
 

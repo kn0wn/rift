@@ -36,6 +36,13 @@ export function PromptInputToolbar({
 }: PromptInputToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const handleOpenFilePicker = () => {
+    if (!fileInputRef.current) return
+    // Ensure selecting the same file again still fires onChange.
+    fileInputRef.current.value = ''
+    fileInputRef.current.click()
+  }
+
   const handleToolbarClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement
     const isButton = target.closest('button')
@@ -72,7 +79,7 @@ export function PromptInputToolbar({
         size="icon"
         aria-label={canAddMore ? 'Upload files' : 'Attach file (max reached)'}
         disabled={!canAddMore}
-        onClick={() => fileInputRef.current?.click()}
+        onClick={handleOpenFilePicker}
       >
         <Plus aria-hidden />
       </Button>

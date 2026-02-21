@@ -15,6 +15,7 @@ import { Route as appLayoutIndexRouteImport } from './routes/(app)/_layout/index
 import { Route as appLayoutSplatRouteImport } from './routes/(app)/_layout/$'
 import { Route as ApiZeroQueryRouteRouteImport } from './routes/api/zero/query/route'
 import { Route as ApiZeroMutateRouteRouteImport } from './routes/api/zero/mutate/route'
+import { Route as ApiFilesUploadRouteRouteImport } from './routes/api/files/upload/route'
 import { Route as ApiAuthCallbackRouteRouteImport } from './routes/api/auth/callback/route'
 import { Route as appLayoutWriterRouteRouteImport } from './routes/(app)/_layout/writer/route'
 import { Route as appLayoutSettingsRouteRouteImport } from './routes/(app)/_layout/settings/route'
@@ -51,6 +52,11 @@ const ApiZeroQueryRouteRoute = ApiZeroQueryRouteRouteImport.update({
 const ApiZeroMutateRouteRoute = ApiZeroMutateRouteRouteImport.update({
   id: '/api/zero/mutate',
   path: '/api/zero/mutate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFilesUploadRouteRoute = ApiFilesUploadRouteRouteImport.update({
+  id: '/api/files/upload',
+  path: '/api/files/upload',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthCallbackRouteRoute = ApiAuthCallbackRouteRouteImport.update({
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof appLayoutSettingsRouteRouteWithChildren
   '/writer': typeof appLayoutWriterRouteRoute
   '/api/auth/callback': typeof ApiAuthCallbackRouteRoute
+  '/api/files/upload': typeof ApiFilesUploadRouteRoute
   '/api/zero/mutate': typeof ApiZeroMutateRouteRoute
   '/api/zero/query': typeof ApiZeroQueryRouteRoute
   '/$': typeof appLayoutSplatRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRouteRoute
   '/writer': typeof appLayoutWriterRouteRoute
   '/api/auth/callback': typeof ApiAuthCallbackRouteRoute
+  '/api/files/upload': typeof ApiFilesUploadRouteRoute
   '/api/zero/mutate': typeof ApiZeroMutateRouteRoute
   '/api/zero/query': typeof ApiZeroQueryRouteRoute
   '/$': typeof appLayoutSplatRoute
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/(app)/_layout/settings': typeof appLayoutSettingsRouteRouteWithChildren
   '/(app)/_layout/writer': typeof appLayoutWriterRouteRoute
   '/api/auth/callback': typeof ApiAuthCallbackRouteRoute
+  '/api/files/upload': typeof ApiFilesUploadRouteRoute
   '/api/zero/mutate': typeof ApiZeroMutateRouteRoute
   '/api/zero/query': typeof ApiZeroQueryRouteRoute
   '/(app)/_layout/$': typeof appLayoutSplatRoute
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/writer'
     | '/api/auth/callback'
+    | '/api/files/upload'
     | '/api/zero/mutate'
     | '/api/zero/query'
     | '/$'
@@ -162,6 +172,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/writer'
     | '/api/auth/callback'
+    | '/api/files/upload'
     | '/api/zero/mutate'
     | '/api/zero/query'
     | '/$'
@@ -178,6 +189,7 @@ export interface FileRouteTypes {
     | '/(app)/_layout/settings'
     | '/(app)/_layout/writer'
     | '/api/auth/callback'
+    | '/api/files/upload'
     | '/api/zero/mutate'
     | '/api/zero/query'
     | '/(app)/_layout/$'
@@ -192,6 +204,7 @@ export interface RootRouteChildren {
   appLayoutRouteRoute: typeof appLayoutRouteRouteWithChildren
   ApiChatRouteRoute: typeof ApiChatRouteRoute
   ApiAuthCallbackRouteRoute: typeof ApiAuthCallbackRouteRoute
+  ApiFilesUploadRouteRoute: typeof ApiFilesUploadRouteRoute
   ApiZeroMutateRouteRoute: typeof ApiZeroMutateRouteRoute
   ApiZeroQueryRouteRoute: typeof ApiZeroQueryRouteRoute
 }
@@ -238,6 +251,13 @@ declare module '@tanstack/react-router' {
       path: '/api/zero/mutate'
       fullPath: '/api/zero/mutate'
       preLoaderRoute: typeof ApiZeroMutateRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/files/upload': {
+      id: '/api/files/upload'
+      path: '/api/files/upload'
+      fullPath: '/api/files/upload'
+      preLoaderRoute: typeof ApiFilesUploadRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/callback': {
@@ -352,6 +372,7 @@ const rootRouteChildren: RootRouteChildren = {
   appLayoutRouteRoute: appLayoutRouteRouteWithChildren,
   ApiChatRouteRoute: ApiChatRouteRoute,
   ApiAuthCallbackRouteRoute: ApiAuthCallbackRouteRoute,
+  ApiFilesUploadRouteRoute: ApiFilesUploadRouteRoute,
   ApiZeroMutateRouteRoute: ApiZeroMutateRouteRoute,
   ApiZeroQueryRouteRoute: ApiZeroQueryRouteRoute,
 }
