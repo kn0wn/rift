@@ -8,7 +8,7 @@ import { SETTINGS_AREA_KEY } from '@/components/layout/sidebar/app-sidebar-nav.c
 import { UserProfileAvatar } from '@/components/layout/user-profile-avatar'
 import { Avatar, AvatarFallback } from '@rift/ui/avatar'
 import { Button } from '@rift/ui/button'
-import { SidebarGroupTooltip, TooltipProvider } from '@rift/ui/tooltip'
+import { SidebarGroupTooltip } from '@rift/ui/tooltip'
 import { useAuth } from '@workos/authkit-tanstack-react-start/client'
 import { Link, useLocation } from '@tanstack/react-router'
 import type { ComponentType } from 'react'
@@ -43,8 +43,7 @@ export const AppSidebar: ComponentType = () => {
       style={sidebarStyle}
     >
       <nav className="flex size-full flex-col items-center justify-between p-2">
-        <TooltipProvider delay={100}>
-          <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-3">
             <div className="pb-1 pt-2" />
             <Button variant="sidebarIcon" size="iconSidebar" aria-label="Workspace">
               <Avatar size="xs">
@@ -76,8 +75,7 @@ export const AppSidebar: ComponentType = () => {
                   </SidebarGroupTooltip>
                 )
               })}
-          </div>
-        </TooltipProvider>
+        </div>
         <div className="flex flex-col items-center gap-3">
           <ThemeToggle />
           <UserProfileAvatar user={user ?? undefined} />
@@ -87,13 +85,13 @@ export const AppSidebar: ComponentType = () => {
         className={`size-full overflow-hidden py-2 pr-2 transition-opacity duration-300 ${showAreaPanel ? '' : 'pointer-events-none opacity-0'}`}
       >
         <div className="scrollbar-hide relative flex h-full w-[calc(var(--sidebar-areas-width)-0.5rem)] flex-col overflow-y-auto overflow-x-hidden rounded-xl dark:border border-border-muted bg-bg-subtle">
-          <div className="relative flex grow flex-col p-3 text-content-muted">
-            <SidebarAreaPanel
-              areas={NAV_AREAS}
-              currentArea={currentArea}
-              data={{ pathname }}
-            />
-          </div>
+            <div className="relative flex grow flex-col p-3 text-content-muted">
+              <SidebarAreaPanel
+                areas={NAV_AREAS}
+                currentArea={currentArea}
+                data={{ pathname }}
+              />
+            </div>
         </div>
       </div>
     </div>

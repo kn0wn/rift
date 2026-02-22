@@ -7,6 +7,7 @@ import ConvexProvider from '../integrations/convex/provider'
 import ZeroProvider from '../integrations/zero/provider'
 import { ThemeProvider } from '@rift/ui/hooks/useTheme'
 import { Toaster } from '@rift/ui/sonner'
+import { TooltipProvider } from '@rift/ui/tooltip'
 
 import appCss from '../styles.css?url'
 
@@ -45,19 +46,21 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <ConvexProvider>
             <ZeroProvider>
               <ThemeProvider>
-              {children}
-              <Toaster />
-              <TanStackDevtools
-                config={{
-                  position: 'bottom-right',
-                }}
-                plugins={[
-                  {
-                    name: 'Tanstack Router',
-                    render: <TanStackRouterDevtoolsPanel />,
-                  },
-                ]}
-              />
+                <TooltipProvider delay={100}>
+                  {children}
+                  <Toaster />
+                  <TanStackDevtools
+                    config={{
+                      position: 'bottom-right',
+                    }}
+                    plugins={[
+                      {
+                        name: 'Tanstack Router',
+                        render: <TanStackRouterDevtoolsPanel />,
+                      },
+                    ]}
+                  />
+                </TooltipProvider>
             </ThemeProvider>
             </ZeroProvider>
           </ConvexProvider>

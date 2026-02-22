@@ -18,7 +18,7 @@ export type SidebarNavData = {
 export type NavItemType = {
   name: string
   href: string
-  icon: ComponentType<SVGProps<SVGSVGElement> & { 'data-hovered'?: boolean }>
+  icon?: ComponentType<SVGProps<SVGSVGElement> & { 'data-hovered'?: boolean }>
   exact?: boolean
   isActive?: (pathname: string, href: string) => boolean
   /** Optional trailing element (e.g. status indicator) shown after the label */

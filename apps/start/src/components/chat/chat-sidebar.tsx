@@ -3,14 +3,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useZero } from '@rocicorp/zero/react'
-import {
-  AlertTriangle,
-  Compass,
-  Globe,
-  Link2,
-  Loader2,
-  MessageSquare,
-} from 'lucide-react'
+import { AlertTriangle, Compass, Globe, Link2, Loader2 } from 'lucide-react'
+import { SidebarGroupTooltip } from '@rift/ui/tooltip'
 import { isAreaPath } from '@/utils/nav-utils'
 import { SidebarAreaLayout } from '@/components/layout/sidebar/sidebar-area-layout'
 import type {
@@ -158,21 +152,38 @@ export function ChatSidebarContent({ pathname }: { pathname: string }) {
       status === 'pending' || status === 'generation' || status === undefined
     const showError = status === 'failed'
     const trailing = showSpinner ? (
-      <Loader2
-        className="size-4 shrink-0 animate-spin text-content-muted"
-        aria-label="Generating"
-      />
+      <SidebarGroupTooltip
+        name={status === 'pending' ? 'Pending' : 'Generating'}
+        description={
+          status === 'pending'
+            ? 'This chat is queued; a response will be generated shortly.'
+            : 'The AI has started generating the response.'
+        }
+      >
+        <span className="inline-flex shrink-0">
+          <Loader2
+            className="size-4 animate-spin text-content-muted"
+            aria-hidden
+          />
+        </span>
+      </SidebarGroupTooltip>
     ) : showError ? (
-      <AlertTriangle
-        className="size-4 shrink-0 text-content-error"
-        aria-label="Error"
-      />
+      <SidebarGroupTooltip
+        name="Error"
+        description="Something went wrong and the response could not be generated."
+      >
+        <span className="inline-flex shrink-0">
+          <AlertTriangle
+            className="size-4 text-content-error"
+            aria-hidden
+          />
+        </span>
+      </SidebarGroupTooltip>
     ) : undefined
 
     return {
       name: thread.title || 'Untitled',
       href: `${CHAT_HREF}/${thread.threadId}`,
-      icon: MessageSquare,
       trailing,
     }
   })
@@ -182,7 +193,7 @@ export function ChatSidebarContent({ pathname }: { pathname: string }) {
     items:
       threadItems.length > 0
         ? threadItems
-        : [{ name: 'No chats yet', href: CHAT_HREF, icon: MessageSquare }],
+        : [{ name: 'No chats yet', href: CHAT_HREF }],
   }
 
   const sections = [...staticSections, historySection]
