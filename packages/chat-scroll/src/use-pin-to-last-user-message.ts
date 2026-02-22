@@ -7,6 +7,7 @@ import {
 import { useOptimizedScroll } from "./use-optimized-scroll";
 
 export type UsePinToLastUserMessageOptions = {
+  resetKey?: string | number;
   userMessageCount: number;
   lastUserMessageId: string | null;
   /** Passed for effect deps so spacer recalculates when messages or status change. */
@@ -21,6 +22,7 @@ export function usePinToLastUserMessage(
   options: UsePinToLastUserMessageOptions
 ) {
   const {
+    resetKey,
     userMessageCount,
     lastUserMessageId,
     messages,
@@ -34,6 +36,9 @@ export function usePinToLastUserMessage(
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const lastSpacerHeightRef = useRef<number>(0);
   const prevUserMessageCountRef = useRef(userMessageCount);
+  const hasInitialAlignmentRef = useRef(false);
+  const lastResetKeyRef = useRef<string | number | undefined>(resetKey);
+  const initialSettleUntilRef = useRef(0);
 
   const { scrollToBottom, markManualScroll, resetManualScroll } =
     useOptimizedScroll(bottomRef);
@@ -155,12 +160,33 @@ export function usePinToLastUserMessage(
     messages,
   ]);
 
+  const scrollParentToBottom = useCallback(
+    (behavior: ScrollBehavior = "auto") => {
+      const node = bottomRef.current ?? contentEndRef.current;
+      const scrollParent = getScrollParent(node);
+      if (!scrollParent) return false;
+      scrollParent.scrollTo({
+        top: scrollParent.scrollHeight,
+        behavior,
+      });
+      return true;
+    },
+    [getScrollParent]
+  );
+
   useLayoutEffect(() => {
     recalcSpacer();
   }, [recalcSpacer, messages, status, lastUserMessageId]);
 
   useLayoutEffect(() => {
-    const handle = () => recalcSpacer();
+    const handle = () => {
+      recalcSpacer();
+      if (Date.now() < initialSettleUntilRef.current) {
+        if (!scrollParentToBottom("auto")) {
+          scrollToBottom("auto");
+        }
+      }
+    };
 
     const endEl = contentEndRef.current;
     if (!endEl) return;
@@ -182,12 +208,55 @@ export function usePinToLastUserMessage(
       vv?.removeEventListener("scroll", handle);
       window.removeEventListener("resize", handle);
     };
-  }, [recalcSpacer, lastUserMessageId]);
+  }, [recalcSpacer, scrollParentToBottom, scrollToBottom, lastUserMessageId]);
+
+  useLayoutEffect(() => {
+    if (lastResetKeyRef.current === resetKey) return;
+    lastResetKeyRef.current = resetKey;
+    hasInitialAlignmentRef.current = false;
+    initialSettleUntilRef.current = 0;
+    prevUserMessageCountRef.current = userMessageCount;
+  }, [resetKey, userMessageCount]);
+
+  useLayoutEffect(() => {
+    if (hasInitialAlignmentRef.current) return;
+    if (messages.length === 0) {
+      prevUserMessageCountRef.current = userMessageCount;
+      return;
+    }
+
+    resetManualScroll();
+    recalcSpacer();
+    if (!scrollParentToBottom("auto")) {
+      scrollToBottom("auto");
+    }
+    hasInitialAlignmentRef.current = true;
+    initialSettleUntilRef.current = Date.now() + 900;
+    requestAnimationFrame(() => {
+      if (!scrollParentToBottom("auto")) {
+        scrollToBottom("auto");
+      }
+      requestAnimationFrame(() => {
+        if (!scrollParentToBottom("auto")) {
+          scrollToBottom("auto");
+        }
+      });
+    });
+    prevUserMessageCountRef.current = userMessageCount;
+  }, [
+    messages.length,
+    recalcSpacer,
+    scrollParentToBottom,
+    resetManualScroll,
+    scrollToBottom,
+    userMessageCount,
+  ]);
 
   useLayoutEffect(() => {
     const prev = prevUserMessageCountRef.current;
     prevUserMessageCountRef.current = userMessageCount;
 
+    if (!hasInitialAlignmentRef.current) return;
     if (userMessageCount <= 1) return;
     if (userMessageCount <= prev) return;
 

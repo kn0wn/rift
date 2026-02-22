@@ -5,10 +5,10 @@ export function useOptimizedScroll(
 ) {
   const hasManuallyScrolledRef = useRef(false);
 
-  const scrollToBottom = useCallback(() => {
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     if (targetRef.current && !hasManuallyScrolledRef.current) {
       targetRef.current.scrollIntoView({
-        behavior: "smooth",
+        behavior,
         block: "end",
       });
     }

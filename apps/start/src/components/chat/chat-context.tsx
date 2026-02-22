@@ -33,6 +33,7 @@ type ChatContextValue = Pick<
   ReturnType<typeof useAIChat<ChatUIMessage>>,
   'messages' | 'status' | 'error' | 'setMessages' | 'resumeStream'
 > & {
+  activeThreadId?: string
   sendMessage: ReturnType<typeof useAIChat<ChatUIMessage>>['sendMessage']
   clear: () => void
 }
@@ -327,12 +328,23 @@ export function ChatProvider({
       messages,
       status,
       error: localError ?? error,
+      activeThreadId,
       sendMessage,
       setMessages,
       resumeStream,
       clear,
     }),
-    [messages, status, error, localError, sendMessage, setMessages, resumeStream, clear],
+    [
+      messages,
+      status,
+      error,
+      localError,
+      activeThreadId,
+      sendMessage,
+      setMessages,
+      resumeStream,
+      clear,
+    ],
   )
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>

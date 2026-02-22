@@ -5,7 +5,7 @@ import { ChatMessage } from './chat-message'
 import { usePinToLastUserMessage } from '@rift/chat-scroll'
 
 export function ChatThread() {
-  const { messages, status } = useChat()
+  const { messages, status, activeThreadId } = useChat()
   const sorted = useMemo(() => messages.slice(), [messages])
   const userMessageCount = useMemo(
     () => sorted.filter((m) => m.role === 'user').length,
@@ -25,6 +25,7 @@ export function ChatThread() {
     spacerRef,
     bottomRef,
   } = usePinToLastUserMessage({
+    resetKey: activeThreadId,
     userMessageCount,
     lastUserMessageId,
     messages: sorted,
