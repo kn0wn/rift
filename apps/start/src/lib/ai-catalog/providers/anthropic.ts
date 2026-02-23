@@ -1,6 +1,6 @@
 import type { AiModelCatalogEntry } from '../types'
 
-export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry[] = [
+export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
   {
     id: 'anthropic/claude-3.5-haiku',
     providerId: 'anthropic',
@@ -15,7 +15,7 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry[] = [
       supportsImageInput: true,
       supportsPdfInput: true,
     },
-    providerToolIds: ['web_fetch'],
+    providerToolIds: ['web_fetch_20250910'],
     reasoningEfforts: [],
     defaultMaxOutputTokens: 8192,
   },
@@ -33,7 +33,7 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry[] = [
       supportsImageInput: true,
       supportsPdfInput: true,
     },
-    providerToolIds: ['web_fetch'],
+    providerToolIds: ['web_fetch_20250910', 'text_editor_20250124'],
     reasoningEfforts: ['low', 'medium', 'high'],
     defaultReasoningEffort: 'medium',
     providerOptionsByReasoning: {
@@ -57,7 +57,11 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry[] = [
       supportsImageInput: true,
       supportsPdfInput: true,
     },
-    providerToolIds: ['web_fetch', 'computer_use'],
+    providerToolIds: [
+      'web_fetch_20250910',
+      'computer_20250124',
+      'text_editor_20250728',
+    ],
     reasoningEfforts: ['low', 'medium', 'high'],
     defaultReasoningEffort: 'medium',
     providerOptionsByReasoning: {

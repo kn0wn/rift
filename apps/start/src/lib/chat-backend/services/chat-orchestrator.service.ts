@@ -46,6 +46,58 @@ export class ChatOrchestratorService extends ServiceMap.Service<
   ChatOrchestratorServiceShape
 >()('chat-backend/ChatOrchestratorService') {}
 
+function getStreamErrorMessage(error: unknown): string {
+  const visited = new Set<unknown>()
+
+  const visit = (value: unknown): string | undefined => {
+    if (value == null) return undefined
+    if (visited.has(value)) return undefined
+    if (typeof value === 'object') visited.add(value)
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      return trimmed.length > 0 ? trimmed : undefined
+    }
+
+    if (value instanceof Error) {
+      if (value.message && value.message !== '[object Object]') {
+        return value.message
+      }
+    }
+
+    if (typeof value !== 'object') return undefined
+
+    const record = value as Record<string, unknown>
+
+    if (typeof record.message === 'string' && record.message !== '[object Object]') {
+      return record.message
+    }
+
+    if (typeof record.responseBody === 'string') {
+      try {
+        const parsed = JSON.parse(record.responseBody) as Record<string, unknown>
+        const parsedMessage = visit(parsed)
+        if (parsedMessage) return parsedMessage
+      } catch {
+        // ignore parse errors
+      }
+    }
+
+    const nestedKeys = ['error', 'data', 'param', 'cause'] as const
+    for (const key of nestedKeys) {
+      const nestedMessage = visit(record[key])
+      if (nestedMessage) return nestedMessage
+    }
+
+    return undefined
+  }
+
+  return (
+    visit(error) ??
+    'The assistant response failed while streaming. Please retry.'
+  )
+}
+
 /** Live orchestration implementation used by API routes. */
 export const ChatOrchestratorLive = Layer.effect(
   ChatOrchestratorService,
@@ -292,6 +344,10 @@ export const ChatOrchestratorLive = Layer.effect(
 
         return result.toUIMessageStreamResponse({
           originalMessages: messages,
+          headers: {
+            'Content-Encoding': 'none',
+            'Cache-Control': 'no-cache, no-transform',
+          },
           consumeSseStream: ({ stream }) => {
             void Effect.runPromise(
               streamResume
@@ -319,9 +375,10 @@ export const ChatOrchestratorLive = Layer.effect(
             )
           },
           onError: (error: unknown) => {
+            const errorMessage = getStreamErrorMessage(error)
             finalizeAssistant({
               ok: false,
-              errorMessage: error instanceof Error ? error.message : String(error),
+              errorMessage,
             })
             cleanupActiveStream()
 
@@ -336,13 +393,13 @@ export const ChatOrchestratorLive = Layer.effect(
                 model: modelResolution.modelId,
                 errorCode: chatErrorCodeFromTag(getErrorTag(error)),
                 errorTag: getErrorTag(error),
-                message: error instanceof Error ? error.message : String(error),
+                message: errorMessage,
                 latencyMs: Date.now() - startedAt,
                 retryable: true,
               }),
             )
 
-            return 'The assistant response failed while streaming. Please retry.'
+            return errorMessage
           },
           messageMetadata: ({ part }: { part: any }) => {
             // Metadata is attached only for lifecycle events consumed by the client.

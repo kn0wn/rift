@@ -1,6 +1,6 @@
 import type { ProviderToolDefinition } from './types'
 
-export const OPENAI_PROVIDER_TOOLS: readonly ProviderToolDefinition[] = [
+export const OPENAI_PROVIDER_TOOLS = [
   {
     id: 'web_search',
     name: 'Web Search',
@@ -19,4 +19,6 @@ export const OPENAI_PROVIDER_TOOLS: readonly ProviderToolDefinition[] = [
     description: 'Runs code and returns computed outputs.',
     advanced: true,
   },
-]
+] as const satisfies readonly ProviderToolDefinition[]
+
+export type OpenAiProviderToolId = (typeof OPENAI_PROVIDER_TOOLS)[number]['id']

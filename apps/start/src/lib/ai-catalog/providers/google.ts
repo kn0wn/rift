@@ -1,6 +1,6 @@
 import type { AiModelCatalogEntry } from '../types'
 
-export const GOOGLE_MODELS: readonly AiModelCatalogEntry[] = [
+export const GOOGLE_MODELS: readonly AiModelCatalogEntry<'google'>[] = [
   {
     id: 'google/gemini-2.5-flash',
     providerId: 'google',

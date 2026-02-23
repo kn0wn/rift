@@ -1,5 +1,6 @@
 import { convertToModelMessages, streamText } from 'ai'
 import type { UIMessage } from 'ai'
+import type { ToolSet } from 'ai'
 import { Effect, Layer, ServiceMap } from 'effect'
 import { ModelProviderError } from '../domain/errors'
 
@@ -13,6 +14,7 @@ const SYSTEM_PROMPT = 'You are a helpful assistant.'
 export type ModelStreamResult = {
   readonly toUIMessageStreamResponse: (options?: {
     readonly originalMessages?: UIMessage[]
+    readonly headers?: HeadersInit
     readonly onError?: (error: unknown) => string
     readonly consumeSseStream?: (options: {
       readonly stream: ReadableStream<string>
@@ -33,7 +35,7 @@ export type ModelGatewayServiceShape = {
     readonly messages: UIMessage[]
     readonly model: string
     readonly requestId: string
-    readonly tools: Record<string, never>
+    readonly tools: ToolSet
     readonly activeTools?: readonly string[]
     readonly providerOptions?: Record<string, unknown>
     readonly reasoningEffort?: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'

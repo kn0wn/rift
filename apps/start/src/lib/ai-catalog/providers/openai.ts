@@ -1,6 +1,6 @@
 import type { AiModelCatalogEntry } from '../types'
 
-export const OPENAI_MODELS: readonly AiModelCatalogEntry[] = [
+export const OPENAI_MODELS: readonly AiModelCatalogEntry<'openai'>[] = [
   {
     id: 'openai/gpt-4o-mini',
     providerId: 'openai',

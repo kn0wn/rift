@@ -1,3 +1,9 @@
+import type {
+  CatalogProviderId,
+  CatalogProviderToolId,
+  ProviderToolIdByProvider,
+} from './provider-tools'
+
 /** Normalized reasoning levels exposed to UI and accepted by chat requests. */
 export type AiReasoningEffort =
   | 'none'
@@ -8,7 +14,7 @@ export type AiReasoningEffort =
   | 'xhigh'
 
 /** Provider-local tool id that can be attached to specific models. */
-export type AiProviderToolId = string
+export type AiProviderToolId = CatalogProviderToolId
 
 /**
  * Runtime capabilities exposed to UI/policy consumers so behavior can be gated
@@ -35,16 +41,18 @@ export type AiModelRequirement = {
  * Canonical catalog row used across policy evaluation, admin settings, and
  * chat runtime model selection.
  */
-export type AiModelCatalogEntry = {
+export type AiModelCatalogEntry<
+  TProviderId extends CatalogProviderId = CatalogProviderId,
+> = {
   readonly id: string
-  readonly providerId: string
+  readonly providerId: TProviderId
   readonly name: string
   readonly description: string
   readonly contextWindow: number
   readonly collectsData: boolean
   readonly capabilities: AiModelCapabilities
   /** Provider-specific tools explicitly enabled for this model. */
-  readonly providerToolIds: readonly AiProviderToolId[]
+  readonly providerToolIds: readonly ProviderToolIdByProvider[TProviderId][]
   /**
    * Reasoning settings are model-specific to prevent invalid combinations.
    * An empty list means the model should be treated as non-reasoning.

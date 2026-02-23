@@ -1,14 +1,16 @@
+import type { ToolSet } from 'ai'
 import { Effect, Layer, ServiceMap } from 'effect'
 import { AI_CATALOG_BY_ID } from '@/lib/ai-catalog'
 import { getProviderToolDefinition } from '@/lib/ai-catalog/provider-tools'
 import { canUseAdvancedProviderTools } from '@/lib/ai-feature-flags'
 import type { AiReasoningEffort } from '@/lib/ai-catalog/types'
+import { resolveProviderToolSet } from '../provider-tools'
 
 /**
  * Tool registry returns tool-calling capabilities available to a request.
  */
 export type ToolRegistryResult = {
-  readonly tools: Record<string, never>
+  readonly tools: ToolSet
   readonly activeTools: readonly string[]
   readonly defaultProviderOptions?: Record<string, unknown>
   readonly providerOptionsByReasoning: Partial<
@@ -32,7 +34,7 @@ export class ToolRegistryService extends ServiceMap.Service<
   ToolRegistryServiceShape
 >()('chat-backend/ToolRegistryService') {}
 
-/** Live tool registry (currently no tools enabled). */
+/** Live tool registry resolving provider-specific tool capabilities. */
 export const ToolRegistryLive = Layer.succeed(ToolRegistryService, {
   resolveForThread: ({ modelId }) => {
     const model = AI_CATALOG_BY_ID.get(modelId)
@@ -42,12 +44,19 @@ export const ToolRegistryLive = Layer.succeed(ToolRegistryService, {
         if (!definition) return false
         return canUseAdvancedProviderTools() || !definition.advanced
       }) ?? []
+    const tools =
+      model && enabledProviderTools.length > 0
+        ? resolveProviderToolSet({
+            providerId: model.providerId,
+            providerToolIds: enabledProviderTools,
+            context: { modelId: model.id },
+          })
+        : {}
+    const activeTools = Object.keys(tools)
 
     return Effect.succeed({
-      tools: {},
-      // Provider tools are cataloged and entitlement-filtered, but runtime
-      // SDK tools remain disabled until concrete server tool executors are added.
-      activeTools: enabledProviderTools.length > 0 ? [] : [],
+      tools,
+      activeTools,
       defaultProviderOptions: model?.defaultProviderOptions,
       providerOptionsByReasoning: model?.providerOptionsByReasoning ?? {},
     })

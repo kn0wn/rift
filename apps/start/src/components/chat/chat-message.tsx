@@ -1,5 +1,4 @@
 // Single chat message renderer (user/assistant).
-import { memo } from 'react'
 import type { UIMessage } from 'ai'
 import { Streamdown, type PluginConfig } from 'streamdown'
 import { code } from '@streamdown/code'
@@ -27,7 +26,7 @@ type ChatMessageProps = {
   isAnimating?: boolean
 }
 
-function ChatMessageComponent({
+export function ChatMessage({
   message,
   isAnimating = false,
 }: ChatMessageProps) {
@@ -63,11 +62,3 @@ function ChatMessageComponent({
     </div>
   )
 }
-
-export const ChatMessage = memo(ChatMessageComponent, (prev, next) => {
-  if (prev.isAnimating !== next.isAnimating) return false
-  if (prev.message === next.message) return true
-  if (prev.message.id !== next.message.id) return false
-  if (prev.message.role !== next.message.role) return false
-  return getMessageText(prev.message) === getMessageText(next.message)
-})
