@@ -2,10 +2,14 @@ import { Effect, Layer, ServiceMap } from 'effect'
 import { RateLimitExceededError } from '../domain/errors'
 import { getMemoryState } from '../infra/memory/state'
 
-// Simple fixed-window in-memory rate limiting. Replace with Redis-backed limiter.
+/**
+ * Simple fixed-window in-memory rate limiting.
+ * Replace with Redis/distributed limiter before scaling beyond single-node semantics.
+ */
 const RATE_LIMIT_WINDOW_MS = 60_000
 const RATE_LIMIT_MAX_REQUESTS = 30
 
+/** Service contract for per-user chat request throttling. */
 export type RateLimitServiceShape = {
   readonly assertAllowed: (input: {
     readonly userId: string
@@ -16,11 +20,13 @@ export type RateLimitServiceShape = {
   >
 }
 
+/** Injectable rate-limit service token. */
 export class RateLimitService extends ServiceMap.Service<
   RateLimitService,
   RateLimitServiceShape
 >()('chat-backend/RateLimitService') {}
 
+/** In-memory rate limiter used by current live wiring. */
 export const RateLimitMemory = Layer.succeed(RateLimitService, {
   assertAllowed: ({ userId, requestId }) =>
     Effect.gen(function* () {

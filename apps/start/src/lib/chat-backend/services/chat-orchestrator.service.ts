@@ -16,7 +16,11 @@ import { StreamResumeService } from './stream-resume.service'
 import { ThreadService } from './thread.service'
 import { ToolRegistryService } from './tool-registry.service'
 
-// Orchestrates rate limiting, authorization, persistence, and streaming for chat.
+/**
+ * High-level chat orchestration boundary.
+ * Coordinates cross-cutting concerns (authz, throttling, model policy, persistence,
+ * stream lifecycle) so route handlers stay thin.
+ */
 export type ChatOrchestratorServiceShape = {
   readonly createThread: (input: {
     readonly userId: string
@@ -39,6 +43,7 @@ export class ChatOrchestratorService extends ServiceMap.Service<
   ChatOrchestratorServiceShape
 >()('chat-backend/ChatOrchestratorService') {}
 
+/** Live orchestration implementation used by API routes. */
 export const ChatOrchestratorLive = Layer.effect(
   ChatOrchestratorService,
   Effect.gen(function* () {
@@ -115,12 +120,14 @@ export const ChatOrchestratorLive = Layer.effect(
           userId,
           requestId,
         })
+        // Model is resolved once per request and reused for persistence + stream metadata.
         const modelResolution = yield* modelPolicy.resolveThreadModel({
           threadId,
           orgWorkosId,
           requestId,
         })
 
+        // Enforce one active stream per user/thread to avoid interleaved assistant writes.
         const existingStreamId = yield* streamResume.getActiveStreamId({
           userId,
           threadId,
@@ -249,6 +256,7 @@ export const ChatOrchestratorLive = Layer.effect(
           onChunk: (chunk: unknown) => {
             if (!chunk || typeof chunk !== 'object') return
             const candidate = chunk as { type?: unknown; text?: unknown }
+            // Persisted assistant content is reconstructed from deltas as they arrive.
             if (candidate.type === 'text-delta' && typeof candidate.text === 'string') {
               bufferedAssistantText += candidate.text
             }
@@ -310,6 +318,7 @@ export const ChatOrchestratorLive = Layer.effect(
             return 'The assistant response failed while streaming. Please retry.'
           },
           messageMetadata: ({ part }: { part: any }) => {
+            // Metadata is attached only for lifecycle events consumed by the client.
             if (part.type === 'start') {
               return {
                 threadId,
@@ -354,6 +363,7 @@ export const ChatOrchestratorLive = Layer.effect(
             const ok = bufferedAssistantText.length > 0
             finalizeAssistant({
               ok,
+              // Explicit failure reasons improve support/debugging and future analytics.
               errorMessage: isAborted
                 ? 'Stream aborted before completion'
                 : ok

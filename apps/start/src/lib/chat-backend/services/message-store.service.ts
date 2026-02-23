@@ -6,7 +6,10 @@ import { getUserMessageText } from '../domain/schemas'
 import { getMemoryState } from '../infra/memory/state'
 import { getZeroDatabase, zql } from '../infra/zero/db'
 
-// Message persistence adapter backed by Zero + upstream Postgres.
+/**
+ * Message persistence adapter backed by Zero + upstream Postgres.
+ * Responsible for loading thread history and persisting user/assistant turns.
+ */
 export type MessageStoreServiceShape = {
   readonly loadThreadMessages: (input: {
     readonly threadId: string
@@ -38,12 +41,14 @@ export class MessageStoreService extends ServiceMap.Service<
   MessageStoreServiceShape
 >()('chat-backend/MessageStoreService') {}
 
+/** Converts validated inbound payload into UIMessage shape expected by AI SDK. */
 const toUserMessage = (message: IncomingUserMessage): UIMessage => ({
   id: message.id,
   role: 'user',
   parts: [{ type: 'text', text: getUserMessageText(message) }],
 })
 
+/** Production message store implementation. */
 export const MessageStoreZero = Layer.succeed(MessageStoreService, {
   loadThreadMessages: ({ threadId, requestId }) =>
     Effect.tryPromise({
@@ -153,6 +158,7 @@ export const MessageStoreZero = Layer.succeed(MessageStoreService, {
           )
 
           if (existing) {
+            // Update path is idempotent: retries finalize the same assistant row.
             const update: {
               id: string
               content: string
@@ -175,6 +181,7 @@ export const MessageStoreZero = Layer.succeed(MessageStoreService, {
 
             await tx.mutate.message.update(update)
           } else {
+            // Insert path handles first successful finalize for this assistant message.
             const insert: {
               id: string
               messageId: string
@@ -228,7 +235,7 @@ export const MessageStoreZero = Layer.succeed(MessageStoreService, {
     }),
 })
 
-// Test-only adapter retained for deterministic unit tests.
+/** Test-only adapter retained for deterministic unit tests. */
 export const MessageStoreMemory = Layer.succeed(MessageStoreService, {
   loadThreadMessages: ({ threadId, requestId }) =>
     Effect.sync(() => {

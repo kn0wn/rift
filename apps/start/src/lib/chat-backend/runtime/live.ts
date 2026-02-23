@@ -8,8 +8,11 @@ import { StreamResumeLive } from '../services/stream-resume.service'
 import { ThreadServiceZero } from '../services/thread.service'
 import { ToolRegistryLive } from '../services/tool-registry.service'
 
-// Production wiring: thread/message persistence through Zero + Postgres.
-// Rate limiting still uses in-memory adapter.
+/**
+ * Production dependency graph for chat runtime.
+ * Persistence uses Zero/Postgres, stream resume uses Redis, and rate limiting
+ * is temporarily in-memory until distributed limiter is introduced.
+ */
 export const ChatLiveLayer = ChatOrchestratorLive.pipe(
   Layer.provideMerge(ThreadServiceZero),
   Layer.provideMerge(MessageStoreZero),

@@ -48,12 +48,14 @@ export class ThreadService extends ServiceMap.Service<
   ThreadServiceShape
 >()('chat-backend/ThreadService') {}
 
+/** Fixed thread model stored for traceability; runtime selection is enforced elsewhere. */
 const DEFAULT_THREAD_MODEL = CHAT_FIXED_MODEL_ID
 const DEFAULT_THREAD_TITLE = 'Nuevo Chat'
 const MAX_USER_MESSAGE_LENGTH = 200
 const MAX_TITLE_WORDS = 8
 const MAX_TITLE_LENGTH = 50
 
+/** Limits prompt size sent to title generation without losing first-message intent. */
 function trimUserMessage(message: string): string {
   const trimmed = message.trim()
   if (trimmed.length <= MAX_USER_MESSAGE_LENGTH) {
@@ -62,6 +64,7 @@ function trimUserMessage(message: string): string {
   return `${trimmed.slice(0, MAX_USER_MESSAGE_LENGTH)}...`
 }
 
+/** Sanitizes generated titles to short plain text for consistent sidebar rendering. */
 function cleanGeneratedTitle(text: string): string {
   return text
     .replace(/[#*_`"'~-]/g, '')
@@ -73,6 +76,7 @@ function cleanGeneratedTitle(text: string): string {
     .slice(0, MAX_TITLE_LENGTH)
 }
 
+/** Zero-backed thread service for production usage. */
 export const ThreadServiceZero = Layer.succeed(ThreadService, {
   createThread: ({ userId, requestId }) =>
     Effect.tryPromise({
@@ -135,6 +139,7 @@ export const ThreadServiceZero = Layer.succeed(ThreadService, {
 
           try {
             await db.transaction(async (tx) => {
+              // Uses deterministic IDs so first-message bootstrap can be retried safely.
               await tx.mutate.thread.insert({
                 id: threadId,
                 threadId,

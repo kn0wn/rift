@@ -1,6 +1,9 @@
 import { Effect } from 'effect'
 
-// Wide-event logging is intentionally structured for downstream ingestion (Sentry, etc).
+/**
+ * Structured wide-event payload for error observability sinks (e.g. Sentry/OTel).
+ * Keys are normalized for downstream querying.
+ */
 export type WideErrorEvent = {
   readonly eventName: string
   readonly route: string
@@ -16,6 +19,7 @@ export type WideErrorEvent = {
   readonly cause?: string
 }
 
+/** Emits an Effect log entry with structured annotations for ingestion pipelines. */
 export const emitWideErrorEvent = (event: WideErrorEvent) =>
   Effect.annotateLogs(Effect.logError('wide_event_error'), {
     event_name: event.eventName,
@@ -32,6 +36,7 @@ export const emitWideErrorEvent = (event: WideErrorEvent) =>
     cause: event.cause,
   })
 
+/** Returns stable tag for domain errors; falls back to `UnknownError`. */
 export function getErrorTag(error: unknown): string {
   if (
     typeof error === 'object' &&

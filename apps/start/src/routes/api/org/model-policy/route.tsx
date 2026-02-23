@@ -7,42 +7,53 @@ import {
 } from '@/lib/model-policy/policy-engine'
 import { getOrgAiPolicy, upsertOrgAiPolicy } from '@/lib/model-policy/repository'
 
+/** Request shape for provider-level policy updates. */
 const ToggleProviderBody = z.object({
   action: z.literal('toggle_provider'),
   providerId: z.string().min(1),
   disabled: z.boolean(),
 })
 
+/** Request shape for model-level policy updates. */
 const ToggleModelBody = z.object({
   action: z.literal('toggle_model'),
   modelId: z.string().min(1),
   disabled: z.boolean(),
 })
 
+/** Request shape for compliance flag updates. */
 const ToggleComplianceFlagBody = z.object({
   action: z.literal('toggle_compliance_flag'),
   flag: z.string().min(1),
   enabled: z.boolean(),
 })
 
+/** Union for supported update actions handled by POST /api/org/model-policy. */
 const UpdatePolicyBody = z.discriminatedUnion('action', [
   ToggleProviderBody,
   ToggleModelBody,
   ToggleComplianceFlagBody,
 ])
 
+/** Deduplicates values while preserving first-seen order. */
 function unique(values: readonly string[]): string[] {
   return [...new Set(values)]
 }
 
+/** Removes one candidate value from an immutable string list. */
 function remove(values: readonly string[], candidate: string): string[] {
   return values.filter((value) => value !== candidate)
 }
 
+/** Adds one candidate value to an immutable string list if absent. */
 function add(values: readonly string[], candidate: string): string[] {
   return unique([...values, candidate])
 }
 
+/**
+ * Resolves authenticated org context for org-scoped settings APIs.
+ * Returns a prebuilt Response for auth/business failures to keep handlers slim.
+ */
 async function getOrgIdOrResponse() {
   const auth = await getAuth()
   if (!auth.user) {
@@ -74,6 +85,7 @@ async function getOrgIdOrResponse() {
   return { orgWorkosId }
 }
 
+/** Converts internal catalog/policy rows into stable API response shape. */
 function toModelPayload(input: {
   readonly id: string
   readonly name: string
@@ -94,6 +106,7 @@ function toModelPayload(input: {
   }
 }
 
+/** Builds full admin payload (policy + providers + model decisions) for one org. */
 async function buildResponsePayload(orgWorkosId: string) {
   const policy = await getOrgAiPolicy(orgWorkosId)
 
@@ -129,6 +142,7 @@ async function buildResponsePayload(orgWorkosId: string) {
   }
 }
 
+/** Org-scoped API for model policy read/write operations. */
 export const Route = createFileRoute('/api/org/model-policy')({
   server: {
     handlers: {

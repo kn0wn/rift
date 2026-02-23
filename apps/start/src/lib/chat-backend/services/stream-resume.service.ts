@@ -3,17 +3,20 @@ import { createResumableStreamContext } from 'resumable-stream'
 import { createClient } from 'redis'
 import { StreamProtocolError } from '../domain/errors'
 
+/** Redis payload stored for "active stream per user/thread" tracking. */
 type ActiveStreamRecord = {
   readonly streamId: string
   readonly requestId: string
   readonly startedAt: number
 }
 
+/** In-process handle used to abort and unsubscribe local streams. */
 type LocalStreamHandle = {
   readonly abortController: AbortController
   readonly unsubscribe: () => Promise<void>
 }
 
+/** Shared singleton runtime to avoid opening duplicate Redis connections per request. */
 type ResumeRuntime = {
   readonly publisher: ReturnType<typeof createClient>
   readonly subscriber: ReturnType<typeof createClient>
@@ -37,14 +40,17 @@ const RESUME_BATCH_MAX_DELAY_MS = 100
 
 let runtimePromise: Promise<ResumeRuntime> | null = null
 
+/** Pub/sub channel used to broadcast stop requests across instances. */
 function getStopChannel(streamId: string): string {
   return `${STOP_CHANNEL_PREFIX}:${streamId}`
 }
 
+/** Per-thread active stream key. */
 function getActiveKey(userId: string, threadId: string): string {
   return `${ACTIVE_KEY_PREFIX}:${userId}:${threadId}`
 }
 
+/** Parses Redis JSON into a validated active-stream record. */
 function parseActiveStreamRecord(value: string | null): ActiveStreamRecord | null {
   if (!value) return null
 
@@ -67,6 +73,10 @@ function parseActiveStreamRecord(value: string | null): ActiveStreamRecord | nul
   }
 }
 
+/**
+ * Batches raw SSE chunks to reduce Redis write amplification while preserving
+ * resume fidelity for reconnecting clients.
+ */
 function batchSseStream(
   stream: ReadableStream<string>,
   options: {
@@ -129,6 +139,7 @@ function batchSseStream(
   })
 }
 
+/** Lazily initializes and memoizes Redis + resumable-stream runtime dependencies. */
 async function getRuntime(): Promise<ResumeRuntime> {
   if (runtimePromise) return runtimePromise
 
@@ -165,6 +176,7 @@ async function getRuntime(): Promise<ResumeRuntime> {
   return runtimePromise
 }
 
+/** Creates an in-memory replay stream for same-instance reconnects. */
 function createLocalResumeStream(local: LocalLiveStream): ReadableStream<string> {
   let registered:
     | ReadableStreamDefaultController<string>
@@ -193,6 +205,7 @@ function createLocalResumeStream(local: LocalLiveStream): ReadableStream<string>
   })
 }
 
+/** Service contract for stream resume/stop lifecycle management. */
 export type StreamResumeServiceShape = {
   readonly getActiveStreamId: (input: {
     readonly userId: string
@@ -232,11 +245,13 @@ export type StreamResumeServiceShape = {
   }) => Effect.Effect<void, StreamProtocolError>
 }
 
+/** Injectable stream resume service token. */
 export class StreamResumeService extends ServiceMap.Service<
   StreamResumeService,
   StreamResumeServiceShape
 >()('chat-backend/StreamResumeService') {}
 
+/** Redis-backed stream resume implementation for production. */
 export const StreamResumeLive = Layer.succeed(StreamResumeService, {
   getActiveStreamId: ({ userId, threadId, requestId }) =>
     Effect.tryPromise({
@@ -382,6 +397,7 @@ export const StreamResumeLive = Layer.succeed(StreamResumeService, {
 
         const local = runtime.localStreams.get(record.streamId)
         if (local && !local.done) {
+          // Prefer in-process replay to reduce Redis read pressure for fast reconnects.
           return createLocalResumeStream(local)
         }
 
@@ -451,7 +467,7 @@ export const StreamResumeLive = Layer.succeed(StreamResumeService, {
     }),
 })
 
-// Test adapter for non-networked unit tests.
+/** Test adapter for non-networked unit tests. */
 const memoryActiveStreams = new Map<string, string>()
 
 function memoryKey(userId: string, threadId: string): string {

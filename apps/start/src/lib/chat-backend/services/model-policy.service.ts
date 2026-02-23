@@ -11,10 +11,15 @@ import type {
 } from '@/lib/model-policy/types'
 import { MessagePersistenceError, ModelPolicyDeniedError } from '../domain/errors'
 
+/**
+ * Runtime currently supports only OpenAI IDs on the chat execution path.
+ * This guard prevents selecting catalog models that the gateway cannot execute.
+ */
 function isRuntimeSupportedModel(modelId: string): boolean {
   return modelId.startsWith('openai/')
 }
 
+/** Maps policy/runtime selection failures into a chat-domain denied error. */
 function toPolicyDenied(input: {
   readonly modelId: string
   readonly threadId: string
@@ -30,6 +35,10 @@ function toPolicyDenied(input: {
   })
 }
 
+/**
+ * Service contract for reading org policy and resolving the effective runtime model.
+ * The resolution path must be deterministic for a given request.
+ */
 export type ModelPolicyServiceShape = {
   readonly getOrgPolicy: (input: {
     readonly orgWorkosId?: string
@@ -42,11 +51,19 @@ export type ModelPolicyServiceShape = {
   }) => Effect.Effect<EffectiveModelResolution, ModelPolicyDeniedError | MessagePersistenceError>
 }
 
+/** Dependency-injected model policy service used by chat orchestration. */
 export class ModelPolicyService extends ServiceMap.Service<
   ModelPolicyService,
   ModelPolicyServiceShape
 >()('chat-backend/ModelPolicyService') {}
 
+/**
+ * Production implementation:
+ * 1) load org policy,
+ * 2) resolve fixed model,
+ * 3) verify runtime support,
+ * 4) enforce org deny rules.
+ */
 export const ModelPolicyLive = Layer.succeed(ModelPolicyService, {
   getOrgPolicy: ({ orgWorkosId, requestId }) =>
     Effect.tryPromise({
@@ -128,6 +145,7 @@ export const ModelPolicyLive = Layer.succeed(ModelPolicyService, {
     }),
 })
 
+/** Test/local implementation with policy bypass and fixed model resolution. */
 export const ModelPolicyMemory = Layer.succeed(ModelPolicyService, {
   getOrgPolicy: () => Effect.succeed(undefined),
   resolveThreadModel: () =>

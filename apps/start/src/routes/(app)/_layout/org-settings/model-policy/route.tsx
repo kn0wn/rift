@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { getAuth } from '@workos/authkit-tanstack-react-start'
 import { ModelPolicyAdmin } from '@/components/settings/org-settings/model-policy/model-policy-admin'
 
+/** Org settings page for provider/model policy administration. */
 export const Route = createFileRoute('/(app)/_layout/org-settings/model-policy')({
   loader: async () => {
     const auth = await getAuth()
@@ -19,6 +20,7 @@ export const Route = createFileRoute('/(app)/_layout/org-settings/model-policy')
 function ModelPolicyPage() {
   const { orgWorkosId } = Route.useLoaderData()
 
+  // Route remains accessible, but editing requires active organization context.
   if (!orgWorkosId) {
     return (
       <div className="space-y-3">

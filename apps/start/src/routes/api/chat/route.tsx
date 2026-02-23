@@ -12,6 +12,7 @@ import {
 } from '@/lib/chat-backend'
 import { handleRouteFailure } from '@/lib/chat-backend/http/route-failure'
 
+/** Chat API route handling stream resume (GET) and new turns (POST). */
 export const Route = createFileRoute('/api/chat')({
   server: {
     handlers: {
@@ -77,7 +78,7 @@ export const Route = createFileRoute('/api/chat')({
         const requestId = crypto.randomUUID()
         const authPromise = getAuth()
 
-        // Build the Effect program so auth + validation + streaming are consistently handled.
+        // Build one Effect program so auth/validation/orchestration share the same error model.
         const program = Effect.gen(function* () {
           const auth = yield* Effect.promise(() => authPromise)
           const { user } = auth
@@ -110,6 +111,7 @@ export const Route = createFileRoute('/api/chat')({
           })
 
           const orchestrator = yield* ChatOrchestratorService
+          // Org is resolved server-side and passed to model policy resolution.
           const orgWorkosId =
             'organizationId' in auth && typeof auth.organizationId === 'string'
               ? auth.organizationId

@@ -8,11 +8,13 @@ const ErrorFields = {
   requestId: Schema.String,
 }
 
+/** Auth session missing/invalid for a protected chat operation. */
 export class UnauthorizedError extends Schema.TaggedErrorClass<UnauthorizedError>()(
   'UnauthorizedError',
   ErrorFields,
 ) {}
 
+/** Request payload/query params failed validation. */
 export class InvalidRequestError extends Schema.TaggedErrorClass<InvalidRequestError>()(
   'InvalidRequestError',
   {
@@ -21,6 +23,7 @@ export class InvalidRequestError extends Schema.TaggedErrorClass<InvalidRequestE
   },
 ) {}
 
+/** Requested thread does not exist (or is not visible) for this user. */
 export class ThreadNotFoundError extends Schema.TaggedErrorClass<ThreadNotFoundError>()(
   'ThreadNotFoundError',
   {
@@ -29,6 +32,7 @@ export class ThreadNotFoundError extends Schema.TaggedErrorClass<ThreadNotFoundE
   },
 ) {}
 
+/** Thread exists but is owned by a different user. */
 export class ThreadForbiddenError extends Schema.TaggedErrorClass<ThreadForbiddenError>()(
   'ThreadForbiddenError',
   {
@@ -38,6 +42,7 @@ export class ThreadForbiddenError extends Schema.TaggedErrorClass<ThreadForbidde
   },
 ) {}
 
+/** Request exceeds per-user throughput limits. */
 export class RateLimitExceededError extends Schema.TaggedErrorClass<RateLimitExceededError>()(
   'RateLimitExceededError',
   {
@@ -47,6 +52,7 @@ export class RateLimitExceededError extends Schema.TaggedErrorClass<RateLimitExc
   },
 ) {}
 
+/** AI provider call failed before/during stream setup. */
 export class ModelProviderError extends Schema.TaggedErrorClass<ModelProviderError>()(
   'ModelProviderError',
   {
@@ -55,6 +61,7 @@ export class ModelProviderError extends Schema.TaggedErrorClass<ModelProviderErr
   },
 ) {}
 
+/** Model was denied by policy/runtime constraints for this request. */
 export class ModelPolicyDeniedError extends Schema.TaggedErrorClass<ModelPolicyDeniedError>()(
   'ModelPolicyDeniedError',
   {
@@ -65,6 +72,7 @@ export class ModelPolicyDeniedError extends Schema.TaggedErrorClass<ModelPolicyD
   },
 ) {}
 
+/** A tool execution path failed while serving a model response. */
 export class ToolExecutionError extends Schema.TaggedErrorClass<ToolExecutionError>()(
   'ToolExecutionError',
   {
@@ -74,6 +82,7 @@ export class ToolExecutionError extends Schema.TaggedErrorClass<ToolExecutionErr
   },
 ) {}
 
+/** Storage/database operation failed for messages/threads/policies. */
 export class MessagePersistenceError extends Schema.TaggedErrorClass<MessagePersistenceError>()(
   'MessagePersistenceError',
   {
@@ -83,6 +92,7 @@ export class MessagePersistenceError extends Schema.TaggedErrorClass<MessagePers
   },
 ) {}
 
+/** Stream lifecycle/resume protocol failed (Redis/pubsub/replay paths). */
 export class StreamProtocolError extends Schema.TaggedErrorClass<StreamProtocolError>()(
   'StreamProtocolError',
   {
@@ -91,6 +101,7 @@ export class StreamProtocolError extends Schema.TaggedErrorClass<StreamProtocolE
   },
 ) {}
 
+/** Unified error union for chat backend service signatures. */
 export type ChatDomainError =
   | UnauthorizedError
   | InvalidRequestError

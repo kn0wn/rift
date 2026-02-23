@@ -3,14 +3,20 @@ import { GOOGLE_MODELS } from './providers/google'
 import { OPENAI_MODELS } from './providers/openai'
 import type { AiModelCatalogEntry } from './types'
 
+/**
+ * Global model catalog. This is append-only in practice so policy/state can
+ * reference stable model IDs over time.
+ */
 export const AI_CATALOG: readonly AiModelCatalogEntry[] = [
   ...OPENAI_MODELS,
   ...ANTHROPIC_MODELS,
   ...GOOGLE_MODELS,
 ]
 
+/** O(1) catalog lookup for request-path model resolution. */
 export const AI_CATALOG_BY_ID = new Map(AI_CATALOG.map((model) => [model.id, model]))
 
+/** Grouped provider view used by org settings when toggling provider-level policy. */
 export const AI_MODELS_BY_PROVIDER = AI_CATALOG.reduce(
   (acc, model) => {
     const current = acc.get(model.providerId)
@@ -24,8 +30,13 @@ export const AI_MODELS_BY_PROVIDER = AI_CATALOG.reduce(
   new Map<string, AiModelCatalogEntry[]>(),
 )
 
+/**
+ * Fixed chat model until request-time user model selection is re-enabled.
+ * Keeping this centralized avoids drift between backend and UI defaults.
+ */
 export const CHAT_FIXED_MODEL_ID = 'openai/gpt-4o-mini'
 
+/** Returns a catalog row by ID, or undefined when the ID is unknown. */
 export function getCatalogModel(modelId: string): AiModelCatalogEntry | undefined {
   return AI_CATALOG_BY_ID.get(modelId)
 }

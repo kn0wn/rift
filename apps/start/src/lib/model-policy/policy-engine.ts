@@ -9,10 +9,15 @@ import type {
   OrgAiPolicy,
 } from './types'
 
+/** Default allow when no org policy exists yet. */
 function emptyDecision(): ModelAvailabilityDecision {
   return { allowed: true, deniedBy: [] }
 }
 
+/**
+ * Evaluates a single catalog model against org deny rules.
+ * Denials are additive: provider, model, and compliance-tag checks can all apply.
+ */
 export function evaluateModelAvailability(input: {
   readonly model: AiModelCatalogEntry
   readonly policy?: OrgAiPolicy
@@ -40,12 +45,14 @@ export function evaluateModelAvailability(input: {
   }
 }
 
+/** Returns catalog models visible to an org after policy filtering. */
 export function listAllowedCatalogModels(policy?: OrgAiPolicy): readonly AiModelCatalogEntry[] {
   return AI_CATALOG.filter(
     (model) => evaluateModelAvailability({ model, policy }).allowed,
   )
 }
 
+/** Convenience lookup used by services that resolve/validate model IDs. */
 export function getCatalogModelById(modelId: string): AiModelCatalogEntry | undefined {
   return AI_CATALOG_BY_ID.get(modelId)
 }

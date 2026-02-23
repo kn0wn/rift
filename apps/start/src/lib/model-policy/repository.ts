@@ -1,10 +1,15 @@
 import { getZeroDatabase, zql } from '@/lib/chat-backend/infra/zero/db'
 import type { OrgAiPolicy } from './types'
 
+/** Uses epoch milliseconds to align with existing Zero schema timestamp columns. */
 function now() {
   return Date.now()
 }
 
+/**
+ * Normalizes partially populated DB rows into a fully shaped policy object.
+ * This keeps policy consumers free from null/undefined branching.
+ */
 function fromRow(row: {
   readonly orgWorkosId: string
   readonly disabledProviderIds?: readonly string[]
@@ -23,6 +28,7 @@ function fromRow(row: {
   }
 }
 
+/** Loads the latest policy snapshot for an org. */
 export async function getOrgAiPolicy(
   orgWorkosId: string,
 ): Promise<OrgAiPolicy | undefined> {
@@ -39,6 +45,10 @@ export async function getOrgAiPolicy(
   return fromRow(row)
 }
 
+/**
+ * Inserts or updates org policy with optimistic version bump semantics.
+ * Version increments only on updates to support audit/event correlation.
+ */
 export async function upsertOrgAiPolicy(input: {
   readonly orgWorkosId: string
   readonly disabledProviderIds: readonly string[]

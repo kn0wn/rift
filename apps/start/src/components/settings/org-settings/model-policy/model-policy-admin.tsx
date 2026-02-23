@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@rift/ui/button'
 
+/** API payload consumed by the org model policy admin UI. */
 type PolicyPayload = {
   orgWorkosId: string
   policy: {
@@ -24,10 +25,12 @@ type PolicyPayload = {
   }>
 }
 
+/** Allows server-side preloading while still supporting client refresh. */
 type ModelPolicyAdminProps = {
   initialPayload?: PolicyPayload
 }
 
+/** Sends a mutation request and returns the server-normalized policy snapshot. */
 async function requestPolicyUpdate(body: unknown): Promise<PolicyPayload> {
   const response = await fetch('/api/org/model-policy', {
     method: 'POST',
@@ -50,6 +53,7 @@ async function requestPolicyUpdate(body: unknown): Promise<PolicyPayload> {
   return payload as PolicyPayload
 }
 
+/** Loads the latest org policy payload for the settings screen. */
 async function loadPolicy(): Promise<PolicyPayload> {
   const response = await fetch('/api/org/model-policy', {
     method: 'GET',
@@ -71,6 +75,10 @@ async function loadPolicy(): Promise<PolicyPayload> {
   return payload as PolicyPayload
 }
 
+/**
+ * Org settings panel for model-policy administration.
+ * Keeps a local copy of the policy payload and rehydrates from the server after updates.
+ */
 export function ModelPolicyAdmin({ initialPayload }: ModelPolicyAdminProps) {
   const [payload, setPayload] = useState<PolicyPayload | null>(
     initialPayload ?? null,

@@ -49,3 +49,4 @@ Run from repo root unless noted.
 - You need to add comprehensive documentation for the code you write, so future devs and underestend the code with ease
 - DO NOT abuse comments and a way to "respond" to user question or request, they need to be real informatives
 - DO NOT spam comments for irelevant code 
+- For complex logic or parts of a service, you can explain the implementation so future devs know why that code is the way it is

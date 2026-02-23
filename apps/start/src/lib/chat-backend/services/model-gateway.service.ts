@@ -3,9 +3,13 @@ import type { UIMessage } from 'ai'
 import { Effect, Layer, ServiceMap } from 'effect'
 import { ModelProviderError } from '../domain/errors'
 
-// Model gateway encapsulates the AI SDK. Keep this isolated to swap providers.
+/**
+ * Model gateway encapsulates AI SDK provider calls so orchestrator/business
+ * logic is provider-agnostic.
+ */
 const SYSTEM_PROMPT = 'You are a helpful assistant.'
 
+/** Minimal stream contract consumed by chat orchestration. */
 export type ModelStreamResult = {
   readonly toUIMessageStreamResponse: (options?: {
     readonly originalMessages?: UIMessage[]
@@ -23,6 +27,7 @@ export type ModelStreamResult = {
   }) => Response
 }
 
+/** Service contract for starting model streams. */
 export type ModelGatewayServiceShape = {
   readonly streamResponse: (input: {
     readonly messages: UIMessage[]
@@ -34,11 +39,13 @@ export type ModelGatewayServiceShape = {
   }) => Effect.Effect<ModelStreamResult, ModelProviderError>
 }
 
+/** Injectable model gateway token. */
 export class ModelGatewayService extends ServiceMap.Service<
   ModelGatewayService,
   ModelGatewayServiceShape
 >()('chat-backend/ModelGatewayService') {}
 
+/** Live OpenAI-backed gateway implementation. */
 export const ModelGatewayLive = Layer.succeed(ModelGatewayService, {
   streamResponse: ({ messages, model, requestId, tools, onChunk, abortSignal }) =>
     Effect.tryPromise({
@@ -46,6 +53,7 @@ export const ModelGatewayLive = Layer.succeed(ModelGatewayService, {
         // Dynamic import keeps server-only dependency out of client bundles.
         const { openai } = await import('@ai-sdk/openai')
         const modelMessages = await convertToModelMessages(messages)
+        // Catalog IDs use provider prefix (`openai/...`), SDK expects provider-local ID.
         const runtimeModel = model.startsWith('openai/')
           ? model.slice('openai/'.length)
           : model

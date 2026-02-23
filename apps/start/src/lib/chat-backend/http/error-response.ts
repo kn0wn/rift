@@ -3,7 +3,10 @@ import { ChatErrorCode, chatErrorCodeFromTag } from '../domain/error-codes'
 import { getChatErrorMessage } from '../domain/error-messages'
 import type { ChatApiErrorEnvelope } from '@/lib/chat-contracts/error-envelope'
 
-// Convert domain errors into the normalized API envelope consumed by the UI.
+/**
+ * Converts backend failures into the normalized error envelope consumed by
+ * chat clients.
+ */
 export function toErrorResponse(error: unknown, fallbackRequestId: string): Response {
   if (
     typeof error === 'object' &&
@@ -65,6 +68,7 @@ export function toErrorResponse(error: unknown, fallbackRequestId: string): Resp
   )
 }
 
+/** Maps domain error tags to transport HTTP status codes. */
 function statusForTag(tag: string): number {
   switch (tag) {
     case 'UnauthorizedError':
@@ -89,6 +93,7 @@ function statusForTag(tag: string): number {
   }
 }
 
+/** Marks errors that callers can retry safely. */
 function isRetryable(tag: string): boolean {
   switch (tag) {
     case 'RateLimitExceededError':
@@ -100,6 +105,7 @@ function isRetryable(tag: string): boolean {
   }
 }
 
+/** JSON helper used by chat API routes for consistent response headers. */
 export function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,

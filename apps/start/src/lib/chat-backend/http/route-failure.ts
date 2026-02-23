@@ -14,7 +14,10 @@ export type RouteFailureInput = {
   readonly defaultMessage: string
 }
 
-// Normalizes route failures into wide-event logs + user-facing API envelopes.
+/**
+ * Central route-level failure handler.
+ * Ensures consistent logging + transport error shapes across chat endpoints.
+ */
 export async function handleRouteFailure(input: RouteFailureInput): Promise<Response> {
   const { error, requestId, route, eventName, userId, defaultMessage } = input
   const errorTag = getErrorTag(error)

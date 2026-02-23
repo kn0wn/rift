@@ -17,6 +17,7 @@ import { useAuth } from '@workos/authkit-tanstack-react-start/client'
 import { Link, useLocation } from '@tanstack/react-router'
 import type { ComponentType } from 'react'
 import { useMemo } from 'react'
+import { SidebarChatThreadPreloader } from './sidebar/sidebar-chat-thread-preloader'
 
 const SIDEBAR_GROUPS_WIDTH = 64
 const SIDEBAR_AREAS_WIDTH = 240
@@ -46,6 +47,7 @@ export const AppSidebar: ComponentType = () => {
       className="h-full w-[var(--sidebar-width)] grid grid-cols-[var(--sidebar-groups-width)_1fr] bg-bg-emphasis transition-[width] duration-300"
       style={sidebarStyle}
     >
+      <SidebarChatThreadPreloader />
       <nav className="flex size-full flex-col items-center justify-between p-2">
         <div className="flex flex-col items-center gap-3">
             <div className="pb-1 pt-2" />
