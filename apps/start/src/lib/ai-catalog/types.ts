@@ -25,7 +25,7 @@ export type AiModelCapabilities = {
   readonly supportsStreaming: boolean
   readonly supportsReasoning: boolean
   readonly supportsImageInput: boolean
-  readonly supportsPdfInput: boolean
+  readonly supportsFileInput: boolean
 }
 
 /**
@@ -35,6 +35,34 @@ export type AiModelCapabilities = {
 export type AiModelRequirement = {
   readonly key: string
   readonly value: string | boolean | number
+}
+
+/**
+ * Tiered cost for token-based pricing (e.g. higher cost above a context threshold).
+ * Cost is per-token in dollars as string (e.g. "0.000005").
+ */
+export type AiPricingTier = {
+  readonly cost: string
+  readonly min: number
+  readonly max?: number
+}
+
+/**
+ * Optional pricing metadata aligned with Vercel AI Gateway /v1/models response.
+ * Used for display and cost estimation; all values are per-token in dollars as strings
+ * unless noted. See https://vercel.com/docs/ai-gateway/models-and-providers
+ */
+export type AiModelPricing = {
+  readonly inputPerToken: string
+  readonly outputPerToken: string
+  readonly inputCacheReadPerToken?: string
+  readonly inputCacheWritePerToken?: string
+  /** Web search cost per request (when supported). */
+  readonly webSearchPerRequest?: string
+  readonly inputTiers?: readonly AiPricingTier[]
+  readonly outputTiers?: readonly AiPricingTier[]
+  readonly inputCacheReadTiers?: readonly AiPricingTier[]
+  readonly inputCacheWriteTiers?: readonly AiPricingTier[]
 }
 
 /**
@@ -69,4 +97,6 @@ export type AiModelCatalogEntry<
   readonly defaultProviderOptions?: Record<string, unknown>
   readonly defaultMaxOutputTokens?: number
   readonly requirements?: readonly AiModelRequirement[]
+  /** Optional pricing from Vercel AI Gateway (or same shape) for display and cost estimation. */
+  readonly pricing?: AiModelPricing
 }
