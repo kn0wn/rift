@@ -205,7 +205,7 @@ export function ModelSelectorPanel({
           <aside
             className={cn(
               'w-[64px] py-3 overflow-y-auto shrink-0 flex flex-col items-center gap-1',
-              'border-r border-border-default',
+              'border-r border-border-muted',
               '[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden',
               'outline-none focus:!outline-none focus-visible:!outline-none'
             )}
@@ -268,7 +268,7 @@ export function ModelSelectorPanel({
               </div>
               <div
                 className={cn(
-                  'flex-1 min-h-0 overflow-y-auto px-2 py-3',
+                  'flex-1 min-h-0 overflow-y-auto px-2 pb-3',
                   '[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden'
                 )}
               >
@@ -328,12 +328,15 @@ const ModelRow = React.memo(function ModelRow({
     <button
       type="button"
       onClick={() => onSelect(model.id)}
+      data-active={isSelected}
       style={style}
       className={cn(
-        'w-full rounded-lg px-3 py-3 text-left group',
-        'hover:bg-bg-subtle',
-        isSelected && 'bg-bg-subtle ring-1 ring-border-default',
-        'outline-none focus:!outline-none focus-visible:!outline-none focus-visible:ring-2 focus-visible:ring-border-emphasis focus-visible:ring-offset-2 focus-visible:ring-offset-bg-default'
+        'w-full rounded-lg border border-transparent px-3 py-3 text-left text-sm leading-none font-normal transition-[background-color,color,font-weight] duration-0 active:duration-75 group',
+        'hover:bg-bg-inverted/5 active:bg-bg-inverted/10',
+        'data-[active=true]:bg-bg-info/25 data-[active=true]:font-medium data-[active=true]:text-content-info',
+        'data-[active=true]:hover:bg-bg-info/45 data-[active=true]:active:bg-bg-info/75',
+        'outline-none focus:!outline-none focus-visible:!outline-none',
+        'focus-visible:border-border-emphasis focus-visible:ring-[3px] focus-visible:ring-border-emphasis/50'
       )}
     >
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
@@ -341,14 +344,24 @@ const ModelRow = React.memo(function ModelRow({
           {(() => {
             const Icon = getProviderIcon(model.providerId)
             return Icon ? (
-              <Icon className="size-4 shrink-0 mt-0.5 text-content-muted grayscale group-hover:grayscale-0" aria-hidden />
+              <Icon
+                className={cn(
+                  'size-4 shrink-0 mt-0.5 grayscale group-hover:grayscale-0',
+                  isSelected && 'grayscale-0',
+                  isSelected ? 'text-content-info' : 'text-content-muted'
+                )}
+                aria-hidden
+              />
             ) : null
           })()}
           <div className="min-w-0">
-            <div className="text-sm font-medium text-content-default truncate">
-              {displayName}
-            </div>
-            <div className="text-xs text-content-muted line-clamp-1 mt-0.5">
+            <div className="truncate">{displayName}</div>
+            <div
+              className={cn(
+                'text-xs line-clamp-1 mt-0.5',
+                isSelected ? 'text-content-info/80' : 'text-content-muted'
+              )}
+            >
               {model.description}
             </div>
           </div>
@@ -396,12 +409,14 @@ const ProviderButton = React.forwardRef<HTMLButtonElement, ProviderButtonProps>(
       onClick={onClick}
       aria-pressed={isActive}
       aria-label={label}
+      data-active={isActive}
       className={cn(
-        'flex size-10 items-center justify-center rounded-lg transition-none [&_svg]:grayscale [&_svg]:transition-none hover:[&_svg]:grayscale-0',
-        'text-content-muted hover:text-content-default hover:bg-bg-subtle',
-        isActive && 'bg-bg-subtle text-content-default [&_svg]:grayscale-0',
+        'flex size-10 items-center justify-center rounded-lg border border-transparent text-sm leading-none font-normal transition-[background-color,color,font-weight] duration-0 active:duration-75 [&_svg]:grayscale [&_svg]:transition-none hover:[&_svg]:grayscale-0',
+        'text-content-muted hover:text-content-default hover:bg-bg-inverted/5 active:bg-bg-inverted/10',
+        'data-[active=true]:bg-bg-info/25 data-[active=true]:font-medium data-[active=true]:text-content-info data-[active=true]:[&_svg]:grayscale-0',
+        'data-[active=true]:hover:bg-bg-info/45 data-[active=true]:active:bg-bg-info/75',
         'outline-none focus:!outline-none focus-visible:!outline-none',
-        'focus-visible:ring-2 focus-visible:ring-border-emphasis focus-visible:ring-offset-1 focus-visible:ring-offset-bg-default',
+        'focus-visible:border-border-emphasis focus-visible:ring-[3px] focus-visible:ring-border-emphasis/50',
         className
       )}
       {...props}

@@ -1,10 +1,10 @@
 'use client'
 
 import { Button } from '@rift/ui/button'
+import { SentIcon, LoadingIcon, StopIcon } from '@rift/ui/icons/svg-icons'
 import { cn } from '@rift/utils'
-// Submit button shows busy state based on chat status.
 import type { ChatStatus } from 'ai'
-import { AlertTriangle, Loader2, Send } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import type { ComponentProps } from 'react'
 
 export type PromptInputSubmitProps = ComponentProps<typeof Button> & {
@@ -12,19 +12,23 @@ export type PromptInputSubmitProps = ComponentProps<typeof Button> & {
   status?: ChatStatus
 }
 
+/** Icon and label per status. */
 const statusConfig: Record<
   ChatStatus,
-  { icon: typeof Send; label: string; shouldSpin: boolean }
+  {
+    icon: React.ComponentType<{ className?: string }>
+    label: string
+    shouldSpin: boolean
+  }
 > = {
-  ready: { icon: Send, label: 'Send message', shouldSpin: false },
-  submitted: { icon: Loader2, label: 'Sending...', shouldSpin: true },
-  streaming: { icon: Loader2, label: 'Streaming...', shouldSpin: true },
+  ready: { icon: SentIcon, label: 'Send message', shouldSpin: false },
+  submitted: { icon: LoadingIcon, label: 'Sending...', shouldSpin: true },
+  streaming: { icon: StopIcon, label: 'Stop generation', shouldSpin: false },
   error: { icon: AlertTriangle, label: 'Error', shouldSpin: false },
 }
 
 /**
  * Submit button with status-driven icon and label.
- * Presentational; parent controls disabled state while request is in-flight.
  */
 export function PromptInputSubmit({
   className,
@@ -38,18 +42,22 @@ export function PromptInputSubmit({
 
   return (
     <Button
-      className={cn(className, 'disabled:opacity-100 disabled:pointer-events-auto')}
+      className={cn(
+        className,
+        'cursor-pointer disabled:opacity-100 disabled:pointer-events-auto',
+      )}
       size={size}
       type="submit"
       variant={variant}
       title={label}
+      aria-label={label}
       {...props}
     >
       {children ?? (
         shouldSpin ? (
-          <Icon className="size-5 animate-spin" aria-hidden />
+          <Icon className="size-5 animate-spin" />
         ) : (
-          <Icon className="size-5" aria-hidden />
+          <Icon className="size-5" />
         )
       )}
     </Button>

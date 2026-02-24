@@ -15,8 +15,10 @@ export function ChatPageShell() {
         <ChatThread />
       </div>
 
-      <div className="sticky bottom-6 z-40 mx-auto w-full max-w-2xl overflow-visible px-4 pt-4">
-        <ChatInput />
+      <div className="sticky bottom-0 z-40 overflow-visible px-4 pt-4">
+        <div className="mx-auto w-full max-w-2xl">
+          <ChatInput />
+        </div>
       </div>
     </div>
   )

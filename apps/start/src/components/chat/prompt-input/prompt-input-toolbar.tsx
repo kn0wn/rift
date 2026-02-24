@@ -68,8 +68,6 @@ export type PromptInputToolbarProps = HTMLAttributes<HTMLDivElement> & {
   status: ChatStatus
   isEmpty: boolean
   isBusy: boolean
-  /** When the user clicks empty space in the toolbar (not a button), focus the prompt input. */
-  onFocusInput?: () => void
   /** Content rendered immediately after the attachment button (e.g. model selector). */
   afterAttach?: React.ReactNode
 }
@@ -84,7 +82,6 @@ export function PromptInputToolbar({
   status,
   isEmpty,
   isBusy,
-  onFocusInput,
   afterAttach,
   ...props
 }: PromptInputToolbarProps) {
@@ -97,29 +94,14 @@ export function PromptInputToolbar({
     fileInputRef.current.click()
   }
 
-  const handleToolbarClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement
-    const isInteractive =
-      target.closest('button') ||
-      target.closest('input') ||
-      target.closest('select') ||
-      target.closest('[data-slot="popover-content"]') ||
-      target.closest('[data-slot="select-content"]')
-    if (!isInteractive) {
-      onFocusInput?.()
-    }
-  }
-
   return (
     <div
       role="presentation"
       className={cn(
         'flex shrink-0 items-center justify-between gap-2 pt-1',
         'pb-[max(env(safe-area-inset-bottom),0.25rem)]',
-        onFocusInput && 'cursor-text',
         className
       )}
-      onClick={onFocusInput ? handleToolbarClick : undefined}
       {...props}
     >
       <input

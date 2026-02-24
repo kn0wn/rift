@@ -103,9 +103,9 @@ export const AppSidebar: ComponentType = () => {
         </div>
       </nav>
       <div
-        className={`size-full overflow-hidden py-2 pr-2 transition-opacity duration-300 ${showAreaPanel ? '' : 'pointer-events-none opacity-0'}`}
+        className={`size-full overflow-hidden pt-2 pr-2 transition-opacity duration-300 ${showAreaPanel ? '' : 'pointer-events-none opacity-0'}`}
       >
-        <div className="scrollbar-hide relative flex h-full w-[calc(var(--sidebar-areas-width)-0.5rem)] flex-col overflow-y-auto overflow-x-hidden rounded-xl dark:border border-border-muted bg-bg-subtle">
+        <div className="scrollbar-hide relative flex h-full w-[calc(var(--sidebar-areas-width)-0.5rem)] flex-col overflow-y-auto overflow-x-hidden rounded-t-xl border-x border-t border-border-muted bg-bg-subtle">
             <div className="relative flex grow flex-col p-3 text-content-muted">
               <SidebarAreaPanel
                 areas={NAV_AREAS}

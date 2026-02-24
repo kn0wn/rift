@@ -84,6 +84,11 @@
       "import": "./src/components/drawer.tsx",
       "default": "./src/components/drawer.tsx"
     },
+    "./icons/svg-icons": {
+      "types": "./src/components/icons/svg-icons.tsx",
+      "import": "./src/components/icons/svg-icons.tsx",
+      "default": "./src/components/icons/svg-icons.tsx"
+    },
     "./hooks/useMediaQuery": {
       "types": "./src/hooks/useMediaQuery.ts",
       "import": "./src/hooks/useMediaQuery.ts",

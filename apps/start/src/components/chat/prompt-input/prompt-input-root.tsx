@@ -17,8 +17,14 @@ export type PromptInputRootProps = Omit<
 > & {
   /** Named slots for extensible content. Use slots.top for thinking, attachments, etc. */
   slots?: PromptInputSlots
+  /** When provided, clicking anywhere in the content area focuses the input. */
+  onFocusInput?: () => void
   children: ReactNode
 }
+
+/** Elements that should not trigger focus when clicked (e.g. buttons, selects). */
+const INTERACTIVE_SELECTORS =
+  'button, input, select, textarea, [role="button"], [data-slot="popover-content"], [data-slot="select-content"]'
 
 /**
  * Root form with layered illusion. Slots render in the outer wrapper so the
@@ -27,14 +33,39 @@ export type PromptInputRootProps = Omit<
 export function PromptInputRoot({
   className,
   slots,
+  onFocusInput,
   children,
   ...props
 }: PromptInputRootProps) {
+  const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!onFocusInput) return
+    const target = e.target as HTMLElement
+    if (!target.closest(INTERACTIVE_SELECTORS)) {
+      onFocusInput()
+    }
+  }
+
+  const contentClickProps = onFocusInput
+    ? { onClick: handleContentClick, className: 'cursor-text' as const }
+    : {}
+
   return (
     <form className={cn('relative w-full', className)} {...props}>
-      <div className="flex flex-col overflow-hidden rounded-2xl bg-bg-emphasis/75 p-1.5">
+      <div
+        className={cn(
+          'flex flex-col overflow-hidden rounded-t-2xl bg-bg-emphasis/75 px-1.5 pt-1.5',
+          contentClickProps.className
+        )}
+        onClick={contentClickProps.onClick}
+      >
         {slots?.top}
-        <div className="flex min-h-[72px] shrink-0 flex-col gap-1.5 rounded-xl bg-bg-emphasis p-3">
+        <div
+          className={cn(
+            'flex min-h-[72px] shrink-0 flex-col gap-1.5 rounded-t-xl bg-bg-emphasis p-3',
+            contentClickProps.className
+          )}
+          onClick={contentClickProps.onClick}
+        >
           {children}
         </div>
         {slots?.bottom}

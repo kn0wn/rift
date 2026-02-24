@@ -10,10 +10,9 @@ import {
   PromptInputThinking,
   PromptInputError,
   PromptInputAttachments,
-  ToolbarSelect,
 } from './prompt-input'
 import { ModelSelectorPanel } from './model-selector-panel'
-import type { AiReasoningEffort } from '@/lib/ai-catalog/types'
+import { ReasoningSelectorPanel } from './reasoning-selector-panel'
 import { useFileAttachments } from '../../hooks/chat/upload'
 import { parseChatApiError } from './chat-error-messages'
 
@@ -94,25 +93,11 @@ export function ChatInput() {
         disabled={isBusy}
       />
       {hasReasoningOptions && (
-        <ToolbarSelect
-          value={selectedReasoningEffort ?? ''}
-          onChange={(v) =>
-            setSelectedReasoningEffort(
-              v ? (v as AiReasoningEffort) : undefined,
-            )
-          }
-          options={[
-            {
-              value: '',
-              label:
-                selectedModel?.defaultReasoningEffort ?? 'Default reasoning',
-            },
-            ...reasoningOptions.map((effort) => ({
-              value: effort,
-              label: effort,
-            })),
-          ]}
-          aria-label="Reasoning"
+        <ReasoningSelectorPanel
+          value={selectedReasoningEffort}
+          onValueChange={setSelectedReasoningEffort}
+          options={reasoningOptions}
+          defaultReasoningEffort={selectedModel?.defaultReasoningEffort}
           disabled={isBusy}
         />
       )}
@@ -121,12 +106,6 @@ export function ChatInput() {
 
   const topSlot = (
     <>
-      <div className="flex flex-wrap items-center gap-2 pb-1">
-        <div className="text-xs text-content-muted">
-          Tools:{' '}
-          {(selectedModel?.visibleTools ?? []).join(', ') || 'None'}
-        </div>
-      </div>
       {activeErrorMessage ? (
         <PromptInputError
           error={activeErrorMessage}
@@ -148,6 +127,7 @@ export function ChatInput() {
       onSubmit={handleSubmit}
       className="w-full"
       slots={{ top: topSlot }}
+      onFocusInput={() => inputRef.current?.focus()}
     >
       <PromptInputTextarea
         ref={inputRef}
@@ -163,7 +143,6 @@ export function ChatInput() {
         status={status}
         isEmpty={isEmpty}
         isBusy={isBusy}
-        onFocusInput={() => inputRef.current?.focus()}
         afterAttach={modelAndReasoningSelectors}
       />
     </PromptInputRoot>
