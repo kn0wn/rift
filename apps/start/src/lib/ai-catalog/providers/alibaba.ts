@@ -8,47 +8,7 @@ function alibabaDefaultProviderOptions(): Record<string, unknown> {
   return {}
 }
 
-/**
- * Alibaba (Qwen) model catalog — chat models only (no video, no vision/VL).
- * Data aligned with Vercel AI Gateway /v1/models (pricing, context_window,
- * max_tokens, tags → capabilities).
- */
 export const ALIBABA_MODELS: readonly AiModelCatalogEntry<'alibaba'>[] = [
-  {
-    id: 'alibaba/qwen3-max',
-    providerId: 'alibaba',
-    name: 'Qwen3 Max',
-    description:
-      'The Qwen 3 series Max model has undergone specialized upgrades in agent programming and tool invocation. Achieves state-of-the-art performance and is suited to agents operating in more complex scenarios.',
-    contextWindow: 262144,
-    zeroDataRetention: false,
-    capabilities: {
-      supportsTools: true,
-      supportsStreaming: true,
-      supportsReasoning: false,
-      supportsImageInput: false,
-      supportsFileInput: false,
-      supportsPdfInput: false,
-    },
-    providerToolIds: [],
-    reasoningEfforts: [],
-    defaultProviderOptions: alibabaDefaultProviderOptions(),
-    defaultMaxOutputTokens: 65536,
-    pricing: {
-      inputPerToken: '0.000000845',
-      outputPerToken: '0.00000338',
-      inputTiers: [
-        { cost: '0.000000845', min: 0, max: 32769 },
-        { cost: '0.0000014', min: 32769, max: 131073 },
-        { cost: '0.00000211', min: 131073 },
-      ],
-      outputTiers: [
-        { cost: '0.00000338', min: 0, max: 32769 },
-        { cost: '0.00000564', min: 32769, max: 131073 },
-        { cost: '0.00000845', min: 131073 },
-      ],
-    },
-  },
   {
     id: 'alibaba/qwen3-max-thinking',
     providerId: 'alibaba',
@@ -91,13 +51,13 @@ export const ALIBABA_MODELS: readonly AiModelCatalogEntry<'alibaba'>[] = [
     },
   },
   {
-    id: 'alibaba/qwen-3-235b',
+    id: 'alibaba/qwen3-max',
     providerId: 'alibaba',
-    name: 'Qwen3-235B-A22B',
+    name: 'Qwen3 Max',
     description:
-      'Qwen3-235B-A22B-Instruct-2507: updated non-thinking mode with improvements in instruction following, logical reasoning, text comprehension, mathematics, science, coding and tool usage.',
-    contextWindow: 40960,
-    zeroDataRetention: true,
+      'The Qwen 3 series Max model has undergone specialized upgrades in agent programming and tool invocation. Achieves state-of-the-art performance and is suited to agents operating in more complex scenarios.',
+    contextWindow: 262144,
+    zeroDataRetention: false,
     capabilities: {
       supportsTools: true,
       supportsStreaming: true,
@@ -109,10 +69,45 @@ export const ALIBABA_MODELS: readonly AiModelCatalogEntry<'alibaba'>[] = [
     providerToolIds: [],
     reasoningEfforts: [],
     defaultProviderOptions: alibabaDefaultProviderOptions(),
-    defaultMaxOutputTokens: 16384,
+    defaultMaxOutputTokens: 65536,
     pricing: {
-      inputPerToken: '0.000000071',
-      outputPerToken: '0.000000463',
+      inputPerToken: '0.000000845',
+      outputPerToken: '0.00000338',
+      inputTiers: [
+        { cost: '0.000000845', min: 0, max: 32769 },
+        { cost: '0.0000014', min: 32769, max: 131073 },
+        { cost: '0.00000211', min: 131073 },
+      ],
+      outputTiers: [
+        { cost: '0.00000338', min: 0, max: 32769 },
+        { cost: '0.00000564', min: 32769, max: 131073 },
+        { cost: '0.00000845', min: 131073 },
+      ],
+    },
+  },
+  {
+    id: 'alibaba/qwen3-next-80b-a3b-thinking',
+    providerId: 'alibaba',
+    name: 'Qwen3 Next 80B A3B Thinking',
+    description:
+      'Qwen3-Next highly sparse MoE (80B total, ~3B active). Excels at complex reasoning, outperforming higher-cost thinking models and approaching Qwen3-235B-A22B-Thinking-2507.',
+    contextWindow: 65536,
+    zeroDataRetention: false,
+    capabilities: {
+      supportsTools: false,
+      supportsStreaming: true,
+      supportsReasoning: true,
+      supportsImageInput: false,
+      supportsFileInput: false,
+      supportsPdfInput: false,
+    },
+    providerToolIds: [],
+    reasoningEfforts: [],
+    defaultProviderOptions: alibabaDefaultProviderOptions(),
+    defaultMaxOutputTokens: 65536,
+    pricing: {
+      inputPerToken: '0.00000015',
+      outputPerToken: '0.0000015',
     },
   },
   {
@@ -141,17 +136,17 @@ export const ALIBABA_MODELS: readonly AiModelCatalogEntry<'alibaba'>[] = [
     },
   },
   {
-    id: 'alibaba/qwen3-next-80b-a3b-thinking',
+    id: 'alibaba/qwen-3-235b',
     providerId: 'alibaba',
-    name: 'Qwen3 Next 80B A3B Thinking',
+    name: 'Qwen3-235B-A22B',
     description:
-      'Qwen3-Next highly sparse MoE (80B total, ~3B active). Excels at complex reasoning, outperforming higher-cost thinking models and approaching Qwen3-235B-A22B-Thinking-2507.',
-    contextWindow: 65536,
-    zeroDataRetention: false,
+      'Qwen3-235B-A22B-Instruct-2507: updated non-thinking mode with improvements in instruction following, logical reasoning, text comprehension, mathematics, science, coding and tool usage.',
+    contextWindow: 40960,
+    zeroDataRetention: true,
     capabilities: {
-      supportsTools: false,
+      supportsTools: true,
       supportsStreaming: true,
-      supportsReasoning: true,
+      supportsReasoning: false,
       supportsImageInput: false,
       supportsFileInput: false,
       supportsPdfInput: false,
@@ -159,10 +154,10 @@ export const ALIBABA_MODELS: readonly AiModelCatalogEntry<'alibaba'>[] = [
     providerToolIds: [],
     reasoningEfforts: [],
     defaultProviderOptions: alibabaDefaultProviderOptions(),
-    defaultMaxOutputTokens: 65536,
+    defaultMaxOutputTokens: 16384,
     pricing: {
-      inputPerToken: '0.00000015',
-      outputPerToken: '0.0000015',
+      inputPerToken: '0.000000071',
+      outputPerToken: '0.000000463',
     },
   },
 ]

@@ -31,9 +31,6 @@ function xaiDefaultProviderOptions(): Record<string, unknown> {
   return { xai: xaiBaseOptions() }
 }
 
-/**
- * xAI model catalog. Model IDs, context windows, max tokens, and pricing
- */
 export const XAI_MODELS: readonly AiModelCatalogEntry<'xai'>[] = [
   // Grok 4 Fast
   {

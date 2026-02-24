@@ -9,9 +9,6 @@ function mistralDefaultProviderOptions(): Record<string, unknown> {
   return {}
 }
 
-/**
- * Mistral AI model catalog.
- */
 export const MISTRAL_MODELS: readonly AiModelCatalogEntry<'mistral'>[] = [
   {
     id: 'mistral/mistral-large-3',

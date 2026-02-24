@@ -8,18 +8,14 @@ function minimaxDefaultProviderOptions(): Record<string, unknown> {
   return {}
 }
 
-/**
- * MiniMax model catalog. Data aligned with Vercel AI Gateway /v1/models
- * (pricing, context_window, max_tokens, tags → capabilities).
- */
 export const MINIMAX_MODELS: readonly AiModelCatalogEntry<'minimax'>[] = [
   {
-    id: 'minimax/minimax-m2',
+    id: 'minimax/minimax-m2.5',
     providerId: 'minimax',
-    name: 'MiniMax M2',
+    name: 'MiniMax M2.5',
     description:
-      'MiniMax-M2 redefines efficiency for agents. It is a compact, fast, and cost-effective MoE model (230 billion total parameters with 10 billion active parameters) built for elite performance in coding and agentic tasks, all while maintaining powerful general intelligence.',
-    contextWindow: 205000,
+      'MiniMax-M2.5 is a SOTA large language model designed for real-world productivity. It is capable of handling the entire development process of various complex systems. It covers full-stack projects across multiple platforms including Web, Android, iOS, Windows, and Mac, encompassing server-side APIs, functional logic, and databases.',
+    contextWindow: 204800,
     zeroDataRetention: false,
     capabilities: {
       supportsTools: true,
@@ -32,7 +28,7 @@ export const MINIMAX_MODELS: readonly AiModelCatalogEntry<'minimax'>[] = [
     providerToolIds: [],
     reasoningEfforts: [],
     defaultProviderOptions: minimaxDefaultProviderOptions(),
-    defaultMaxOutputTokens: 205000,
+    defaultMaxOutputTokens: 131000,
     pricing: {
       inputPerToken: '0.0000003',
       outputPerToken: '0.0000012',
@@ -67,12 +63,12 @@ export const MINIMAX_MODELS: readonly AiModelCatalogEntry<'minimax'>[] = [
     },
   },
   {
-    id: 'minimax/minimax-m2.5',
+    id: 'minimax/minimax-m2',
     providerId: 'minimax',
-    name: 'MiniMax M2.5',
+    name: 'MiniMax M2',
     description:
-      'MiniMax-M2.5 is a SOTA large language model designed for real-world productivity. It is capable of handling the entire development process of various complex systems. It covers full-stack projects across multiple platforms including Web, Android, iOS, Windows, and Mac, encompassing server-side APIs, functional logic, and databases.',
-    contextWindow: 204800,
+      'MiniMax-M2 redefines efficiency for agents. It is a compact, fast, and cost-effective MoE model (230 billion total parameters with 10 billion active parameters) built for elite performance in coding and agentic tasks, all while maintaining powerful general intelligence.',
+    contextWindow: 205000,
     zeroDataRetention: false,
     capabilities: {
       supportsTools: true,
@@ -85,7 +81,7 @@ export const MINIMAX_MODELS: readonly AiModelCatalogEntry<'minimax'>[] = [
     providerToolIds: [],
     reasoningEfforts: [],
     defaultProviderOptions: minimaxDefaultProviderOptions(),
-    defaultMaxOutputTokens: 131000,
+    defaultMaxOutputTokens: 205000,
     pricing: {
       inputPerToken: '0.0000003',
       outputPerToken: '0.0000012',

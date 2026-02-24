@@ -45,106 +45,13 @@ function openaiDefaultProviderOptions(): Record<string, unknown> {
  * textVerbosity, reasoningSummary).
  */
 export const OPENAI_MODELS: readonly AiModelCatalogEntry<'openai'>[] = [
-
-  // GPT-4.1
+  // GPT-5.2 (Dec 2025)
   {
-    id: 'openai/gpt-4.1',
+    id: 'openai/gpt-5.2-chat',
     providerId: 'openai',
-    name: 'GPT-4.1',
+    name: 'GPT-5.2',
     description:
-      "GPT 4.1 is OpenAI's flagship model for complex tasks. It is well suited for problem solving across domains.",
-    contextWindow: 1047576,
-    zeroDataRetention: false,
-    capabilities: {
-      supportsTools: true,
-      supportsStreaming: true,
-      supportsReasoning: false,
-      supportsImageInput: true,
-      supportsFileInput: true,
-      supportsPdfInput: true,
-    },
-    providerToolIds: [],
-    reasoningEfforts: [],
-    defaultProviderOptions: openaiDefaultProviderOptions(),
-    defaultMaxOutputTokens: 32768,
-    pricing: {
-      inputPerToken: '0.000002',
-      outputPerToken: '0.000008',
-      inputCacheReadPerToken: '0.0000005',
-    },
-  },
-  // GPT-5
-  {
-    id: 'openai/gpt-5-mini',
-    providerId: 'openai',
-    name: 'GPT-5 mini',
-    description:
-      'GPT-5 mini is a cost optimized model that excels at reasoning/chat tasks. It offers an optimal balance between speed, cost, and capability.',
-    contextWindow: 400000,
-    zeroDataRetention: false,
-    capabilities: {
-      supportsTools: true,
-      supportsStreaming: true,
-      supportsReasoning: true,
-      supportsImageInput: true,
-      supportsFileInput: true,
-      supportsPdfInput: true,
-    },
-    providerToolIds: [],
-    reasoningEfforts: ['minimal', 'low', 'medium', 'high'],
-    defaultReasoningEffort: 'low',
-    providerOptionsByReasoning: {
-      minimal: openaiReasoningOptions('minimal'),
-      low: openaiReasoningOptions('low'),
-      medium: openaiReasoningOptions('medium'),
-      high: openaiReasoningOptions('high'),
-    },
-    defaultProviderOptions: openaiDefaultProviderOptions(),
-    defaultMaxOutputTokens: 128000,
-    pricing: {
-      inputPerToken: '0.00000025',
-      outputPerToken: '0.000002',
-      inputCacheReadPerToken: '0.00000003',
-    },
-  },
-  {
-    id: 'openai/gpt-5-nano',
-    providerId: 'openai',
-    name: 'GPT-5 nano',
-    description:
-      'GPT-5 nano is a high throughput model that excels at simple instruction or classification tasks.',
-    contextWindow: 400000,
-    zeroDataRetention: false,
-    capabilities: {
-      supportsTools: true,
-      supportsStreaming: true,
-      supportsReasoning: true,
-      supportsImageInput: true,
-      supportsFileInput: true,
-      supportsPdfInput: true,
-    },
-    providerToolIds: [],
-    reasoningEfforts: ['minimal', 'low', 'medium', 'high'],
-    defaultReasoningEffort: 'low',
-    providerOptionsByReasoning: {
-      minimal: openaiReasoningOptions('minimal'),
-      low: openaiReasoningOptions('low'),
-      medium: openaiReasoningOptions('medium'),
-      high: openaiReasoningOptions('high'),
-    },
-    defaultProviderOptions: openaiDefaultProviderOptions(),
-    defaultMaxOutputTokens: 128000,
-    pricing: {
-      inputPerToken: '0.00000005',
-      outputPerToken: '0.0000004',
-      inputCacheReadPerToken: '0.00000001',
-    },
-  },
-  {
-    id: 'openai/gpt-5-chat',
-    providerId: 'openai',
-    name: 'GPT-5',
-    description: 'GPT-5 Chat points to the GPT-5 snapshot currently used in ChatGPT.',
+      'The model powering ChatGPT is gpt-5.2-chat-latest: this is OpenAI\'s best general-purpose model, part of the GPT-5 flagship model family.',
     contextWindow: 128000,
     zeroDataRetention: false,
     capabilities: {
@@ -167,13 +74,82 @@ export const OPENAI_MODELS: readonly AiModelCatalogEntry<'openai'>[] = [
     defaultProviderOptions: openaiDefaultProviderOptions(),
     defaultMaxOutputTokens: 16384,
     pricing: {
-      inputPerToken: '0.00000125',
-      outputPerToken: '0.00001',
-      inputCacheReadPerToken: '0.000000125',
+      inputPerToken: '0.00000175',
+      outputPerToken: '0.000014',
+      inputCacheReadPerToken: '0.000000175',
       webSearchPerRequest: '10',
     },
   },
-  // GPT-5.1 (supports reasoningEffort 'none' per OpenAI docs)
+  {
+    id: 'openai/gpt-5.2-codex',
+    providerId: 'openai',
+    name: 'GPT-5.2-Codex',
+    description:
+      'GPT‑5.2-Codex is a version of GPT‑5.2⁠ further optimized for agentic coding in Codex, including improvements on long-horizon work through context compaction, stronger performance on large code changes like refactors and migrations, improved performance in Windows environments, and significantly stronger cybersecurity capabilities.',
+    contextWindow: 400000,
+    zeroDataRetention: false,
+    capabilities: {
+      supportsTools: true,
+      supportsStreaming: true,
+      supportsReasoning: true,
+      supportsImageInput: true,
+      supportsFileInput: true,
+      supportsPdfInput: true,
+    },
+    providerToolIds: [],
+    reasoningEfforts: ['minimal', 'low', 'medium', 'high', 'xhigh'],
+    defaultReasoningEffort: 'medium',
+    providerOptionsByReasoning: {
+      minimal: openaiReasoningOptions('minimal'),
+      low: openaiReasoningOptions('low'),
+      medium: openaiReasoningOptions('medium'),
+      high: openaiReasoningOptions('high'),
+      xhigh: openaiReasoningOptions('xhigh'),
+    },
+    defaultProviderOptions: openaiDefaultProviderOptions(),
+    defaultMaxOutputTokens: 128000,
+    pricing: {
+      inputPerToken: '0.00000175',
+      outputPerToken: '0.000014',
+      inputCacheReadPerToken: '0.000000175',
+      webSearchPerRequest: '10',
+    },
+  },
+  // o4-mini (Apr 2025)
+  {
+    id: 'openai/o4-mini',
+    providerId: 'openai',
+    name: 'o4-mini',
+    description:
+      'OpenAI\'s o4-mini delivers fast, cost-efficient reasoning with exceptional performance for its size, particularly excelling in math (best-performing on AIME benchmarks), coding, and visual tasks.',
+    contextWindow: 200000,
+    zeroDataRetention: false,
+    capabilities: {
+      supportsTools: true,
+      supportsStreaming: true,
+      supportsReasoning: true,
+      supportsImageInput: true,
+      supportsFileInput: true,
+      supportsPdfInput: true,
+    },
+    providerToolIds: [],
+    reasoningEfforts: ['minimal', 'low', 'medium', 'high'],
+    defaultReasoningEffort: 'low',
+    providerOptionsByReasoning: {
+      minimal: openaiReasoningOptions('minimal'),
+      low: openaiReasoningOptions('low'),
+      medium: openaiReasoningOptions('medium'),
+      high: openaiReasoningOptions('high'),
+    },
+    defaultProviderOptions: openaiDefaultProviderOptions(),
+    defaultMaxOutputTokens: 100000,
+    pricing: {
+      inputPerToken: '0.0000011',
+      outputPerToken: '0.0000044',
+      inputCacheReadPerToken: '0.000000275',
+    },
+  },
+  // GPT-5.1
   {
     id: 'openai/gpt-5.1-instant',
     providerId: 'openai',
@@ -242,13 +218,12 @@ export const OPENAI_MODELS: readonly AiModelCatalogEntry<'openai'>[] = [
       inputCacheReadPerToken: '0.00000013',
     },
   },
-  // GPT-5.2
+  // GPT-5
   {
-    id: 'openai/gpt-5.2-chat',
+    id: 'openai/gpt-5-chat',
     providerId: 'openai',
-    name: 'GPT-5.2',
-    description:
-      'The model powering ChatGPT is gpt-5.2-chat-latest: this is OpenAI\'s best general-purpose model, part of the GPT-5 flagship model family.',
+    name: 'GPT-5',
+    description: 'GPT-5 Chat points to the GPT-5 snapshot currently used in ChatGPT.',
     contextWindow: 128000,
     zeroDataRetention: false,
     capabilities: {
@@ -271,18 +246,18 @@ export const OPENAI_MODELS: readonly AiModelCatalogEntry<'openai'>[] = [
     defaultProviderOptions: openaiDefaultProviderOptions(),
     defaultMaxOutputTokens: 16384,
     pricing: {
-      inputPerToken: '0.00000175',
-      outputPerToken: '0.000014',
-      inputCacheReadPerToken: '0.000000175',
+      inputPerToken: '0.00000125',
+      outputPerToken: '0.00001',
+      inputCacheReadPerToken: '0.000000125',
       webSearchPerRequest: '10',
     },
   },
   {
-    id: 'openai/gpt-5.2-codex',
+    id: 'openai/gpt-5-mini',
     providerId: 'openai',
-    name: 'GPT-5.2-Codex',
+    name: 'GPT-5 mini',
     description:
-      'GPT‑5.2-Codex is a version of GPT‑5.2⁠ further optimized for agentic coding in Codex, including improvements on long-horizon work through context compaction, stronger performance on large code changes like refactors and migrations, improved performance in Windows environments, and significantly stronger cybersecurity capabilities.',
+      'GPT-5 mini is a cost optimized model that excels at reasoning/chat tasks. It offers an optimal balance between speed, cost, and capability.',
     contextWindow: 400000,
     zeroDataRetention: false,
     capabilities: {
@@ -294,22 +269,80 @@ export const OPENAI_MODELS: readonly AiModelCatalogEntry<'openai'>[] = [
       supportsPdfInput: true,
     },
     providerToolIds: [],
-    reasoningEfforts: ['minimal', 'low', 'medium', 'high', 'xhigh'],
-    defaultReasoningEffort: 'medium',
+    reasoningEfforts: ['minimal', 'low', 'medium', 'high'],
+    defaultReasoningEffort: 'low',
     providerOptionsByReasoning: {
       minimal: openaiReasoningOptions('minimal'),
       low: openaiReasoningOptions('low'),
       medium: openaiReasoningOptions('medium'),
       high: openaiReasoningOptions('high'),
-      xhigh: openaiReasoningOptions('xhigh'),
     },
     defaultProviderOptions: openaiDefaultProviderOptions(),
     defaultMaxOutputTokens: 128000,
     pricing: {
-      inputPerToken: '0.00000175',
-      outputPerToken: '0.000014',
-      inputCacheReadPerToken: '0.000000175',
-      webSearchPerRequest: '10',
+      inputPerToken: '0.00000025',
+      outputPerToken: '0.000002',
+      inputCacheReadPerToken: '0.00000003',
+    },
+  },
+  {
+    id: 'openai/gpt-5-nano',
+    providerId: 'openai',
+    name: 'GPT-5 nano',
+    description:
+      'GPT-5 nano is a high throughput model that excels at simple instruction or classification tasks.',
+    contextWindow: 400000,
+    zeroDataRetention: false,
+    capabilities: {
+      supportsTools: true,
+      supportsStreaming: true,
+      supportsReasoning: true,
+      supportsImageInput: true,
+      supportsFileInput: true,
+      supportsPdfInput: true,
+    },
+    providerToolIds: [],
+    reasoningEfforts: ['minimal', 'low', 'medium', 'high'],
+    defaultReasoningEffort: 'low',
+    providerOptionsByReasoning: {
+      minimal: openaiReasoningOptions('minimal'),
+      low: openaiReasoningOptions('low'),
+      medium: openaiReasoningOptions('medium'),
+      high: openaiReasoningOptions('high'),
+    },
+    defaultProviderOptions: openaiDefaultProviderOptions(),
+    defaultMaxOutputTokens: 128000,
+    pricing: {
+      inputPerToken: '0.00000005',
+      outputPerToken: '0.0000004',
+      inputCacheReadPerToken: '0.00000001',
+    },
+  },
+  // GPT-4.1
+  {
+    id: 'openai/gpt-4.1',
+    providerId: 'openai',
+    name: 'GPT-4.1',
+    description:
+      "GPT 4.1 is OpenAI's flagship model for complex tasks. It is well suited for problem solving across domains.",
+    contextWindow: 1047576,
+    zeroDataRetention: false,
+    capabilities: {
+      supportsTools: true,
+      supportsStreaming: true,
+      supportsReasoning: false,
+      supportsImageInput: true,
+      supportsFileInput: true,
+      supportsPdfInput: true,
+    },
+    providerToolIds: [],
+    reasoningEfforts: [],
+    defaultProviderOptions: openaiDefaultProviderOptions(),
+    defaultMaxOutputTokens: 32768,
+    pricing: {
+      inputPerToken: '0.000002',
+      outputPerToken: '0.000008',
+      inputCacheReadPerToken: '0.0000005',
     },
   },
   // o-series
@@ -461,39 +494,6 @@ export const OPENAI_MODELS: readonly AiModelCatalogEntry<'openai'>[] = [
     pricing: {
       inputPerToken: '0.00000007',
       outputPerToken: '0.0000003',
-    },
-  },
-  {
-    id: 'openai/o4-mini',
-    providerId: 'openai',
-    name: 'o4-mini',
-    description:
-      'OpenAI\'s o4-mini delivers fast, cost-efficient reasoning with exceptional performance for its size, particularly excelling in math (best-performing on AIME benchmarks), coding, and visual tasks.',
-    contextWindow: 200000,
-    zeroDataRetention: false,
-    capabilities: {
-      supportsTools: true,
-      supportsStreaming: true,
-      supportsReasoning: true,
-      supportsImageInput: true,
-      supportsFileInput: true,
-      supportsPdfInput: true,
-    },
-    providerToolIds: [],
-    reasoningEfforts: ['minimal', 'low', 'medium', 'high'],
-    defaultReasoningEffort: 'low',
-    providerOptionsByReasoning: {
-      minimal: openaiReasoningOptions('minimal'),
-      low: openaiReasoningOptions('low'),
-      medium: openaiReasoningOptions('medium'),
-      high: openaiReasoningOptions('high'),
-    },
-    defaultProviderOptions: openaiDefaultProviderOptions(),
-    defaultMaxOutputTokens: 100000,
-    pricing: {
-      inputPerToken: '0.0000011',
-      outputPerToken: '0.0000044',
-      inputCacheReadPerToken: '0.000000275',
     },
   },
 ]
