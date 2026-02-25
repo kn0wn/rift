@@ -13,7 +13,6 @@ export type ChatAttachment = {
 
 /**
  * Attachment reference submitted with a user message.
- * The upload route already persisted file metadata and markdown content.
  */
 export type ChatAttachmentInput = {
   id: string

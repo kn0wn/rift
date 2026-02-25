@@ -2,8 +2,7 @@ import type { OpenAILanguageModelResponsesOptions } from '@ai-sdk/openai'
 import type { AiModelCatalogEntry } from '../types'
 
 /**
- * Shared base options for all OpenAI Responses API calls. Keeps provider
- * options aligned with the SDK (serviceTier, textVerbosity, store, etc.).
+ * Shared base options for all OpenAI Responses API calls.
  */
 function openaiBaseOptions(): OpenAILanguageModelResponsesOptions {
   return {
@@ -15,8 +14,6 @@ function openaiBaseOptions(): OpenAILanguageModelResponsesOptions {
 
 /**
  * Builds OpenAI Responses API provider options for a given reasoning effort.
- * Merges base options (serviceTier, textVerbosity, store) with reasoningEffort
- * and reasoningSummary for reasoning models.
  */
 function openaiReasoningOptions(
   reasoningEffort: OpenAILanguageModelResponsesOptions['reasoningEffort'],
@@ -31,18 +28,14 @@ function openaiReasoningOptions(
 }
 
 /**
- * Default provider options for models that do not use per-effort options
- * (e.g. non-reasoning or when no effort is selected). Uses same base as
- * reasoning options for consistency.
+ * Default provider options for models that do not use per-effort options.
  */
 function openaiDefaultProviderOptions(): Record<string, unknown> {
   return { openai: openaiBaseOptions() }
 }
 
 /**
- * OpenAI model catalog. Model IDs, context windows, max tokens, capabilities,
- * and provider-specific options (reasoningEffort, store, serviceTier,
- * textVerbosity, reasoningSummary).
+ * OpenAI model catalog.
  */
 export const OPENAI_MODELS: readonly AiModelCatalogEntry<'openai'>[] = [
   // GPT-5.2 (Dec 2025)

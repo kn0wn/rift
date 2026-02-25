@@ -2,8 +2,7 @@ import type { AnthropicLanguageModelOptions } from '@ai-sdk/anthropic'
 import type { AiModelCatalogEntry } from '../types'
 
 /**
- * Shared base options for all Anthropic Messages API calls. Keeps provider
- * options aligned with the SDK (sendReasoning, toolStreaming, etc.).
+ * Shared base options for all Anthropic Messages API calls.
  */
 function anthropicBaseOptions(): AnthropicLanguageModelOptions {
   return {
@@ -37,9 +36,7 @@ function anthropicDefaultProviderOptions(): Record<string, unknown> {
 }
 
 /**
- * Anthropic model catalog. Model IDs, context windows, max tokens, capabilities,
- * and provider-specific options (effort, thinking, sendReasoning, toolStreaming)
- * .
+ * Anthropic model catalog.
  */
 export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
   {

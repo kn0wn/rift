@@ -1,8 +1,7 @@
 import type { AiModelCatalogEntry } from '../types'
 
 /**
- * Default provider options for Alibaba (Qwen) models. No provider-specific
- * options required for basic chat when using the AI Gateway.
+ * Default provider options for Alibaba (Qwen) models.
  */
 function alibabaDefaultProviderOptions(): Record<string, unknown> {
   return {}

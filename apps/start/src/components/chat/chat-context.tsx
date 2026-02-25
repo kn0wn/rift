@@ -25,7 +25,7 @@ import { getProviderToolDefinition } from '@/lib/ai-catalog/provider-tools'
 import {
   canUseAdvancedProviderTools,
   canUseReasoningControls,
-} from '@/lib/ai-feature-flags'
+} from '@/lib/app-feature-flags'
 import { evaluateModelAvailability } from '@/lib/model-policy/policy-engine'
 import type {
   ChatAttachment,

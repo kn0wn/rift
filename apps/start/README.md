@@ -26,6 +26,15 @@ Required server environment variables:
 - `CF_MARKDOWN_WORKER_URL`: URL for your Worker (base URL or `/convert` endpoint).
 - `CF_MARKDOWN_WORKER_TOKEN`: shared secret used to authenticate app -> Worker calls.
 - `CF_MARKDOWN_MAX_CHARS` (optional): max markdown characters per converted file (default `120000`).
+- `ENABLE_EMBEDDING` (optional, first-class): set `false` to disable all embedding + vector RAG logic globally. The app will use markdown fallback context directly without requiring Qdrant configuration.
+- `QDRANT_URL`: base URL for the Qdrant API (for example Railway internal URL).
+- `QDRANT_API_KEY` (optional): API key when Qdrant auth is enabled.
+- `QDRANT_COLLECTION_ATTACHMENTS` (optional): collection name used for attachment chunks (default `attachment_chunks_v1`).
+- `QDRANT_TIMEOUT_MS` (optional): HTTP timeout for Qdrant operations (default `5000`).
+- `QDRANT_UPSERT_BATCH_SIZE` (optional): batch size for chunk upserts (default `128`).
+
+RAG chunking/retrieval/model tuning is code-configured in:
+- `apps/start/src/lib/chat-backend/services/rag/pipeline-config.ts`
 
 ## Testing
 

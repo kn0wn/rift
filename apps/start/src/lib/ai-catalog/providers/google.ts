@@ -2,7 +2,7 @@ import type { GoogleLanguageModelOptions } from '@ai-sdk/google'
 import type { AiModelCatalogEntry } from '../types'
 
 /**
- * Shared base options for Google Generative AI (Gemini) calls. Keeps provider
+ * Shared base options for Google Generative AI (Gemini) calls.
  */
 function googleBaseOptions(): GoogleLanguageModelOptions {
   return {} satisfies GoogleLanguageModelOptions
@@ -10,7 +10,6 @@ function googleBaseOptions(): GoogleLanguageModelOptions {
 
 /**
  * Builds Google provider options for reasoning with thinking enabled.
- * includeThoughts: true so reasoning is emitted; thinkingBudget controls token count.
  */
 function googleReasoningOptions(thinkingBudget: number): Record<string, unknown> {
   return {
@@ -34,9 +33,7 @@ function googleDefaultProviderOptions(): Record<string, unknown> {
 }
 
 /**
- * Google (Gemini) model catalog. Model IDs, context windows, max tokens,
- * capabilities, and provider-specific options (thinkingConfig with
- * thinkingBudget, includeThoughts).
+ * Google (Gemini) model catalog.
  */
 export const GOOGLE_MODELS: readonly AiModelCatalogEntry<'google'>[] = [
   {

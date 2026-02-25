@@ -1,9 +1,7 @@
 import type { AiModelCatalogEntry } from '../types'
 
 /**
- * Default provider options for Mistral models. No provider-specific options
- * required for basic chat; optional settings (safePrompt, parallelToolCalls,
- * document limits) can be added per-model if needed.
+ * Mistral default provider options.
  */
 function mistralDefaultProviderOptions(): Record<string, unknown> {
   return {}

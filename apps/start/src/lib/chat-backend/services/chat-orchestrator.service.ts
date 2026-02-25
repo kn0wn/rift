@@ -10,7 +10,7 @@ import {
   emitWideErrorEvent,
   getErrorTag,
 } from '../observability/wide-event'
-import { canUseReasoningControls } from '@/lib/ai-feature-flags'
+import { canUseReasoningControls } from '@/lib/app-feature-flags'
 import { MessageStoreService } from './message-store.service'
 import { ModelGatewayService } from './model-gateway.service'
 import { ModelPolicyService } from './model-policy.service'

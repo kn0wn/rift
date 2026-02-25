@@ -6,8 +6,6 @@ import type { CatalogProviderId } from './provider-tools'
 
 /**
  * Icon components for each AI provider in the catalog.
- * Use currentColor so they inherit text color and work with design tokens.
- * Re-exported from the catalog so any part of the app can reuse them.
  */
 
 function IconSvg({

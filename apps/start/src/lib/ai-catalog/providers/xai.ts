@@ -2,14 +2,14 @@ import type { XaiLanguageModelResponsesOptions } from '@ai-sdk/xai'
 import type { AiModelCatalogEntry } from '../types'
 
 /**
- * Shared base options for xAI Responses API (store only).
+ * Shared base options for xAI Responses API.
  */
 function xaiBaseOptions(): XaiLanguageModelResponsesOptions {
   return { store: false } satisfies XaiLanguageModelResponsesOptions
 }
 
 /**
- * Builds xAI Responses API provider options for a given reasoning effort.
+ * Builds xAI Responses API provider options for reasoning.
  */
 function xaiReasoningOptions(
   reasoningEffort: NonNullable<
@@ -25,14 +25,13 @@ function xaiReasoningOptions(
 }
 
 /**
- * Default provider options for models that do not use per-effort options.
+ * XAI default provider options.
  */
 function xaiDefaultProviderOptions(): Record<string, unknown> {
   return { xai: xaiBaseOptions() }
 }
 
 export const XAI_MODELS: readonly AiModelCatalogEntry<'xai'>[] = [
-  // Grok 4 Fast
   {
     id: 'xai/grok-4-fast-reasoning',
     providerId: 'xai',
@@ -107,7 +106,6 @@ export const XAI_MODELS: readonly AiModelCatalogEntry<'xai'>[] = [
       ],
     },
   },
-  // Grok 4.1 (gateway uses dot: grok-4.1)
   {
     id: 'xai/grok-4.1-fast-reasoning',
     providerId: 'xai',
@@ -181,7 +179,6 @@ export const XAI_MODELS: readonly AiModelCatalogEntry<'xai'>[] = [
       ],
     },
   },
-  // Grok Code
   {
     id: 'xai/grok-code-fast-1',
     providerId: 'xai',

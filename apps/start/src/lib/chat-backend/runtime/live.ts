@@ -4,6 +4,7 @@ import { MessageStoreZero } from '../services/message-store.service'
 import { ModelGatewayLive } from '../services/model-gateway.service'
 import { ModelPolicyLive } from '../services/model-policy.service'
 import { RateLimitMemory } from '../services/rate-limit.service'
+import { AttachmentRagLive, OrgKnowledgeRagNoop } from '../services/rag'
 import { StreamResumeLive } from '../services/stream-resume.service'
 import { ThreadServiceZero } from '../services/thread.service'
 import { ToolRegistryLive } from '../services/tool-registry.service'
@@ -15,6 +16,8 @@ import { ToolRegistryLive } from '../services/tool-registry.service'
  */
 export const ChatLiveLayer = ChatOrchestratorLive.pipe(
   Layer.provideMerge(ThreadServiceZero),
+  Layer.provideMerge(AttachmentRagLive),
+  Layer.provideMerge(OrgKnowledgeRagNoop),
   Layer.provideMerge(MessageStoreZero),
   Layer.provideMerge(RateLimitMemory),
   Layer.provideMerge(ModelPolicyLive),

@@ -1,7 +1,7 @@
 import type { AiModelCatalogEntry } from '../types'
 
 /**
- * Default provider options for GLM (Zhipu AI / zai) models.
+ * ZAI default provider options.
  */
 function zaiDefaultProviderOptions(): Record<string, unknown> {
   return {}

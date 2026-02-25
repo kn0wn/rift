@@ -1,8 +1,7 @@
 import type { AiModelCatalogEntry } from '../types'
 
 /**
- * Default provider options for Moonshot AI models. No provider-specific options
- * required for basic chat.
+ * Default provider options for Moonshot AI models.
  */
 function moonshotaiDefaultProviderOptions(): Record<string, unknown> {
   return {}
@@ -10,7 +9,6 @@ function moonshotaiDefaultProviderOptions(): Record<string, unknown> {
 
 /**
  * Provider options for Moonshot thinking/reasoning models.
- * Enables thinking with a token budget and interleaved reasoning history.
  */
 function moonshotaiThinkingProviderOptions(): Record<string, unknown> {
   return {
@@ -22,7 +20,7 @@ function moonshotaiThinkingProviderOptions(): Record<string, unknown> {
 }
 
 /**
- * Moonshot AI model catalog. Kimi K2, K2.5, and K2 Thinking only.
+ * Moonshot AI model catalog.
  */
 export const MOONSHOTAI_MODELS: readonly AiModelCatalogEntry<'moonshotai'>[] = [
   {
