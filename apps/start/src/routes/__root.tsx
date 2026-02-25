@@ -3,7 +3,6 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { AuthKitProvider } from '@workos/authkit-tanstack-react-start/client'
 
-import ConvexProvider from '../integrations/convex/provider'
 import ZeroProvider from '../integrations/zero/provider'
 import { ThemeProvider } from '@rift/ui/hooks/useTheme'
 import { Toaster } from '@rift/ui/sonner'
@@ -43,8 +42,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <AuthKitProvider>
-          <ConvexProvider>
-            <ZeroProvider>
+          <ZeroProvider>
               <ThemeProvider>
                 <TooltipProvider delay={100}>
                   {children}
@@ -63,7 +61,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                 </TooltipProvider>
             </ThemeProvider>
             </ZeroProvider>
-          </ConvexProvider>
         </AuthKitProvider>
         <Scripts />
       </body>

@@ -9,7 +9,7 @@ const cacheURL = import.meta.env.VITE_ZERO_CACHE_URL
 
 /**
  * Zero userID and context from WorkOS AuthKit. Each userID gets its own client storage.
- * Uses WorkOS user id (user.id) so it matches workos_id in Convex/Postgres.
+ * Uses WorkOS user id (user.id) so it matches workos_id in Postgres.
  */
 function useZeroAuth(): { userID: string; context: ZeroContext } {
   const auth = useAuth()
