@@ -3,11 +3,35 @@
  * Used by hooks/chat/upload and the chat input UI.
  */
 
-/** Accept string for <input accept=""> (images and PDF). */
-export const ACCEPTED_FILE_TYPES = 'image/*,application/pdf'
+/**
+ * Accept string for <input accept=""> aligned with Cloudflare toMarkdown support:
+ * PDF, common images, HTML/XML, Office/OpenDocument, CSV, and Numbers files.
+ */
+export const ACCEPTED_FILE_TYPES = [
+  '.pdf',
+  '.jpeg',
+  '.jpg',
+  '.png',
+  '.webp',
+  '.svg',
+  '.html',
+  '.htm',
+  '.xml',
+  '.xlsx',
+  '.xlsm',
+  '.xlsb',
+  '.xls',
+  '.et',
+  '.docx',
+  '.ods',
+  '.odt',
+  '.csv',
+  '.numbers',
+].join(',')
 export const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
 
 export type UploadedFile = {
+  id: string
   key: string
   url: string
   name: string
@@ -15,22 +39,65 @@ export type UploadedFile = {
   contentType: string
 }
 
+const SUPPORTED_MIME_TYPES = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/svg+xml',
+  'text/html',
+  'application/xml',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel.sheet.macroenabled.12',
+  'application/vnd.ms-excel.sheet.binary.macroenabled.12',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.oasis.opendocument.spreadsheet',
+  'application/vnd.oasis.opendocument.text',
+  'text/csv',
+  'application/vnd.apple.numbers',
+])
+
+const SUPPORTED_EXTENSIONS = new Set([
+  'pdf',
+  'jpeg',
+  'jpg',
+  'png',
+  'webp',
+  'svg',
+  'html',
+  'htm',
+  'xml',
+  'xlsx',
+  'xlsm',
+  'xlsb',
+  'xls',
+  'et',
+  'docx',
+  'ods',
+  'odt',
+  'csv',
+  'numbers',
+])
+
+function getFileExtension(fileName: string): string {
+  const normalized = fileName.trim().toLowerCase()
+  const dot = normalized.lastIndexOf('.')
+  if (dot < 0 || dot === normalized.length - 1) return ''
+  return normalized.slice(dot + 1)
+}
+
 export function isAcceptedFile(file: File): boolean {
   const type = file.type.trim().toLowerCase()
-  if (type.startsWith('image/')) return true
-  if (type === 'application/pdf' || type === 'application/x-pdf') return true
-  if (
-    (type === '' || type === 'application/octet-stream') &&
-    file.name.trim().toLowerCase().endsWith('.pdf')
-  ) {
-    return true
-  }
-  return false
+  if (SUPPORTED_MIME_TYPES.has(type)) return true
+  if (type && type !== 'application/octet-stream') return false
+  const extension = getFileExtension(file.name)
+  return extension.length > 0 && SUPPORTED_EXTENSIONS.has(extension)
 }
 
 export function getFileValidationError(file: File): string | null {
   if (!isAcceptedFile(file)) {
-    return 'Only image and PDF files are allowed'
+    return 'File type is not supported for markdown conversion'
   }
   if (file.size <= 0) {
     return 'File is empty'

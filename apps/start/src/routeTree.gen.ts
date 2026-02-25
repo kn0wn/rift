@@ -17,6 +17,7 @@ import { Route as ApiZeroQueryRouteRouteImport } from './routes/api/zero/query/r
 import { Route as ApiZeroMutateRouteRouteImport } from './routes/api/zero/mutate/route'
 import { Route as ApiOrgModelPolicyRouteRouteImport } from './routes/api/org/model-policy/route'
 import { Route as ApiFilesUploadRouteRouteImport } from './routes/api/files/upload/route'
+import { Route as ApiFilesMarkdownRouteRouteImport } from './routes/api/files/markdown/route'
 import { Route as ApiAuthCallbackRouteRouteImport } from './routes/api/auth/callback/route'
 import { Route as appLayoutWriterRouteRouteImport } from './routes/(app)/_layout/writer/route'
 import { Route as appLayoutSettingsRouteRouteImport } from './routes/(app)/_layout/settings/route'
@@ -67,6 +68,11 @@ const ApiOrgModelPolicyRouteRoute = ApiOrgModelPolicyRouteRouteImport.update({
 const ApiFilesUploadRouteRoute = ApiFilesUploadRouteRouteImport.update({
   id: '/api/files/upload',
   path: '/api/files/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFilesMarkdownRouteRoute = ApiFilesMarkdownRouteRouteImport.update({
+  id: '/api/files/markdown',
+  path: '/api/files/markdown',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthCallbackRouteRoute = ApiAuthCallbackRouteRouteImport.update({
@@ -143,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof appLayoutSettingsRouteRouteWithChildren
   '/writer': typeof appLayoutWriterRouteRoute
   '/api/auth/callback': typeof ApiAuthCallbackRouteRoute
+  '/api/files/markdown': typeof ApiFilesMarkdownRouteRoute
   '/api/files/upload': typeof ApiFilesUploadRouteRoute
   '/api/org/model-policy': typeof ApiOrgModelPolicyRouteRoute
   '/api/zero/mutate': typeof ApiZeroMutateRouteRoute
@@ -162,6 +169,7 @@ export interface FileRoutesByTo {
   '/organization': typeof appLayoutOrganizationRouteRouteWithChildren
   '/writer': typeof appLayoutWriterRouteRoute
   '/api/auth/callback': typeof ApiAuthCallbackRouteRoute
+  '/api/files/markdown': typeof ApiFilesMarkdownRouteRoute
   '/api/files/upload': typeof ApiFilesUploadRouteRoute
   '/api/org/model-policy': typeof ApiOrgModelPolicyRouteRoute
   '/api/zero/mutate': typeof ApiZeroMutateRouteRoute
@@ -184,6 +192,7 @@ export interface FileRoutesById {
   '/(app)/_layout/settings': typeof appLayoutSettingsRouteRouteWithChildren
   '/(app)/_layout/writer': typeof appLayoutWriterRouteRoute
   '/api/auth/callback': typeof ApiAuthCallbackRouteRoute
+  '/api/files/markdown': typeof ApiFilesMarkdownRouteRoute
   '/api/files/upload': typeof ApiFilesUploadRouteRoute
   '/api/org/model-policy': typeof ApiOrgModelPolicyRouteRoute
   '/api/zero/mutate': typeof ApiZeroMutateRouteRoute
@@ -207,6 +216,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/writer'
     | '/api/auth/callback'
+    | '/api/files/markdown'
     | '/api/files/upload'
     | '/api/org/model-policy'
     | '/api/zero/mutate'
@@ -226,6 +236,7 @@ export interface FileRouteTypes {
     | '/organization'
     | '/writer'
     | '/api/auth/callback'
+    | '/api/files/markdown'
     | '/api/files/upload'
     | '/api/org/model-policy'
     | '/api/zero/mutate'
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
     | '/(app)/_layout/settings'
     | '/(app)/_layout/writer'
     | '/api/auth/callback'
+    | '/api/files/markdown'
     | '/api/files/upload'
     | '/api/org/model-policy'
     | '/api/zero/mutate'
@@ -266,6 +278,7 @@ export interface RootRouteChildren {
   appLayoutRouteRoute: typeof appLayoutRouteRouteWithChildren
   ApiChatRouteRoute: typeof ApiChatRouteRoute
   ApiAuthCallbackRouteRoute: typeof ApiAuthCallbackRouteRoute
+  ApiFilesMarkdownRouteRoute: typeof ApiFilesMarkdownRouteRoute
   ApiFilesUploadRouteRoute: typeof ApiFilesUploadRouteRoute
   ApiOrgModelPolicyRouteRoute: typeof ApiOrgModelPolicyRouteRoute
   ApiZeroMutateRouteRoute: typeof ApiZeroMutateRouteRoute
@@ -328,6 +341,13 @@ declare module '@tanstack/react-router' {
       path: '/api/files/upload'
       fullPath: '/api/files/upload'
       preLoaderRoute: typeof ApiFilesUploadRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/files/markdown': {
+      id: '/api/files/markdown'
+      path: '/api/files/markdown'
+      fullPath: '/api/files/markdown'
+      preLoaderRoute: typeof ApiFilesMarkdownRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/callback': {
@@ -505,6 +525,7 @@ const rootRouteChildren: RootRouteChildren = {
   appLayoutRouteRoute: appLayoutRouteRouteWithChildren,
   ApiChatRouteRoute: ApiChatRouteRoute,
   ApiAuthCallbackRouteRoute: ApiAuthCallbackRouteRoute,
+  ApiFilesMarkdownRouteRoute: ApiFilesMarkdownRouteRoute,
   ApiFilesUploadRouteRoute: ApiFilesUploadRouteRoute,
   ApiOrgModelPolicyRouteRoute: ApiOrgModelPolicyRouteRoute,
   ApiZeroMutateRouteRoute: ApiZeroMutateRouteRoute,

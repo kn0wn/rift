@@ -17,6 +17,16 @@ To build this application for production:
 bun --bun run build
 ```
 
+## File Markdown Conversion (Cloudflare Worker)
+
+This app can convert supported uploaded files (PDF, images, Office docs, HTML/XML, CSV, ODF, Numbers) to markdown before sending chat requests, so models without native file handling can still answer from document context.
+
+Required server environment variables:
+
+- `CF_MARKDOWN_WORKER_URL`: URL for your Worker (base URL or `/convert` endpoint).
+- `CF_MARKDOWN_WORKER_TOKEN`: shared secret used to authenticate app -> Worker calls.
+- `CF_MARKDOWN_MAX_CHARS` (optional): max markdown characters per converted file (default `120000`).
+
 ## Testing
 
 This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:

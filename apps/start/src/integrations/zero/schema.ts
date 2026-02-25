@@ -138,6 +138,25 @@ const message = table('message')
   })
   .primaryKey('id')
 
+const attachment = table('attachment')
+  .from('attachments')
+  .columns({
+    id: string(),
+    messageId: string().from('message_id').optional(),
+    threadId: string().from('thread_id').optional(),
+    userId: string().from('user_id'),
+    fileKey: string().from('file_key'),
+    attachmentUrl: string().from('attachment_url'),
+    fileName: string().from('file_name'),
+    mimeType: string().from('mime_type'),
+    fileSize: number().from('file_size'),
+    fileContent: string().from('file_content'),
+    status: enumeration<'deleted' | 'uploaded'>().optional(),
+    createdAt: number().from('created_at'),
+    updatedAt: number().from('updated_at'),
+  })
+  .primaryKey('id')
+
 // ---------------------------------------------------------------------------
 // Relationships (optional; use for .related() in ZQL)
 // ---------------------------------------------------------------------------
@@ -163,7 +182,7 @@ const messageRelationships = relationships(message, ({ one }) => ({
 // ---------------------------------------------------------------------------
 
 export const schema = createSchema({
-  tables: [user, organization, orgAiPolicy, thread, message],
+  tables: [user, organization, orgAiPolicy, thread, message, attachment],
   relationships: [threadRelationships, messageRelationships],
 })
 

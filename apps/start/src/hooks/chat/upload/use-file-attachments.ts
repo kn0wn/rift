@@ -117,10 +117,24 @@ export function useFileAttachments(options: UseFileAttachmentsOptions = {}) {
     })
   }, [])
 
+  /**
+   * Clears all attachments from the composer and releases any preview object URLs.
+   * This is used after a successful send so the UI reflects that files were consumed.
+   */
+  const clearFiles = useCallback(() => {
+    setFiles((prev) => {
+      for (const item of prev) {
+        if (item.preview) URL.revokeObjectURL(item.preview)
+      }
+      return []
+    })
+  }, [])
+
   return {
     files,
     handleFileSelect,
     handleRemoveFile,
+    clearFiles,
     canAddMore: files.length < maxFiles,
     maxFiles,
   }

@@ -15,7 +15,9 @@
     "dev:next": "turbo run dev --filter=web --ui tui",
     "build:next": "turbo run build --filter=web",
     "start:next": "bun run --filter web start",
-    "convex:next": "bun run --filter web convex"
+    "convex:next": "bun run --filter web convex",
+    "worker:dev": "bun run --cwd workers/markdown-converter dev",
+    "worker:deploy": "bun run --cwd workers/markdown-converter deploy"
   },
   "devDependencies": {
     "@effect/language-service": "^0.75.1",

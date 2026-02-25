@@ -15,6 +15,10 @@ import { ModelSelectorPanel } from './model-selector-panel'
 import { ReasoningSelectorPanel } from './reasoning-selector-panel'
 import { useFileAttachments } from '../../hooks/chat/upload'
 import { parseChatApiError } from './chat-error-messages'
+import type {
+  ChatAttachment,
+  ChatAttachmentInput,
+} from '@/lib/chat-contracts/attachments'
 
 export function ChatInput() {
   const {
@@ -32,17 +36,20 @@ export function ChatInput() {
   const [uploadErrorDismissed, setUploadErrorDismissed] = useState(false)
   const inputRef = useRef<{ focus: () => void }>(null)
 
-  // File upload: images and PDF, max 10 files.
-  const { files, handleFileSelect, handleRemoveFile, canAddMore } =
+  // File upload: worker-supported markdown-convertible files, max 10 files.
+  const { files, handleFileSelect, handleRemoveFile, clearFiles, canAddMore } =
     useFileAttachments({ maxFiles: 10 })
 
   const isBusy = status === 'submitted' || status === 'streaming'
+  const hasPendingUploads = files.some((file) => file.isUploading)
+  const isSendBlocked = isBusy || hasPendingUploads
   const isEmpty = !input.trim()
   const parsedChatError = parseChatApiError(error)
   const chatErrorMessage = parsedChatError?.message ?? null
   const chatErrorTraceId = parsedChatError?.traceId ?? null
   const uploadErrorMessage =
-    files.find((file) => !!file.uploadError)?.uploadError ?? null
+    files.find((file) => !!file.uploadError)?.uploadError ??
+    null
   const showChatError = !!chatErrorMessage && !errorDismissed
   const showUploadError = !!uploadErrorMessage && !uploadErrorDismissed
   const activeErrorMessage = showChatError
@@ -65,18 +72,69 @@ export function ChatInput() {
     [],
   )
 
+  const buildAttachmentPayload = useCallback(() => {
+    const uploadedFiles = files
+      .map((file) => file.uploaded)
+      .filter(
+        (uploaded): uploaded is NonNullable<typeof uploaded> =>
+          !!uploaded,
+      )
+
+    if (uploadedFiles.length === 0) return undefined
+
+    const attachments = uploadedFiles
+      .map((file): ChatAttachmentInput | null => {
+        const attachmentId =
+          typeof file.id === 'string' && file.id.trim().length > 0
+            ? file.id.trim()
+            : null
+        return attachmentId ? { id: attachmentId } : null
+      })
+      .filter((attachment): attachment is ChatAttachmentInput => !!attachment)
+
+    const attachmentManifest = uploadedFiles
+      .map((file): ChatAttachment | null => {
+        if (!file.id || !file.key || !file.url || !file.name || !file.contentType) {
+          return null
+        }
+        return {
+          id: file.id,
+          key: file.key,
+          url: file.url,
+          name: file.name,
+          size: file.size,
+          contentType: file.contentType,
+        }
+      })
+      .filter((attachment): attachment is ChatAttachment => !!attachment)
+
+    return {
+      attachments: attachments.length > 0 ? attachments : undefined,
+      attachmentManifest:
+        attachmentManifest.length > 0 ? attachmentManifest : undefined,
+    }
+  }, [files])
+
   const handleSubmit = useCallback(
-    (e: React.FormEvent<HTMLFormElement>) => {
+    async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault()
       const text = input.trim()
-      if (!text || isBusy) return
+      if (!text || isSendBlocked) return
       setInput('')
-      void sendMessage({ text }).catch(() => {
+
+      try {
+        const payload = buildAttachmentPayload()
+        clearFiles()
+        await sendMessage({
+          text,
+          attachments: payload?.attachments,
+          attachmentManifest: payload?.attachmentManifest,
+        })
+      } catch (error) {
         setInput(text)
-        // Error is surfaced by chat context.
-      })
+      }
     },
-    [input, isBusy, sendMessage],
+    [input, isSendBlocked, sendMessage, buildAttachmentPayload, clearFiles],
   )
 
   const selectedModel = selectableModels.find((m) => m.id === selectedModelId)
@@ -142,7 +200,7 @@ export function ChatInput() {
         onFileSelect={handleFileSelect}
         status={status}
         isEmpty={isEmpty}
-        isBusy={isBusy}
+        isBusy={isSendBlocked}
         afterAttach={modelAndReasoningSelectors}
       />
     </PromptInputRoot>

@@ -27,6 +27,10 @@ import {
   canUseReasoningControls,
 } from '@/lib/ai-feature-flags'
 import { evaluateModelAvailability } from '@/lib/model-policy/policy-engine'
+import type {
+  ChatAttachment,
+  ChatAttachmentInput,
+} from '@/lib/chat-contracts/attachments'
 import type { ChatMessageMetadata } from '@/lib/chat-contracts/message-metadata'
 import type { AiReasoningEffort } from '@/lib/ai-catalog/types'
 import {
@@ -49,7 +53,11 @@ type ChatActionsContextValue = Pick<
   ReturnType<typeof useAIChat<ChatUIMessage>>,
   'status' | 'error' | 'setMessages' | 'resumeStream'
 > & {
-  sendMessage: ReturnType<typeof useAIChat<ChatUIMessage>>['sendMessage']
+  sendMessage: (input: {
+    text: string
+    attachments?: readonly ChatAttachmentInput[]
+    attachmentManifest?: readonly ChatAttachment[]
+  }) => Promise<void>
   selectedModelId: string
   selectedReasoningEffort?: AiReasoningEffort
   selectableModels: readonly ChatModelOption[]
@@ -67,13 +75,38 @@ type ChatMessagesContextValue = {
 const ChatMessagesContext = createContext<ChatMessagesContextValue | null>(null)
 const ChatActionsContext = createContext<ChatActionsContextValue | null>(null)
 
+type PendingOptimisticAttachmentManifest = {
+  readonly text: string
+  readonly attachments: readonly ChatAttachment[]
+}
+
 function toUIMessageFromStoredMessage(message: {
   readonly messageId: string
   readonly role: 'user' | 'assistant' | 'system'
   readonly content: string
   readonly reasoning?: string | null
   readonly model: string
+  readonly sources?:
+    | readonly { sourceId: string; url: string; title?: string }[]
+    | null
 }): ChatUIMessage {
+  const attachments = Array.isArray(message.sources)
+    ? message.sources
+        .filter(
+          (source): source is { sourceId: string; url: string; title?: string } =>
+            !!source &&
+            typeof source.sourceId === 'string' &&
+            typeof source.url === 'string',
+        )
+        .map((source) => ({
+          id: source.sourceId,
+          key: source.sourceId,
+          url: source.url,
+          name: source.title ?? 'Attachment',
+          size: 0,
+          contentType: 'application/octet-stream',
+        }))
+    : []
   const parts: ChatUIMessage['parts'] = []
   if (
     message.role === 'assistant' &&
@@ -88,12 +121,10 @@ function toUIMessageFromStoredMessage(message: {
     id: message.messageId,
     role: message.role,
     parts,
-    metadata:
-      message.role === 'assistant'
-        ? {
-            model: message.model,
-          }
-        : undefined,
+    metadata: {
+      ...(message.role === 'assistant' ? { model: message.model } : {}),
+      ...(attachments.length > 0 ? { attachments } : {}),
+    },
   }
 }
 
@@ -132,9 +163,19 @@ function mergeStoredMessagesWithLocal(
 
     const storedText = textFromUIMessage(storedMessage)
     const localText = textFromUIMessage(localMessage)
+    const storedAttachmentCount = Array.isArray(storedMessage.metadata?.attachments)
+      ? storedMessage.metadata!.attachments!.length
+      : 0
+    const localAttachmentCount = Array.isArray(localMessage.metadata?.attachments)
+      ? localMessage.metadata!.attachments!.length
+      : 0
 
     // Preserve object identity when content is equivalent to avoid unnecessary row rerenders.
     if (localText === storedText) {
+      // Stored payload carries authoritative attachment metadata after persistence.
+      if (storedAttachmentCount > localAttachmentCount) {
+        return storedMessage
+      }
       return localMessage
     }
 
@@ -264,6 +305,14 @@ export function ChatProvider({
   >(undefined)
   const selectedModelIdRef = useRef(selectedModelId)
   const selectedReasoningEffortRef = useRef(selectedReasoningEffort)
+  const pendingAttachmentsRef = useRef<readonly ChatAttachmentInput[] | undefined>(
+    undefined,
+  )
+  // Tracks attachment pills that should be rendered on the optimistic user row
+  // immediately after send (before server persistence snapshots catch up).
+  const pendingOptimisticAttachmentManifestsRef = useRef<
+    PendingOptimisticAttachmentManifest[]
+  >([])
   selectedModelIdRef.current = selectedModelId
   selectedReasoningEffortRef.current = selectedReasoningEffort
   const threadStatusesVersion = useSyncExternalStore(
@@ -282,15 +331,22 @@ export function ChatProvider({
             : '/api/chat',
           credentials: 'include',
         }),
-        prepareSendMessagesRequest: ({ messages }) => ({
-          body: {
-            threadId: threadIdRef.current,
-            message: messages[messages.length - 1],
-            createIfMissing: createIfMissingRef.current,
-            modelId: selectedModelIdRef.current,
-            reasoningEffort: selectedReasoningEffortRef.current,
-          },
-        }),
+        prepareSendMessagesRequest: ({ messages }) => {
+          const attachments = pendingAttachmentsRef.current
+          // Consume once to avoid leaking metadata into later turns.
+          pendingAttachmentsRef.current = undefined
+
+          return {
+            body: {
+              threadId: threadIdRef.current,
+              message: messages[messages.length - 1],
+              attachments,
+              createIfMissing: createIfMissingRef.current,
+              modelId: selectedModelIdRef.current,
+              reasoningEffort: selectedReasoningEffortRef.current,
+            },
+          }
+        },
       }),
     [],
   )
@@ -400,6 +456,50 @@ export function ChatProvider({
   }, [activeThreadId, threadStatusesVersion, status, resumeStream])
 
   useEffect(() => {
+    if (pendingOptimisticAttachmentManifestsRef.current.length === 0) return
+    if (messages.length === 0) return
+
+    const pendingManifests = pendingOptimisticAttachmentManifestsRef.current
+    const consumedMessageIds = new Set<string>()
+    const nextPending: PendingOptimisticAttachmentManifest[] = []
+    const nextMessages = [...messages]
+    let shouldPatchMessages = false
+
+    for (const manifest of pendingManifests) {
+      const targetIndex = nextMessages.findLastIndex((candidate) => {
+        if (candidate.role !== 'user') return false
+        if (consumedMessageIds.has(candidate.id)) return false
+        const hasExistingAttachments =
+          Array.isArray(candidate.metadata?.attachments) &&
+          candidate.metadata.attachments.length > 0
+        if (hasExistingAttachments) return false
+        return textFromUIMessage(candidate) === manifest.text
+      })
+
+      if (targetIndex < 0) {
+        nextPending.push(manifest)
+        continue
+      }
+
+      const targetMessage = nextMessages[targetIndex]
+      nextMessages[targetIndex] = {
+        ...targetMessage,
+        metadata: {
+          ...(targetMessage.metadata ?? {}),
+          attachments: manifest.attachments,
+        },
+      }
+      consumedMessageIds.add(targetMessage.id)
+      shouldPatchMessages = true
+    }
+
+    pendingOptimisticAttachmentManifestsRef.current = nextPending
+    if (shouldPatchMessages) {
+      setMessages(nextMessages)
+    }
+  }, [messages, setMessages])
+
+  useEffect(() => {
     if (!activeThreadId) return
     if (storedMessagesResult.type !== 'complete') return
     // Never clobber messages while a new answer is actively streaming.
@@ -432,7 +532,7 @@ export function ChatProvider({
   ])
 
   const sendMessage = useCallback<ChatActionsContextValue['sendMessage']>(
-    async (message, options) => {
+    async ({ text, attachments, attachmentManifest }) => {
       let resolvedThreadId = threadIdRef.current
       if (!resolvedThreadId) {
         try {
@@ -473,11 +573,34 @@ export function ChatProvider({
       }
 
       try {
-        const result = await sendAIMessageRef.current(message, options)
+        const optimisticManifestEntry =
+          attachmentManifest && attachmentManifest.length > 0
+            ? {
+                text,
+                attachments: attachmentManifest,
+              }
+            : null
+        if (optimisticManifestEntry) {
+          pendingOptimisticAttachmentManifestsRef.current = [
+            ...pendingOptimisticAttachmentManifestsRef.current,
+            optimisticManifestEntry,
+          ]
+        }
+
+        pendingAttachmentsRef.current = attachments
+        await sendAIMessageRef.current({ text })
         createIfMissingRef.current = false
         setLocalError(null)
-        return result
+        return
       } catch (sendError) {
+        if (attachmentManifest && attachmentManifest.length > 0) {
+          pendingOptimisticAttachmentManifestsRef.current =
+            pendingOptimisticAttachmentManifestsRef.current.filter(
+              (entry) =>
+                !(entry.text === text && entry.attachments === attachmentManifest),
+            )
+        }
+        pendingAttachmentsRef.current = undefined
         setLocalError(
           sendError instanceof Error
             ? sendError

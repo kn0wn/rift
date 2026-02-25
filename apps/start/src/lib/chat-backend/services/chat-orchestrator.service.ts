@@ -4,6 +4,7 @@ import type { ChatDomainError } from '../domain/errors'
 import { chatErrorCodeFromTag } from '../domain/error-codes'
 import { toReadableErrorMessage } from '../domain/error-formatting'
 import type { IncomingUserMessage } from '../domain/schemas'
+import type { IncomingAttachment } from '../domain/schemas'
 import { getUserMessageText } from '../domain/schemas'
 import {
   emitWideErrorEvent,
@@ -35,6 +36,7 @@ export type ChatOrchestratorServiceShape = {
     readonly orgWorkosId?: string
     readonly requestId: string
     readonly message: IncomingUserMessage
+    readonly attachments?: readonly IncomingAttachment[]
     readonly modelId?: string
     readonly reasoningEffort?: string
     readonly createIfMissing?: boolean
@@ -73,6 +75,7 @@ export const ChatOrchestratorLive = Layer.effect(
       orgWorkosId,
       requestId,
       message,
+      attachments,
       modelId,
       reasoningEffort,
       createIfMissing,
@@ -174,6 +177,7 @@ export const ChatOrchestratorLive = Layer.effect(
           threadDbId: threadAccess.dbId,
           threadId,
           message,
+          attachments,
           userId,
           model: modelResolution.modelId,
           reasoningEffort: modelResolution.reasoningEffort,
@@ -183,7 +187,11 @@ export const ChatOrchestratorLive = Layer.effect(
           requestId,
         })
 
-        const messages = yield* messageStore.loadThreadMessages({ threadId, requestId })
+        const messages = yield* messageStore.loadThreadMessages({
+          threadId,
+          model: modelResolution.modelId,
+          requestId,
+        })
 
         // This ID is generated server-side so start/finalize writes are deterministic
         // and idempotent even when transport retries happen.

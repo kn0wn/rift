@@ -1,5 +1,9 @@
 import { Schema } from 'effect'
 import type { AiReasoningEffort } from '@/lib/ai-catalog/types'
+import type {
+  ChatAttachment,
+  ChatAttachmentInput,
+} from '@/lib/chat-contracts/attachments'
 import type { ChatMessageMetadata } from '@/lib/chat-contracts/message-metadata'
 
 /**
@@ -9,6 +13,10 @@ import type { ChatMessageMetadata } from '@/lib/chat-contracts/message-metadata'
 const IncomingMessagePart = Schema.Struct({
   type: Schema.String,
   text: Schema.optional(Schema.String),
+})
+
+const IncomingAttachmentInput = Schema.Struct({
+  id: Schema.String,
 })
 
 /** User-originated chat message accepted by POST /api/chat. */
@@ -24,6 +32,7 @@ export type IncomingUserMessage = Schema.Schema.Type<typeof IncomingUserMessage>
 export const ChatStreamRequest = Schema.Struct({
   threadId: Schema.String,
   message: IncomingUserMessage,
+  attachments: Schema.optional(Schema.Array(IncomingAttachmentInput)),
   createIfMissing: Schema.optional(Schema.Boolean),
   modelId: Schema.optional(Schema.String),
   reasoningEffort: Schema.optional(Schema.String),
@@ -31,6 +40,8 @@ export const ChatStreamRequest = Schema.Struct({
 
 export type ChatStreamRequest = Schema.Schema.Type<typeof ChatStreamRequest>
 export type ChatReasoningEffort = AiReasoningEffort
+export type IncomingAttachment = ChatAttachmentInput
+export type PersistedAttachment = ChatAttachment
 
 /** Response shape for thread bootstrap endpoint(s). */
 export const ChatThreadCreateResponse = Schema.Struct({

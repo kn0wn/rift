@@ -39,7 +39,46 @@ type BunRuntimeLike = {
 }
 
 const UPLOAD_PREFIX = 'uploads'
-const PDF_MIME_TYPES = new Set(['application/pdf', 'application/x-pdf'])
+const SUPPORTED_MIME_TYPES = new Set([
+  'application/pdf',
+  'application/x-pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/svg+xml',
+  'text/html',
+  'application/xml',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel.sheet.macroenabled.12',
+  'application/vnd.ms-excel.sheet.binary.macroenabled.12',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.oasis.opendocument.spreadsheet',
+  'application/vnd.oasis.opendocument.text',
+  'text/csv',
+  'application/vnd.apple.numbers',
+])
+const SUPPORTED_EXTENSIONS = new Set([
+  'pdf',
+  'jpeg',
+  'jpg',
+  'png',
+  'webp',
+  'svg',
+  'html',
+  'htm',
+  'xml',
+  'xlsx',
+  'xlsm',
+  'xlsb',
+  'xls',
+  'et',
+  'docx',
+  'ods',
+  'odt',
+  'csv',
+  'numbers',
+])
 
 let cachedR2Config: R2Config | null = null
 let cachedR2Client: BunS3ClientLike | null = null
@@ -127,12 +166,22 @@ function hasPdfExtension(fileName: string): boolean {
   return fileName.trim().toLowerCase().endsWith('.pdf')
 }
 
+function hasSupportedExtension(fileName: string): boolean {
+  const normalized = fileName.trim().toLowerCase()
+  const dotIndex = normalized.lastIndexOf('.')
+  if (dotIndex <= 0 || dotIndex === normalized.length - 1) return false
+  const extension = normalized.slice(dotIndex + 1)
+  return SUPPORTED_EXTENSIONS.has(extension)
+}
+
 function isAllowedUploadFile(file: File): boolean {
   const contentType = file.type.trim().toLowerCase()
-  if (contentType.startsWith('image/')) return true
-  if (PDF_MIME_TYPES.has(contentType)) return true
-  if (!contentType && hasPdfExtension(file.name)) return true
-  if (contentType === 'application/octet-stream' && hasPdfExtension(file.name)) {
+  if (SUPPORTED_MIME_TYPES.has(contentType)) return true
+  if (!contentType && hasSupportedExtension(file.name)) return true
+  if (
+    contentType === 'application/octet-stream' &&
+    hasSupportedExtension(file.name)
+  ) {
     return true
   }
   return false
@@ -174,7 +223,7 @@ export class R2UploadService {
     }
     if (!isAllowedUploadFile(file)) {
       throw new R2UploadServiceError(
-        'Only image and PDF files are allowed',
+        'File type is not supported for markdown conversion',
         400,
       )
     }
