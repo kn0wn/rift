@@ -192,7 +192,7 @@ export function ChatSidebarContent({ pathname }: { pathname: string }) {
         if (previous.some((thread) => thread.threadId === payload.threadId)) {
           return previous
         }
-        return [payload, ...previous].sort((a, b) => b.createdAt - a.createdAt)
+        return [payload, ...previous].toSorted((a, b) => b.createdAt - a.createdAt)
       })
     }
 
@@ -413,6 +413,7 @@ export function ChatSidebarContent({ pathname }: { pathname: string }) {
       title={CHAT_SIDEBAR_TITLE}
       sections={sections}
       pathname={pathname}
+      scrollableSectionName={CHAT_HISTORY_SECTION_NAME}
     />
   )
 }

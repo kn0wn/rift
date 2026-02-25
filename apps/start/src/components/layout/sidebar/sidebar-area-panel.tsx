@@ -31,7 +31,7 @@ export function SidebarAreaPanel({
   const config = areaFactory(data)
 
   return (
-    <div className="relative w-full grow overflow-hidden">
+    <div className="relative min-h-0 w-full flex-1 overflow-hidden">
       <Area config={config} data={data} />
     </div>
   )
@@ -46,7 +46,7 @@ function Area({
 }) {
   const { ContentComponent, title, content } = config
   return (
-    <div className={cn('relative flex size-full flex-col')}>
+    <div className={cn('relative flex min-h-0 size-full flex-col')}>
       {ContentComponent ? (
         <ContentComponent pathname={data.pathname} />
       ) : (

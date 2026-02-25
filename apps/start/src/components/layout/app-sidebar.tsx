@@ -105,8 +105,8 @@ export const AppSidebar: ComponentType = () => {
       <div
         className={`size-full overflow-hidden pt-2 pr-2 transition-opacity duration-300 ${showAreaPanel ? '' : 'pointer-events-none opacity-0'}`}
       >
-        <div className="scrollbar-hide relative flex h-full w-[calc(var(--sidebar-areas-width)-0.5rem)] flex-col overflow-y-auto overflow-x-hidden rounded-t-xl border-x border-t border-border-muted bg-bg-subtle">
-            <div className="relative flex grow flex-col p-3 text-content-muted">
+        <div className="scrollbar-hide relative flex h-full min-h-0 w-[calc(var(--sidebar-areas-width)-0.5rem)] flex-col overflow-y-auto overflow-x-hidden rounded-t-xl border-x border-t border-border-muted bg-bg-subtle">
+            <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden pl-3 pt-3 pb-3 pr-0 text-content-muted">
               <SidebarAreaPanel
                 areas={NAV_AREAS}
                 currentArea={currentArea}
