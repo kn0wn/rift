@@ -43,3 +43,56 @@ code {
 .bg-ai {
   background-color: #ad46ff;
 }
+
+/* Hide native scrollbar (e.g. for overflow areas that still scroll). */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * Default app scrollbar: thin, rounded, theme tokens.
+ */
+.scrollbar-app .overflow-y-auto,
+.scrollbar-app .overflow-auto,
+.scrollbar-sidebar {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--content-muted) 40%, transparent) transparent;
+}
+
+.scrollbar-app .overflow-y-auto::-webkit-scrollbar,
+.scrollbar-app .overflow-auto::-webkit-scrollbar,
+.scrollbar-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-app .overflow-y-auto::-webkit-scrollbar-track,
+.scrollbar-app .overflow-auto::-webkit-scrollbar-track,
+.scrollbar-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 4px;
+}
+
+.scrollbar-app .overflow-y-auto::-webkit-scrollbar-thumb,
+.scrollbar-app .overflow-auto::-webkit-scrollbar-thumb,
+.scrollbar-sidebar::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--content-muted) 40%, transparent);
+  border-radius: 3px;
+  min-height: 40px;
+}
+
+.scrollbar-app .overflow-y-auto::-webkit-scrollbar-thumb:hover,
+.scrollbar-app .overflow-auto::-webkit-scrollbar-thumb:hover,
+.scrollbar-sidebar::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--content-muted) 60%, transparent);
+}
+
+.scrollbar-app .overflow-y-auto::-webkit-scrollbar-thumb:active,
+.scrollbar-app .overflow-auto::-webkit-scrollbar-thumb:active,
+.scrollbar-sidebar::-webkit-scrollbar-thumb:active {
+  background: color-mix(in srgb, var(--content-muted) 75%, transparent);
+}
