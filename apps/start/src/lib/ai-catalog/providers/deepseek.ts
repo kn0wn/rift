@@ -11,6 +11,7 @@ export const DEEPSEEK_MODELS: readonly AiModelCatalogEntry<'deepseek'>[] = [
   {
     id: 'deepseek/deepseek-v3.2',
     providerId: 'deepseek',
+    providers: ['gateway'],
     name: 'DeepSeek V3.2',
     description: 'DeepSeek-V3.2: Official successor to V3.2-Exp.',
     contextWindow: 128000,
@@ -36,6 +37,7 @@ export const DEEPSEEK_MODELS: readonly AiModelCatalogEntry<'deepseek'>[] = [
   {
     id: 'deepseek/deepseek-v3.2-thinking',
     providerId: 'deepseek',
+    providers: ['gateway'],
     name: 'DeepSeek V3.2 Thinking',
     description: 'Thinking mode of DeepSeek V3.2.',
     contextWindow: 128000,
@@ -61,6 +63,7 @@ export const DEEPSEEK_MODELS: readonly AiModelCatalogEntry<'deepseek'>[] = [
   {
     id: 'deepseek/deepseek-v3.1',
     providerId: 'deepseek',
+    providers: ['gateway'],
     name: 'DeepSeek-V3.1',
     description:
       'DeepSeek-V3.1 is post-trained on the top of DeepSeek-V3.1-Base, with extended long context (32K→630B tokens, 128K→209B tokens) and UE8M0 FP8 scale data format.',
@@ -86,6 +89,7 @@ export const DEEPSEEK_MODELS: readonly AiModelCatalogEntry<'deepseek'>[] = [
   {
     id: 'deepseek/deepseek-v3',
     providerId: 'deepseek',
+    providers: ['gateway'],
     name: 'DeepSeek V3 0324',
     description: 'Fast general-purpose LLM with enhanced reasoning capabilities.',
     contextWindow: 163840,
@@ -110,6 +114,7 @@ export const DEEPSEEK_MODELS: readonly AiModelCatalogEntry<'deepseek'>[] = [
   {
     id: 'deepseek/deepseek-r1',
     providerId: 'deepseek',
+    providers: ['gateway'],
     name: 'DeepSeek-R1',
     description:
       'The DeepSeek R1 model has undergone a minor version upgrade, with the current version being DeepSeek-R1-0528.',

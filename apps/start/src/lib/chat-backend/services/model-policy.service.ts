@@ -46,10 +46,12 @@ export type ModelPolicyServiceShape = {
   readonly resolveThreadModel: (input: {
     readonly threadId: string
     readonly orgWorkosId?: string
+    readonly orgPolicy?: OrgAiPolicy
     readonly threadModel?: string
     readonly threadReasoningEffort?: AiReasoningEffort
     readonly requestedModelId?: string
     readonly requestedReasoningEffort?: string
+    readonly skipProviderKeyResolution?: boolean
     readonly requestId: string
   }) => Effect.Effect<EffectiveModelResolution, ModelPolicyDeniedError | MessagePersistenceError>
 }
@@ -85,26 +87,29 @@ export const ModelPolicyLive = Layer.succeed(ModelPolicyService, {
   resolveThreadModel: ({
     threadId,
     orgWorkosId,
+    orgPolicy,
     threadModel,
     threadReasoningEffort,
     requestedModelId,
     requestedReasoningEffort,
+    skipProviderKeyResolution,
     requestId,
   }) =>
     Effect.gen(function* () {
-      const policy = yield* Effect.tryPromise({
-        try: async () => {
-          if (!orgWorkosId) return undefined
-          return getOrgAiPolicy(orgWorkosId)
-        },
-        catch: (error) =>
-          new MessagePersistenceError({
-            message: 'Failed to load organization model policy',
-            requestId,
-            threadId,
-            cause: String(error),
-          }),
-      })
+      const policy = orgPolicy
+        ?? (yield* Effect.tryPromise({
+          try: async () => {
+            if (!orgWorkosId) return undefined
+            return getOrgAiPolicy(orgWorkosId)
+          },
+          catch: (error) =>
+            new MessagePersistenceError({
+              message: 'Failed to load organization model policy',
+              requestId,
+              threadId,
+              cause: String(error),
+            }),
+        }))
 
       const candidateModelId =
         requestedModelId?.trim() || threadModel?.trim() || CHAT_DEFAULT_MODEL_ID
@@ -146,8 +151,16 @@ export const ModelPolicyLive = Layer.succeed(ModelPolicyService, {
       const strictProviderKeyPolicyEnabled = Boolean(
         policy?.complianceFlags.require_org_provider_key,
       )
+      const persistedProviderKeyStatus = policy?.providerKeyStatus
+      const hasTrustedProviderKeySnapshot = Boolean(
+        persistedProviderKeyStatus && persistedProviderKeyStatus.syncedAt > 0,
+      )
+      const hasAnyPersistedProviderKey =
+        hasTrustedProviderKeySnapshot && persistedProviderKeyStatus
+          ? persistedProviderKeyStatus.hasAnyProviderKey
+          : undefined
 
-      if (canUseOrganizationProviderKeys()) {
+      if (canUseOrganizationProviderKeys() && !skipProviderKeyResolution) {
         if (!orgWorkosId) {
           if (strictProviderKeyPolicyEnabled) {
             return yield* Effect.fail(
@@ -160,13 +173,21 @@ export const ModelPolicyLive = Layer.succeed(ModelPolicyService, {
             )
           }
         } else {
+          if (!strictProviderKeyPolicyEnabled && hasAnyPersistedProviderKey === false) {
+            return {
+              modelId: selectedModel.id,
+              reasoningEffort,
+              source: requestedModelId || requestedReasoningEffort ? 'request' : 'thread',
+            } satisfies EffectiveModelResolution
+          }
+
           /**
            * Provider-key enforcement is model-route-driven:
-           * - derive candidate providers from model.providers (fallback to providerId for legacy rows),
+           * - derive candidate providers from model.providers,
            * - keep only providers currently supported by BYOK key storage,
            * - evaluate keys in declared order so behavior stays deterministic.
            */
-          const declaredProviders = selectedModel.providers ?? [selectedModel.providerId]
+          const declaredProviders = selectedModel.providers
           const byokCandidateProviders = declaredProviders.filter((providerId) =>
             isByokSupportedProviderId(providerId),
           )
@@ -186,6 +207,14 @@ export const ModelPolicyLive = Layer.succeed(ModelPolicyService, {
             let lastRoutableProviderId = byokCandidateProviders[0]
 
             for (const providerId of byokCandidateProviders) {
+              const providerMarkedAsConfigured =
+                policy?.providerKeyStatus && policy.providerKeyStatus.syncedAt > 0
+                  ? policy.providerKeyStatus.providers[providerId]
+                  : undefined
+              if (providerMarkedAsConfigured === false) {
+                continue
+              }
+
               const providerRoute = getCatalogModelProviderRoute({
                 modelId: selectedModel.id,
                 providerId,

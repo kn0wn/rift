@@ -26,12 +26,28 @@ type OrgPolicyRow = {
   disabledProviderIds: readonly string[]
   disabledModelIds: readonly string[]
   complianceFlags: Record<string, boolean>
+  providerKeyStatus: {
+    syncedAt: number
+    hasAnyProviderKey: boolean
+    providers: {
+      openai: boolean
+      anthropic: boolean
+    }
+  }
 }
 
 type OrgPolicySnapshot = {
   disabledProviderIds: readonly string[]
   disabledModelIds: readonly string[]
   complianceFlags: Record<string, boolean>
+  providerKeyStatus: {
+    syncedAt: number
+    hasAnyProviderKey: boolean
+    providers: {
+      openai: boolean
+      anthropic: boolean
+    }
+  }
 }
 
 /** De-duplicates identifiers while preserving insertion order. */
@@ -64,6 +80,14 @@ function toSnapshot(row?: OrgPolicyRow): OrgPolicySnapshot {
     disabledProviderIds: row?.disabledProviderIds ?? [],
     disabledModelIds: row?.disabledModelIds ?? [],
     complianceFlags: { ...(row?.complianceFlags ?? {}) },
+    providerKeyStatus: row?.providerKeyStatus ?? {
+      syncedAt: 0,
+      hasAnyProviderKey: false,
+      providers: {
+        openai: false,
+        anthropic: false,
+      },
+    },
   }
 }
 
@@ -81,6 +105,14 @@ async function persistOrgPolicy(args: {
           disabledProviderIds: readonly string[]
           disabledModelIds: readonly string[]
           complianceFlags: Record<string, boolean>
+          providerKeyStatus: {
+            syncedAt: number
+            hasAnyProviderKey: boolean
+            providers: {
+              openai: boolean
+              anthropic: boolean
+            }
+          }
           updatedAt: number
         }) => Promise<void>
         update: (row: {
@@ -88,6 +120,14 @@ async function persistOrgPolicy(args: {
           disabledProviderIds: readonly string[]
           disabledModelIds: readonly string[]
           complianceFlags: Record<string, boolean>
+          providerKeyStatus: {
+            syncedAt: number
+            hasAnyProviderKey: boolean
+            providers: {
+              openai: boolean
+              anthropic: boolean
+            }
+          }
           updatedAt: number
         }) => Promise<void>
       }
@@ -106,6 +146,7 @@ async function persistOrgPolicy(args: {
       disabledProviderIds: args.next.disabledProviderIds,
       disabledModelIds: args.next.disabledModelIds,
       complianceFlags: args.next.complianceFlags,
+      providerKeyStatus: args.next.providerKeyStatus,
       updatedAt,
     })
     return
@@ -116,6 +157,7 @@ async function persistOrgPolicy(args: {
     disabledProviderIds: args.next.disabledProviderIds,
     disabledModelIds: args.next.disabledModelIds,
     complianceFlags: args.next.complianceFlags,
+    providerKeyStatus: args.next.providerKeyStatus,
     updatedAt,
   })
 }

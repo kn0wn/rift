@@ -11,6 +11,7 @@ export const ALIBABA_MODELS: readonly AiModelCatalogEntry<'alibaba'>[] = [
   {
     id: 'alibaba/qwen3-max-thinking',
     providerId: 'alibaba',
+    providers: ['gateway'],
     name: 'Qwen 3 Max Thinking',
     description:
       'Qwen-3 Max with integrated thinking and non-thinking modes. Thinking mode supports web search, web information extraction, and code interpreter for complex, deliberative reasoning.',
@@ -52,6 +53,7 @@ export const ALIBABA_MODELS: readonly AiModelCatalogEntry<'alibaba'>[] = [
   {
     id: 'alibaba/qwen3-max',
     providerId: 'alibaba',
+    providers: ['gateway'],
     name: 'Qwen3 Max',
     description:
       'The Qwen 3 series Max model has undergone specialized upgrades in agent programming and tool invocation. Achieves state-of-the-art performance and is suited to agents operating in more complex scenarios.',
@@ -87,6 +89,7 @@ export const ALIBABA_MODELS: readonly AiModelCatalogEntry<'alibaba'>[] = [
   {
     id: 'alibaba/qwen3-next-80b-a3b-thinking',
     providerId: 'alibaba',
+    providers: ['gateway'],
     name: 'Qwen3 Next 80B A3B Thinking',
     description:
       'Qwen3-Next highly sparse MoE (80B total, ~3B active). Excels at complex reasoning, outperforming higher-cost thinking models and approaching Qwen3-235B-A22B-Thinking-2507.',
@@ -112,6 +115,7 @@ export const ALIBABA_MODELS: readonly AiModelCatalogEntry<'alibaba'>[] = [
   {
     id: 'alibaba/qwen3-next-80b-a3b-instruct',
     providerId: 'alibaba',
+    providers: ['gateway'],
     name: 'Qwen3 Next 80B A3B Instruct',
     description:
       'New generation open-source non-thinking model powered by Qwen3. Superior Chinese text understanding, logical reasoning, and text generation over Qwen3-235B-A22B-Instruct-2507.',
@@ -137,6 +141,7 @@ export const ALIBABA_MODELS: readonly AiModelCatalogEntry<'alibaba'>[] = [
   {
     id: 'alibaba/qwen-3-235b',
     providerId: 'alibaba',
+    providers: ['gateway'],
     name: 'Qwen3-235B-A22B',
     description:
       'Qwen3-235B-A22B-Instruct-2507: updated non-thinking mode with improvements in instruction following, logical reasoning, text comprehension, mathematics, science, coding and tool usage.',

@@ -11,6 +11,7 @@ export const MISTRAL_MODELS: readonly AiModelCatalogEntry<'mistral'>[] = [
   {
     id: 'mistral/mistral-large-3',
     providerId: 'mistral',
+    providers: ['gateway'],
     name: 'Mistral Large 3',
     description:
       'Flagship general-purpose multimodal model (Dec 2025). Strong reasoning, long context, and multilingual performance.',
@@ -36,6 +37,7 @@ export const MISTRAL_MODELS: readonly AiModelCatalogEntry<'mistral'>[] = [
   {
     id: 'mistral/mistral-medium',
     providerId: 'mistral',
+    providers: ['gateway'],
     name: 'Mistral Medium 3.1',
     description:
       'Frontier-class multimodal model (Aug 2025). Balanced performance and cost for complex tasks.',
@@ -61,6 +63,7 @@ export const MISTRAL_MODELS: readonly AiModelCatalogEntry<'mistral'>[] = [
   {
     id: 'mistral/mistral-small',
     providerId: 'mistral',
+    providers: ['gateway'],
     name: 'Mistral Small 3.2',
     description:
       'Efficient generalist. Good balance of speed and quality for everyday tasks.',
@@ -86,6 +89,7 @@ export const MISTRAL_MODELS: readonly AiModelCatalogEntry<'mistral'>[] = [
   {
     id: 'mistral/pixtral-large',
     providerId: 'mistral',
+    providers: ['gateway'],
     name: 'Pixtral Large',
     description:
       'Vision-language model for image understanding and multimodal tasks. Supports images without degrading text performance.',
@@ -111,6 +115,7 @@ export const MISTRAL_MODELS: readonly AiModelCatalogEntry<'mistral'>[] = [
   {
     id: 'mistral/codestral',
     providerId: 'mistral',
+    providers: ['gateway'],
     name: 'Codestral',
     description:
       'Code-specialized model for completion, generation, and fill-in-the-middle. Low latency for dev workflows.',
@@ -136,6 +141,7 @@ export const MISTRAL_MODELS: readonly AiModelCatalogEntry<'mistral'>[] = [
   {
     id: 'mistral/magistral-medium',
     providerId: 'mistral',
+    providers: ['gateway'],
     name: 'Magistral Medium 1.2',
     description:
       'Frontier multimodal reasoning model. Step-by-step thinking for complex problems.',
@@ -161,6 +167,7 @@ export const MISTRAL_MODELS: readonly AiModelCatalogEntry<'mistral'>[] = [
   {
     id: 'mistral/magistral-small',
     providerId: 'mistral',
+    providers: ['gateway'],
     name: 'Magistral Small 1.2',
     description:
       'Small multimodal reasoning model (Sep 2025). Efficient step-by-step thinking.',
@@ -186,6 +193,7 @@ export const MISTRAL_MODELS: readonly AiModelCatalogEntry<'mistral'>[] = [
   {
     id: 'mistral/ministral-14b',
     providerId: 'mistral',
+    providers: ['gateway'],
     name: 'Ministral 14B',
     description:
       'Best-in-class small model with text and vision. Strong quality in the efficient tier.',
@@ -211,6 +219,7 @@ export const MISTRAL_MODELS: readonly AiModelCatalogEntry<'mistral'>[] = [
   {
     id: 'mistral/ministral-8b',
     providerId: 'mistral',
+    providers: ['gateway'],
     name: 'Ministral 8B',
     description:
       'Efficient 8B model with text and vision. Cost-sensitive and fast.',
@@ -236,6 +245,7 @@ export const MISTRAL_MODELS: readonly AiModelCatalogEntry<'mistral'>[] = [
   {
     id: 'mistral/devstral-2',
     providerId: 'mistral',
+    providers: ['gateway'],
     name: 'Devstral 2',
     description:
       'Developer-oriented model for code and technical assistance with strong tool use.',

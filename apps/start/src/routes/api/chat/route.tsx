@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { getAuth } from '@workos/authkit-tanstack-react-start'
 import { UI_MESSAGE_STREAM_HEADERS } from 'ai'
 import { Effect, Schema } from 'effect'
+import { canUseOrganizationProviderKeys } from '@/lib/app-feature-flags'
 import {
   ChatOrchestratorService,
   ChatStreamRequest,
@@ -11,6 +12,7 @@ import {
   runChatEffect,
 } from '@/lib/chat-backend'
 import { handleRouteFailure } from '@/lib/chat-backend/http/route-failure'
+import { getOrgAiPolicy } from '@/lib/model-policy/repository'
 
 /** Chat API route handling stream resume (GET) and new turns (POST). */
 export const Route = createFileRoute('/api/chat')({
@@ -116,10 +118,22 @@ export const Route = createFileRoute('/api/chat')({
             'organizationId' in auth && typeof auth.organizationId === 'string'
               ? auth.organizationId
               : undefined
+          const orgPolicy = orgWorkosId
+            ? yield* Effect.promise(() => getOrgAiPolicy(orgWorkosId))
+            : undefined
+          const skipProviderKeyResolution = Boolean(
+            canUseOrganizationProviderKeys()
+              && orgPolicy?.providerKeyStatus
+              && orgPolicy.providerKeyStatus.syncedAt > 0
+              && !orgPolicy.providerKeyStatus.hasAnyProviderKey
+              && !orgPolicy.complianceFlags.require_org_provider_key,
+          )
           const response = yield* orchestrator.streamChat({
             userId: user.id,
             threadId: body.threadId,
             orgWorkosId,
+            orgPolicy,
+            skipProviderKeyResolution,
             requestId,
             message: body.message,
             attachments: body.attachments,

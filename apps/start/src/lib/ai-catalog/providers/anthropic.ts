@@ -42,7 +42,7 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
   {
     id: 'anthropic/claude-opus-4.6',
     providerId: 'anthropic',
-    providers: ['anthropic', 'gateway', 'openrouter'],
+    providers: ['anthropic', 'gateway'],
     providerModelIds: { anthropic: 'claude-opus-4-6' },
     name: 'Claude Opus 4.6',
     description:
@@ -94,7 +94,7 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
   {
     id: 'anthropic/claude-opus-4.5',
     providerId: 'anthropic',
-    providers: ['anthropic', 'gateway', 'openrouter'],
+    providers: ['anthropic', 'gateway'],
     providerModelIds: { anthropic: 'claude-opus-4-5' },
     name: 'Claude Opus 4.5',
     description:
@@ -129,7 +129,7 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
   {
     id: 'anthropic/claude-sonnet-4.5',
     providerId: 'anthropic',
-    providers: ['anthropic', 'gateway', 'openrouter'],
+    providers: ['anthropic', 'gateway'],
     providerModelIds: { anthropic: 'claude-sonnet-4-5' },
     name: 'Claude Sonnet 4.5',
     description:
@@ -181,7 +181,7 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
   {
     id: 'anthropic/claude-sonnet-4',
     providerId: 'anthropic',
-    providers: ['anthropic', 'gateway', 'openrouter'],
+    providers: ['anthropic', 'gateway'],
     providerModelIds: { anthropic: 'claude-sonnet-4-0' },
     name: 'Claude Sonnet 4',
     description:
@@ -225,7 +225,7 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
   {
     id: 'anthropic/claude-haiku-4.5',
     providerId: 'anthropic',
-    providers: ['anthropic', 'gateway', 'openrouter'],
+    providers: ['anthropic', 'gateway'],
     providerModelIds: { anthropic: 'claude-haiku-4-5' },
     name: 'Claude Haiku 4.5',
     description:
@@ -261,7 +261,7 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
   {
     id: 'anthropic/claude-3.7-sonnet',
     providerId: 'anthropic',
-    providers: ['anthropic', 'gateway', 'openrouter'],
+    providers: ['anthropic', 'gateway'],
     providerModelIds: { anthropic: 'claude-3-7-sonnet-latest' },
     name: 'Claude 3.7 Sonnet',
     description:
@@ -296,7 +296,7 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
   {
     id: 'anthropic/claude-3.5-sonnet',
     providerId: 'anthropic',
-    providers: ['anthropic', 'gateway', 'openrouter'],
+    providers: ['anthropic', 'gateway'],
     providerModelIds: { anthropic: 'claude-3-5-sonnet-latest' },
     name: 'Claude 3.5 Sonnet',
     description:
@@ -325,7 +325,7 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
   {
     id: 'anthropic/claude-3.5-haiku',
     providerId: 'anthropic',
-    providers: ['anthropic', 'gateway', 'openrouter'],
+    providers: ['anthropic', 'gateway'],
     providerModelIds: { anthropic: 'claude-3-5-haiku-latest' },
     name: 'Claude 3.5 Haiku',
     description:
@@ -354,7 +354,7 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
   {
     id: 'anthropic/claude-3-haiku',
     providerId: 'anthropic',
-    providers: ['anthropic', 'gateway', 'openrouter'],
+    providers: ['anthropic', 'gateway'],
     providerModelIds: { anthropic: 'claude-3-haiku-20240307' },
     name: 'Claude 3 Haiku',
     description:

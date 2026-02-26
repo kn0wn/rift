@@ -45,6 +45,14 @@ const orgAiPolicy = table('orgAiPolicy')
       .from('disabled_provider_ids'),
     disabledModelIds: json<readonly string[]>().from('disabled_model_ids'),
     complianceFlags: json<Record<string, boolean>>().from('compliance_flags'),
+    providerKeyStatus: json<{
+      syncedAt: number
+      hasAnyProviderKey: boolean
+      providers: {
+        openai: boolean
+        anthropic: boolean
+      }
+    }>().from('provider_key_status'),
     updatedAt: number().from('updated_at'),
   })
   .primaryKey('id')

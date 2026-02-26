@@ -210,6 +210,32 @@ function emitOptimisticThreadCreated(threadId: string): void {
   )
 }
 
+function hasActiveOrgKeyForModel(input: {
+  readonly providers: readonly string[]
+  readonly providerKeyStatus?: {
+    readonly syncedAt: number
+    readonly providers: {
+      readonly openai: boolean
+      readonly anthropic: boolean
+    }
+  }
+}): boolean {
+  const { providerKeyStatus } = input
+  if (!providerKeyStatus || providerKeyStatus.syncedAt <= 0) {
+    return false
+  }
+
+  /**
+   * `require_org_provider_key` is currently enforced for BYOK-capable providers.
+   * As additional BYOK providers are added, expand this set and snapshot shape.
+   */
+  return input.providers.some((providerId) => {
+    if (providerId === 'openai') return providerKeyStatus.providers.openai
+    if (providerId === 'anthropic') return providerKeyStatus.providers.anthropic
+    return false
+  })
+}
+
 export function ChatProvider({
   children,
   threadId,
@@ -265,6 +291,29 @@ export function ChatProvider({
             orgPolicyRow.complianceFlags
               ? (orgPolicyRow.complianceFlags as Record<string, boolean>)
               : {},
+          providerKeyStatus:
+            'providerKeyStatus' in orgPolicyRow &&
+            typeof orgPolicyRow.providerKeyStatus === 'object' &&
+            orgPolicyRow.providerKeyStatus &&
+            'providers' in orgPolicyRow.providerKeyStatus &&
+            typeof orgPolicyRow.providerKeyStatus.providers === 'object' &&
+            'openai' in orgPolicyRow.providerKeyStatus.providers &&
+            'anthropic' in orgPolicyRow.providerKeyStatus.providers
+              ? {
+                  syncedAt:
+                    'syncedAt' in orgPolicyRow.providerKeyStatus &&
+                    typeof orgPolicyRow.providerKeyStatus.syncedAt === 'number'
+                      ? orgPolicyRow.providerKeyStatus.syncedAt
+                      : 0,
+                  providers: {
+                    openai: Boolean(orgPolicyRow.providerKeyStatus.providers.openai),
+                    anthropic: Boolean(orgPolicyRow.providerKeyStatus.providers.anthropic),
+                  },
+                  hasAnyProviderKey:
+                    Boolean(orgPolicyRow.providerKeyStatus.providers.openai)
+                    || Boolean(orgPolicyRow.providerKeyStatus.providers.anthropic),
+                }
+              : undefined,
           updatedAt:
             'updatedAt' in orgPolicyRow &&
             typeof orgPolicyRow.updatedAt === 'number'
@@ -280,6 +329,13 @@ export function ChatProvider({
           policy,
         }).allowed,
       )
+      .filter((model) => {
+        if (!policy?.complianceFlags?.require_org_provider_key) return true
+        return hasActiveOrgKeyForModel({
+          providers: model.providers,
+          providerKeyStatus: policy.providerKeyStatus,
+        })
+      })
       .map((model) => ({
         id: model.id,
         name: model.name,

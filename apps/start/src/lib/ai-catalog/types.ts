@@ -111,7 +111,7 @@ export type AiModelCatalogEntry<
    * Providers this model can route through. Keeping this list on each model
    * makes BYOK compatibility explicit and easy to change.
    */
-  readonly providers?: readonly AiModelRouteProviderId[]
+  readonly providers: readonly AiModelRouteProviderId[]
   /**
    * Optional per-provider model-id override.
    * When omitted, runtime uses provider defaults:

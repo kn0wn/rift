@@ -11,6 +11,7 @@ export const ZAI_MODELS: readonly AiModelCatalogEntry<'zai'>[] = [
   {
     id: 'zai/glm-5',
     providerId: 'zai',
+    providers: ['gateway'],
     name: 'GLM-5',
     description:
       'Zai next-gen flagship for Agentic Engineering: reliable productivity in complex system engineering and long-range agent tasks. SOTA coding and agent capabilities in open source.',
@@ -37,6 +38,7 @@ export const ZAI_MODELS: readonly AiModelCatalogEntry<'zai'>[] = [
   {
     id: 'zai/glm-4.7',
     providerId: 'zai',
+    providers: ['gateway'],
     name: 'GLM 4.7',
     description:
       'Z.ai latest flagship: stronger coding and more stable multi-step reasoning and execution.',
@@ -63,6 +65,7 @@ export const ZAI_MODELS: readonly AiModelCatalogEntry<'zai'>[] = [
   {
     id: 'zai/glm-4.7-flashx',
     providerId: 'zai',
+    providers: ['gateway'],
     name: 'GLM 4.7 FlashX',
     description:
       'Lightweight deployment option: high performance with efficiency. Reasoning, tool-use, implicit caching.',
@@ -89,6 +92,7 @@ export const ZAI_MODELS: readonly AiModelCatalogEntry<'zai'>[] = [
   {
     id: 'zai/glm-4.6',
     providerId: 'zai',
+    providers: ['gateway'],
     name: 'GLM 4.6',
     description:
       'Latest GLM iteration: improvements in coding, long context, reasoning, search, writing, and agentic applications.',
@@ -115,6 +119,7 @@ export const ZAI_MODELS: readonly AiModelCatalogEntry<'zai'>[] = [
   {
     id: 'zai/glm-4.6v',
     providerId: 'zai',
+    providers: ['gateway'],
     name: 'GLM-4.6V',
     description:
       'Multimodal GLM-4.6V: 128k context, strong visual understanding. Vision, file-input, reasoning, tool-use.',
@@ -141,6 +146,7 @@ export const ZAI_MODELS: readonly AiModelCatalogEntry<'zai'>[] = [
   {
     id: 'zai/glm-4.6v-flash',
     providerId: 'zai',
+    providers: ['gateway'],
     name: 'GLM-4.6V-Flash',
     description:
       'Low-latency variant of GLM-4.6V for local deployment. Vision, reasoning, file-input, tool-use.',
@@ -162,6 +168,7 @@ export const ZAI_MODELS: readonly AiModelCatalogEntry<'zai'>[] = [
   {
     id: 'zai/glm-4.5',
     providerId: 'zai',
+    providers: ['gateway'],
     name: 'GLM-4.5',
     description:
       'GLM-4.5 Series flagship: 355B total (32B active) parameters, unifying reasoning, coding, and agent capabilities. Hybrid reasoning with dual operational modes.',
@@ -187,6 +194,7 @@ export const ZAI_MODELS: readonly AiModelCatalogEntry<'zai'>[] = [
   {
     id: 'zai/glm-4.5-air',
     providerId: 'zai',
+    providers: ['gateway'],
     name: 'GLM 4.5 Air',
     description:
       'Lighter flagship: 106B total (12B active) MoE, for agent-oriented applications. Reasoning, tool-use, and implicit caching.',
@@ -213,6 +221,7 @@ export const ZAI_MODELS: readonly AiModelCatalogEntry<'zai'>[] = [
   {
     id: 'zai/glm-4.5v',
     providerId: 'zai',
+    providers: ['gateway'],
     name: 'GLM 4.5V',
     description:
       'Vision model built on GLM-4.5-Air base; 106B MoE. Inherits GLM-4.1V-Thinking techniques for visual understanding.',

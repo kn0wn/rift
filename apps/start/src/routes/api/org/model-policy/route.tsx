@@ -13,6 +13,11 @@ import {
   evaluateModelAvailability,
 } from '@/lib/model-policy/policy-engine'
 import { getOrgAiPolicy, upsertOrgAiPolicy } from '@/lib/model-policy/repository'
+import {
+  EMPTY_ORG_PROVIDER_KEY_STATUS,
+  toOrgProviderKeyStatusSnapshot,
+  type OrgProviderKeyStatusSnapshot,
+} from '@/lib/model-policy/types'
 
 /** Request shape for provider-level policy updates. */
 const ToggleProviderBody = z.object({
@@ -130,12 +135,28 @@ function toModelPayload(input: {
 async function buildResponsePayload(orgWorkosId: string) {
   const policy = await getOrgAiPolicy(orgWorkosId)
   const organizationProviderKeysEnabled = canUseOrganizationProviderKeys()
-  const providerApiKeys = organizationProviderKeysEnabled
-    ? await readOrgProviderApiKeyStatus(orgWorkosId)
-    : {
-        openai: false,
-        anthropic: false,
+  let providerApiKeys = {
+    openai: false,
+    anthropic: false,
+  }
+
+  if (organizationProviderKeysEnabled) {
+    if (policy?.providerKeyStatus && policy.providerKeyStatus.syncedAt > 0) {
+      providerApiKeys = policy.providerKeyStatus.providers
+    } else {
+      providerApiKeys = await readOrgProviderApiKeyStatus(orgWorkosId)
+
+      if (policy) {
+        await upsertOrgAiPolicy({
+          orgWorkosId,
+          disabledProviderIds: policy.disabledProviderIds,
+          disabledModelIds: policy.disabledModelIds,
+          complianceFlags: policy.complianceFlags,
+          providerKeyStatus: toOrgProviderKeyStatusSnapshot(providerApiKeys),
+        })
       }
+    }
+  }
 
   const models = AI_CATALOG.map((model) => {
     const decision = evaluateModelAvailability({ model, policy })
@@ -162,6 +183,7 @@ async function buildResponsePayload(orgWorkosId: string) {
       disabledModelIds: policy?.disabledModelIds ?? [],
       complianceFlags: policy?.complianceFlags ?? {},
       updatedAt: policy?.updatedAt,
+      providerKeyStatus: policy?.providerKeyStatus,
     },
     featureFlags: {
       enableOrganizationProviderKeys: organizationProviderKeysEnabled,
@@ -215,6 +237,8 @@ export const Route = createFileRoute('/api/org/model-policy')({
         let complianceFlags: Record<string, boolean> = {
           ...(existing?.complianceFlags ?? {}),
         }
+        let providerKeyStatus: OrgProviderKeyStatusSnapshot =
+          existing?.providerKeyStatus ?? EMPTY_ORG_PROVIDER_KEY_STATUS
 
         const body = parsed.data
 
@@ -255,6 +279,15 @@ export const Route = createFileRoute('/api/org/model-policy')({
             providerId: body.providerId,
             apiKey: body.apiKey,
           })
+
+          const baseline =
+            existing?.providerKeyStatus == null || existing.providerKeyStatus.syncedAt <= 0
+              ? await readOrgProviderApiKeyStatus(orgWorkosId)
+              : providerKeyStatus.providers
+          providerKeyStatus = toOrgProviderKeyStatusSnapshot({
+            ...baseline,
+            [body.providerId]: true,
+          })
         } else if (body.action === 'remove_provider_api_key') {
           if (!canUseOrganizationProviderKeys()) {
             return new Response(
@@ -272,14 +305,24 @@ export const Route = createFileRoute('/api/org/model-policy')({
             orgWorkosId,
             providerId: body.providerId,
           })
-        } else {
-          await upsertOrgAiPolicy({
-            orgWorkosId,
-            disabledProviderIds,
-            disabledModelIds,
-            complianceFlags,
+
+          const baseline =
+            existing?.providerKeyStatus == null || existing.providerKeyStatus.syncedAt <= 0
+              ? await readOrgProviderApiKeyStatus(orgWorkosId)
+              : providerKeyStatus.providers
+          providerKeyStatus = toOrgProviderKeyStatusSnapshot({
+            ...baseline,
+            [body.providerId]: false,
           })
         }
+
+        await upsertOrgAiPolicy({
+          orgWorkosId,
+          disabledProviderIds,
+          disabledModelIds,
+          complianceFlags,
+          providerKeyStatus,
+        })
 
         const payload = await buildResponsePayload(orgWorkosId)
 

@@ -26,6 +26,7 @@ export const MOONSHOTAI_MODELS: readonly AiModelCatalogEntry<'moonshotai'>[] = [
   {
     id: 'moonshotai/kimi-k2.5',
     providerId: 'moonshotai',
+    providers: ['gateway'],
     name: 'Kimi K2.5',
     description:
       'Flagship multimodal model.',
@@ -47,6 +48,7 @@ export const MOONSHOTAI_MODELS: readonly AiModelCatalogEntry<'moonshotai'>[] = [
   {
     id: 'moonshotai/kimi-k2-thinking',
     providerId: 'moonshotai',
+    providers: ['gateway'],
     name: 'Kimi K2 Thinking',
     description:
       'Model with step-by-step reasoning.',
@@ -68,6 +70,7 @@ export const MOONSHOTAI_MODELS: readonly AiModelCatalogEntry<'moonshotai'>[] = [
   {
     id: 'moonshotai/kimi-k2',
     providerId: 'moonshotai',
+    providers: ['gateway'],
     name: 'Kimi K2',
     description:
       'General-purpose model with strong reasoning and tool support.',

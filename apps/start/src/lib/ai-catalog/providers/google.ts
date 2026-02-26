@@ -39,6 +39,7 @@ export const GOOGLE_MODELS: readonly AiModelCatalogEntry<'google'>[] = [
   {
     id: 'google/gemini-3.1-pro-preview',
     providerId: 'google',
+    providers: ['gateway'],
     name: 'Gemini 3.1 Pro',
     description:
       'Improved SWE and agentic capabilities, improved token efficiency and thinking, and expanded thinking levels.',
@@ -84,6 +85,7 @@ export const GOOGLE_MODELS: readonly AiModelCatalogEntry<'google'>[] = [
   {
     id: 'google/gemini-3-pro-preview',
     providerId: 'google',
+    providers: ['gateway'],
     name: 'Gemini 3 Pro',
     description:
       'This model improves upon Gemini 2.5 Pro and is catered towards challenging tasks, especially those involving complex reasoning or agentic workflows. Improvements highlighted include use cases for coding, multi-step function calling, planning, reasoning, deep knowledge tasks, and instruction following.',
@@ -129,6 +131,7 @@ export const GOOGLE_MODELS: readonly AiModelCatalogEntry<'google'>[] = [
   {
     id: 'google/gemini-3-flash',
     providerId: 'google',
+    providers: ['gateway'],
     name: 'Gemini 3 Flash',
     description:
       "Google's most intelligent model built for speed, combining frontier intelligence with superior search and grounding.",
@@ -174,6 +177,7 @@ export const GOOGLE_MODELS: readonly AiModelCatalogEntry<'google'>[] = [
   {
     id: 'google/gemini-2.5-flash',
     providerId: 'google',
+    providers: ['gateway'],
     name: 'Gemini 2.5 Flash',
     description:
       'Gemini 2.5 Flash is a thinking model that offers great, well-rounded capabilities. It is designed to offer a balance between price and performance with multimodal support and a 1M token context window.',
@@ -205,6 +209,7 @@ export const GOOGLE_MODELS: readonly AiModelCatalogEntry<'google'>[] = [
   {
     id: 'google/gemini-2.5-pro',
     providerId: 'google',
+    providers: ['gateway'],
     name: 'Gemini 2.5 Pro',
     description:
       'Gemini 2.5 Pro is our most advanced reasoning Gemini model, capable of solving complex problems. Gemini 2.5 Pro can comprehend vast datasets and challenging problems from different information sources, including text, audio, images, video, and even entire code repositories.',

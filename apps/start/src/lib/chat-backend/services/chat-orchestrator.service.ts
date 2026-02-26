@@ -11,6 +11,7 @@ import {
   getErrorTag,
 } from '../observability/wide-event'
 import { canUseReasoningControls } from '@/lib/app-feature-flags'
+import type { OrgAiPolicy } from '@/lib/model-policy/types'
 import { MessageStoreService } from './message-store.service'
 import { ModelGatewayService } from './model-gateway.service'
 import { ModelPolicyService } from './model-policy.service'
@@ -34,6 +35,8 @@ export type ChatOrchestratorServiceShape = {
     readonly userId: string
     readonly threadId: string
     readonly orgWorkosId?: string
+    readonly orgPolicy?: OrgAiPolicy
+    readonly skipProviderKeyResolution?: boolean
     readonly requestId: string
     readonly message: IncomingUserMessage
     readonly attachments?: readonly IncomingAttachment[]
@@ -73,6 +76,8 @@ export const ChatOrchestratorLive = Layer.effect(
       userId,
       threadId,
       orgWorkosId,
+      orgPolicy,
+      skipProviderKeyResolution,
       requestId,
       message,
       attachments,
@@ -124,23 +129,26 @@ export const ChatOrchestratorLive = Layer.effect(
           }
         }
 
-        const toolRegistry = yield* tools.resolveForThread({
-          threadId,
-          userId,
-          requestId,
-          modelId: modelId ?? threadAccess.model,
-        })
-        // Model is resolved once per request and reused for persistence + stream metadata.
+        // Model is resolved once per request and reused for tool selection,
+        // persistence, stream runtime, and observability metadata.
         const modelResolution = yield* modelPolicy.resolveThreadModel({
           threadId,
           orgWorkosId,
+          orgPolicy,
           threadModel: threadAccess.model,
           threadReasoningEffort: threadAccess.reasoningEffort,
           requestedModelId: modelId,
           requestedReasoningEffort: canUseReasoningControls()
             ? reasoningEffort
             : undefined,
+          skipProviderKeyResolution,
           requestId,
+        })
+        const toolRegistry = yield* tools.resolveForThread({
+          threadId,
+          userId,
+          requestId,
+          modelId: modelResolution.modelId,
         })
 
         // Enforce one active stream per user/thread to avoid interleaved assistant writes.

@@ -1,6 +1,38 @@
 import type { AiReasoningEffort } from '@/lib/ai-catalog/types'
 import type { OrgComplianceFlags } from '@/lib/ai-catalog/compliance-map'
 
+export type OrgProviderKeyStatusSnapshot = {
+  readonly syncedAt: number
+  readonly hasAnyProviderKey: boolean
+  readonly providers: {
+    readonly openai: boolean
+    readonly anthropic: boolean
+  }
+}
+
+export const EMPTY_ORG_PROVIDER_KEY_STATUS: OrgProviderKeyStatusSnapshot = {
+  syncedAt: 0,
+  hasAnyProviderKey: false,
+  providers: {
+    openai: false,
+    anthropic: false,
+  },
+}
+
+export function toOrgProviderKeyStatusSnapshot(input: {
+  readonly openai: boolean
+  readonly anthropic: boolean
+}): OrgProviderKeyStatusSnapshot {
+  return {
+    syncedAt: Date.now(),
+    providers: {
+      openai: input.openai,
+      anthropic: input.anthropic,
+    },
+    hasAnyProviderKey: input.openai || input.anthropic,
+  }
+}
+
 /**
  * Persisted organization policy snapshot used to evaluate model availability.
  * Arrays represent deny rules; missing IDs are considered allowed.
@@ -10,6 +42,11 @@ export type OrgAiPolicy = {
   readonly disabledProviderIds: readonly string[]
   readonly disabledModelIds: readonly string[]
   readonly complianceFlags: OrgComplianceFlags
+  /**
+   * Optional provider-key presence snapshot used to short-circuit BYOK key
+   * resolution on chat requests when no org keys are configured.
+   */
+  readonly providerKeyStatus?: OrgProviderKeyStatusSnapshot
   readonly updatedAt: number
 }
 

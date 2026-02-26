@@ -35,6 +35,7 @@ export const XAI_MODELS: readonly AiModelCatalogEntry<'xai'>[] = [
   {
     id: 'xai/grok-4-fast-reasoning',
     providerId: 'xai',
+    providers: ['gateway'],
     name: 'Grok 4 Fast Reasoning',
     description:
       'Grok 4 fast variant with reasoning and tool support. Large context with implicit caching.',
@@ -75,6 +76,7 @@ export const XAI_MODELS: readonly AiModelCatalogEntry<'xai'>[] = [
   {
     id: 'xai/grok-4-fast-non-reasoning',
     providerId: 'xai',
+    providers: ['gateway'],
     name: 'Grok 4 Fast Non-Reasoning',
     description:
       'Grok 4 fast variant tuned for low-latency responses without reasoning.',
@@ -109,6 +111,7 @@ export const XAI_MODELS: readonly AiModelCatalogEntry<'xai'>[] = [
   {
     id: 'xai/grok-4.1-fast-reasoning',
     providerId: 'xai',
+    providers: ['gateway'],
     name: 'Grok 4.1 Fast Reasoning',
     description:
       'Fast Grok 4.1 model with reasoning enabled and server-side tool support.',
@@ -149,6 +152,7 @@ export const XAI_MODELS: readonly AiModelCatalogEntry<'xai'>[] = [
   {
     id: 'xai/grok-4.1-fast-non-reasoning',
     providerId: 'xai',
+    providers: ['gateway'],
     name: 'Grok 4.1 Fast Non-Reasoning',
     description: 'Fast Grok 4.1 model tuned for low-latency responses.',
     contextWindow: 2000000,
@@ -182,6 +186,7 @@ export const XAI_MODELS: readonly AiModelCatalogEntry<'xai'>[] = [
   {
     id: 'xai/grok-code-fast-1',
     providerId: 'xai',
+    providers: ['gateway'],
     name: 'Grok Code Fast 1',
     description: 'Code-focused Grok model for engineering workflows with reasoning.',
     contextWindow: 256000,
