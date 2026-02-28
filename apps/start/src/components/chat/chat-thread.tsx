@@ -67,12 +67,12 @@ export function ChatThread() {
           aria-live="polite"
           aria-busy="true"
         >
-          <div className="flex w-full flex-col gap-3 overflow-hidden text-content-emphasis text-[14px] leading-[21px]">
+          <div className="flex w-full flex-col gap-3 overflow-hidden text-content-emphasis text-md leading-[21px]">
             <div className="w-full">
               <div className="py-1">
                 <div className="flex items-center gap-2">
                   <div
-                    className="size-2 shrink-0 rounded-full bg-ai animate-pulse-size"
+                    className="size-2 shrink-0 rounded-full bg-red-500 animate-pulse-size"
                     aria-hidden
                   />
                   <span className="text-sm leading-[21px] text-content-muted">

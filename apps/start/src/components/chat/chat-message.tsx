@@ -50,7 +50,7 @@ export function ChatMessage({
         <div className="flex max-w-[80%] flex-col items-end gap-2">
           <div
             dir="auto"
-            className="message-bubble relative flex min-h-7 w-full flex-col gap-3 overflow-hidden rounded-3xl rounded-br-lg border border-border-default bg-bg-emphasis px-4 py-1.5 text-md"
+            className="relative flex min-h-7 w-full flex-col gap-3 overflow-hidden rounded-3xl rounded-br-lg border border-border-default bg-bg-subtle px-4 py-1.5 text-md"
           >
             <div className="space-y-4 size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
               <div className="whitespace-pre-wrap break-words text-md leading-7">
@@ -87,7 +87,7 @@ export function ChatMessage({
     >
       <div
         dir="auto"
-        className="flex w-full flex-col gap-3 overflow-hidden text-content-emphasis text-[14px] leading-[21px]"
+        className="flex w-full flex-col gap-3 overflow-hidden text-content-emphasis leading-[21px]"
       >
         <div className="space-y-4 size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
           <AssistantMessageParts

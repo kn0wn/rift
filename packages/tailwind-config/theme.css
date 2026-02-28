@@ -18,6 +18,8 @@
   --color-bg-attention: var(--bg-attention);
   --color-bg-error: var(--bg-error);
   --color-accent-default: var(--accent-default);
+
+  --color-secondary-text: var(--secondary-text);
   /* Borders */
   --color-border-emphasis: var(--border-emphasis);
   --color-border-default: var(--border-default);
@@ -52,9 +54,9 @@
   --muted-foreground: 0 0% 64%;
   --border: 0 0% 83%;
   --ring: 217 91% 60%;
-  --bg-default: rgb(255 255 255);
+  --bg-default: rgb(252 252 252);
   --bg-muted: rgb(250 250 250);
-  --bg-subtle: rgb(245 245 245);
+  --bg-subtle: rgba(247, 247, 247, 1);
   --bg-emphasis: rgb(229 229 229);
   --bg-inverted: rgb(23 23 23);
 
@@ -64,7 +66,7 @@
   --bg-error: rgb(254 226 226);
 
   --border-emphasis: rgb(163 163 163);
-  --border-default: rgb(212 212 212);
+  --border-default: rgba(5, 5, 5, 0.06);
   --border-muted: rgb(245 245 245);
   --border-subtle: rgb(247 247 247);
  
@@ -80,6 +82,8 @@
   --content-error: rgb(185 28 28);
 
   --accent-default: rgb(54 115 252);
+
+  --secondary-text: rgb(64 64 64);
 }
 
 .dark {
@@ -91,7 +95,7 @@
   --ring: 217 91% 60%;
   --bg-default: rgb(22 22 22);
   --bg-muted: rgb(23 23 23);
-  --bg-subtle: rgb(22 22 22);
+  --bg-subtle: rgb(20 20 20);
   --bg-emphasis: rgb(17 17 17);
   --bg-inverted: rgb(250 250 250);
 
@@ -102,7 +106,7 @@
 
   --border-muted: rgb(38 38 38);
   --border-subtle: rgba(252, 252, 252, 0.08);
-  --border-default: rgba(82, 82, 82, 0.25);
+  --border-default: rgba(252, 252, 252, 0.08);
   --border-emphasis: rgb(115 115 115);
 
   --content-inverted: rgb(0 0 0);
@@ -117,4 +121,6 @@
   --content-error: rgb(254 226 226);
 
   --accent-default: rgb(54 115 252);
+  
+  --secondary-text: rgb(163 163 163);
 }

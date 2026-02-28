@@ -5,7 +5,7 @@
 
 /* Scope to chat Streamdown instances to avoid affecting other uses */
 .chat-streamdown {
-  font-size: 14px;
+  font-size: 16px;
   line-height: 21px;
 }
 
@@ -14,7 +14,7 @@
   margin-top: 0;
   margin-bottom: 0.888889em;
   font-weight: 800;
-  font-size: 2.25em;
+  font-size: 2em;
   line-height: 1.11111;
   color: var(--content-emphasis);
 }

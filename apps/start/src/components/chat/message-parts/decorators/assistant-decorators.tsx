@@ -1,6 +1,6 @@
 import { isReasoningUIPart } from 'ai'
 import type { AssistantDecoratorRenderer } from '../types'
-import { ReasoningCollapsible } from '../components/reasoning-collapsible'
+import { ReasoningTrigger } from '../components/reasoning'
 
 function renderReasoningDecorator({
   parts,
@@ -21,7 +21,7 @@ function renderReasoningDecorator({
     reasoningParts.some((part) => part.state === 'streaming')
 
   return (
-    <ReasoningCollapsible
+    <ReasoningTrigger
       reasoningText={reasoningText}
       isStreaming={reasoningIsStreaming}
     />
