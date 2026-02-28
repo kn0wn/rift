@@ -8,7 +8,7 @@ dist/
 lib/local/
 .cursor/rules/effect.mdc
 zero.db*
-/reference
+effect-smol/
 
 # Sentry Config File
 .env.sentry-build-plugin

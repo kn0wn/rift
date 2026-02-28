@@ -189,6 +189,21 @@
       "import": "./src/components/table.tsx",
       "default": "./src/components/table.tsx"
     },
+    "./charts/pie-chart": {
+      "types": "./src/components/charts/pie-chart.tsx",
+      "import": "./src/components/charts/pie-chart.tsx",
+      "default": "./src/components/charts/pie-chart.tsx"
+    },
+    "./charts/pie-slice": {
+      "types": "./src/components/charts/pie-slice.tsx",
+      "import": "./src/components/charts/pie-slice.tsx",
+      "default": "./src/components/charts/pie-slice.tsx"
+    },
+    "./charts/pie-center": {
+      "types": "./src/components/charts/pie-center.tsx",
+      "import": "./src/components/charts/pie-center.tsx",
+      "default": "./src/components/charts/pie-center.tsx"
+    },
     "./tabs": {
       "types": "./src/components/tabs.tsx",
       "import": "./src/components/tabs.tsx",
@@ -214,12 +229,15 @@
     "@base-ui/react": "^1.2.0",
     "@rift/utils": "workspace:*",
     "@tanstack/react-table": "^8.21.3",
+    "@visx/responsive": "4.0.1-alpha.0",
+    "@visx/shape": "4.0.1-alpha.0",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
-    "motion": "^12.23.26",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.542.0",
+    "motion": "^12.34.3",
     "react-day-picker": "^9.13.0",
+    "react-use-measure": "^2.1.7",
     "sonner": "^2.0.7",
     "vaul": "^1.1.2"
   },

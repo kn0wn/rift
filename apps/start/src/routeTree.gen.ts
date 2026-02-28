@@ -22,6 +22,7 @@ import { Route as ApiAuthCallbackRouteRouteImport } from './routes/api/auth/call
 import { Route as appLayoutWriterRouteRouteImport } from './routes/(app)/_layout/writer/route'
 import { Route as appLayoutSettingsRouteRouteImport } from './routes/(app)/_layout/settings/route'
 import { Route as appLayoutOrganizationRouteRouteImport } from './routes/(app)/_layout/organization/route'
+import { Route as appLayoutInsightRouteRouteImport } from './routes/(app)/_layout/insight/route'
 import { Route as appLayoutChatRouteRouteImport } from './routes/(app)/_layout/chat/route'
 import { Route as appLayoutSettingsIndexRouteImport } from './routes/(app)/_layout/settings/index'
 import { Route as appLayoutChatIndexRouteImport } from './routes/(app)/_layout/chat/index'
@@ -101,6 +102,11 @@ const appLayoutOrganizationRouteRoute =
     path: '/organization',
     getParentRoute: () => appLayoutRouteRoute,
   } as any)
+const appLayoutInsightRouteRoute = appLayoutInsightRouteRouteImport.update({
+  id: '/insight',
+  path: '/insight',
+  getParentRoute: () => appLayoutRouteRoute,
+} as any)
 const appLayoutChatRouteRoute = appLayoutChatRouteRouteImport.update({
   id: '/chat',
   path: '/chat',
@@ -180,6 +186,7 @@ const appLayoutOrganizationSettingsModelsProviderIdRouteRoute =
 export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRouteRoute
   '/chat': typeof appLayoutChatRouteRouteWithChildren
+  '/insight': typeof appLayoutInsightRouteRoute
   '/organization': typeof appLayoutOrganizationRouteRouteWithChildren
   '/settings': typeof appLayoutSettingsRouteRouteWithChildren
   '/writer': typeof appLayoutWriterRouteRoute
@@ -206,6 +213,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRouteRoute
+  '/insight': typeof appLayoutInsightRouteRoute
   '/organization': typeof appLayoutOrganizationRouteRouteWithChildren
   '/writer': typeof appLayoutWriterRouteRoute
   '/api/auth/callback': typeof ApiAuthCallbackRouteRoute
@@ -232,6 +240,7 @@ export interface FileRoutesById {
   '/(app)/_layout': typeof appLayoutRouteRouteWithChildren
   '/api/chat': typeof ApiChatRouteRoute
   '/(app)/_layout/chat': typeof appLayoutChatRouteRouteWithChildren
+  '/(app)/_layout/insight': typeof appLayoutInsightRouteRoute
   '/(app)/_layout/organization': typeof appLayoutOrganizationRouteRouteWithChildren
   '/(app)/_layout/settings': typeof appLayoutSettingsRouteRouteWithChildren
   '/(app)/_layout/writer': typeof appLayoutWriterRouteRoute
@@ -261,6 +270,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/api/chat'
     | '/chat'
+    | '/insight'
     | '/organization'
     | '/settings'
     | '/writer'
@@ -287,6 +297,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/api/chat'
+    | '/insight'
     | '/organization'
     | '/writer'
     | '/api/auth/callback'
@@ -312,6 +323,7 @@ export interface FileRouteTypes {
     | '/(app)/_layout'
     | '/api/chat'
     | '/(app)/_layout/chat'
+    | '/(app)/_layout/insight'
     | '/(app)/_layout/organization'
     | '/(app)/_layout/settings'
     | '/(app)/_layout/writer'
@@ -439,6 +451,13 @@ declare module '@tanstack/react-router' {
       path: '/organization'
       fullPath: '/organization'
       preLoaderRoute: typeof appLayoutOrganizationRouteRouteImport
+      parentRoute: typeof appLayoutRouteRoute
+    }
+    '/(app)/_layout/insight': {
+      id: '/(app)/_layout/insight'
+      path: '/insight'
+      fullPath: '/insight'
+      preLoaderRoute: typeof appLayoutInsightRouteRouteImport
       parentRoute: typeof appLayoutRouteRoute
     }
     '/(app)/_layout/chat': {
@@ -626,6 +645,7 @@ const appLayoutSettingsRouteRouteWithChildren =
 
 interface appLayoutRouteRouteChildren {
   appLayoutChatRouteRoute: typeof appLayoutChatRouteRouteWithChildren
+  appLayoutInsightRouteRoute: typeof appLayoutInsightRouteRoute
   appLayoutOrganizationRouteRoute: typeof appLayoutOrganizationRouteRouteWithChildren
   appLayoutSettingsRouteRoute: typeof appLayoutSettingsRouteRouteWithChildren
   appLayoutWriterRouteRoute: typeof appLayoutWriterRouteRoute
@@ -635,6 +655,7 @@ interface appLayoutRouteRouteChildren {
 
 const appLayoutRouteRouteChildren: appLayoutRouteRouteChildren = {
   appLayoutChatRouteRoute: appLayoutChatRouteRouteWithChildren,
+  appLayoutInsightRouteRoute: appLayoutInsightRouteRoute,
   appLayoutOrganizationRouteRoute: appLayoutOrganizationRouteRouteWithChildren,
   appLayoutSettingsRouteRoute: appLayoutSettingsRouteRouteWithChildren,
   appLayoutWriterRouteRoute: appLayoutWriterRouteRoute,
