@@ -1,6 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
 import type { ByokUpdateAction } from './types'
-import { runUpdateByok } from './byok.server'
 
 /** Input shape for the server function; server performs full validation in byok.server.ts. */
 function updateByokInput(input: unknown): { data: ByokUpdateAction } {
@@ -13,5 +12,8 @@ function updateByokInput(input: unknown): { data: ByokUpdateAction } {
 export const updateByok = createServerFn({ method: 'POST' })
   .inputValidator(updateByokInput)
   .handler(async ({ data }: { data: unknown }) => {
+    // Keep server-only dependencies behind a dynamic import so client bundles
+    // never statically reference *.server modules.
+    const { runUpdateByok } = await import('./byok.server')
     return runUpdateByok(data)
   })

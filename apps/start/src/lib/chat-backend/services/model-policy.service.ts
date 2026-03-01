@@ -1,6 +1,8 @@
 import { Effect, Layer, ServiceMap } from 'effect'
-import { CHAT_DEFAULT_MODEL_ID } from '@/lib/ai-catalog'
-import { getCatalogModelProviderRoute } from '@/lib/ai-catalog'
+import {
+  CHAT_DEFAULT_MODEL_ID,
+  getCatalogModelProviderRoute,
+} from '@/lib/ai-catalog'
 import type { AiReasoningEffort } from '@/lib/ai-catalog/types'
 import {
   evaluateModelAvailability,
@@ -76,7 +78,13 @@ export class ModelPolicyService extends ServiceMap.Service<
    */
   static readonly layer = Layer.succeed(this, {
     getOrgPolicy: Effect.fn('ModelPolicyService.getOrgPolicy')(
-      ({ orgWorkosId, requestId }: { readonly orgWorkosId?: string; readonly requestId: string }) =>
+      ({
+        orgWorkosId,
+        requestId,
+      }: {
+        readonly orgWorkosId?: string
+        readonly requestId: string
+      }) =>
         Effect.tryPromise({
           try: async () => {
             if (!orgWorkosId) return undefined
@@ -131,7 +139,9 @@ export class ModelPolicyService extends ServiceMap.Service<
             }))
 
           const candidateModelId =
-            requestedModelId?.trim() || threadModel?.trim() || CHAT_DEFAULT_MODEL_ID
+            requestedModelId?.trim() ||
+            threadModel?.trim() ||
+            CHAT_DEFAULT_MODEL_ID
           const selectedModel = getCatalogModelById(candidateModelId)
           if (!selectedModel) {
             return yield* Effect.fail(
@@ -174,7 +184,8 @@ export class ModelPolicyService extends ServiceMap.Service<
           )
           const persistedProviderKeyStatus = policy?.providerKeyStatus
           const hasTrustedProviderKeySnapshot = Boolean(
-            persistedProviderKeyStatus && persistedProviderKeyStatus.syncedAt > 0,
+            persistedProviderKeyStatus &&
+            persistedProviderKeyStatus.syncedAt > 0,
           )
           const hasAnyPersistedProviderKey =
             hasTrustedProviderKeySnapshot && persistedProviderKeyStatus
@@ -189,7 +200,8 @@ export class ModelPolicyService extends ServiceMap.Service<
                     modelId: selectedModel.id,
                     threadId,
                     requestId,
-                    reason: 'policy_denied:missing_org_context_for_provider_key',
+                    reason:
+                      'policy_denied:missing_org_context_for_provider_key',
                   }),
                 )
               }
@@ -260,7 +272,8 @@ export class ModelPolicyService extends ServiceMap.Service<
                       }),
                     catch: (error) =>
                       new MessagePersistenceError({
-                        message: 'Failed to resolve organization provider API key',
+                        message:
+                          'Failed to resolve organization provider API key',
                         requestId,
                         threadId,
                         cause: String(error),
@@ -303,7 +316,9 @@ export class ModelPolicyService extends ServiceMap.Service<
             modelId: selectedModel.id,
             reasoningEffort,
             source:
-              requestedModelId || requestedReasoningEffort ? 'request' : 'thread',
+              requestedModelId || requestedReasoningEffort
+                ? 'request'
+                : 'thread',
           } satisfies EffectiveModelResolution
         }),
     ),
@@ -314,7 +329,9 @@ export class ModelPolicyService extends ServiceMap.Service<
     getOrgPolicy: Effect.fn('ModelPolicyService.getOrgPolicyMemory')(() =>
       Effect.succeed(undefined),
     ),
-    resolveThreadModel: Effect.fn('ModelPolicyService.resolveThreadModelMemory')(
+    resolveThreadModel: Effect.fn(
+      'ModelPolicyService.resolveThreadModelMemory',
+    )(
       ({
         requestedModelId,
         requestedReasoningEffort,

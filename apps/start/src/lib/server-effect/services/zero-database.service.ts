@@ -33,8 +33,10 @@ export class ZeroDatabaseService extends ServiceMap.Service<
 >()('server-effect/ZeroDatabaseService') {
   static readonly layer = Layer.effect(
     this,
-    Effect.gen(function* () {
-      const getOrFail = Effect.sync(() => getZeroDatabase()).pipe(
+    Effect.sync(() => {
+      const getOrFail: ZeroDatabaseServiceShape['getOrFail'] = Effect.sync(() =>
+        getZeroDatabase(),
+      ).pipe(
         Effect.flatMap((db) =>
           db
             ? Effect.succeed(db)
@@ -46,13 +48,9 @@ export class ZeroDatabaseService extends ServiceMap.Service<
         ),
       )
 
-      const withDatabase = <TValue, TError, TRequirements>(
-        run: (db: ZeroDatabase) => Effect.Effect<TValue, TError, TRequirements>,
-      ) =>
-        Effect.gen(function* () {
-          const db = yield* getOrFail
-          return yield* run(db)
-        })
+      const withDatabase: ZeroDatabaseServiceShape['withDatabase'] = (
+        run,
+      ) => Effect.flatMap(getOrFail, run)
 
       return {
         getOrFail,

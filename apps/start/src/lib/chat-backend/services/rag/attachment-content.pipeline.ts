@@ -146,13 +146,7 @@ export async function buildAttachmentChunkRows(input: {
         maxParallelCalls: 2,
       })
       embeddings = embedded
-      embeddingTokens =
-        usage &&
-        typeof usage === 'object' &&
-        'tokens' in usage &&
-        typeof usage.tokens === 'number'
-          ? usage.tokens
-          : 0
+      embeddingTokens = usage.tokens
     } catch {
       // Upload succeeds even when embedding provider is down or misconfigured.
       embeddings = []
@@ -199,13 +193,7 @@ export async function buildQueryEmbedding(
       model,
       value: compact,
     })
-    const tokens =
-      usage &&
-      typeof usage === 'object' &&
-      'tokens' in usage &&
-      typeof usage.tokens === 'number'
-        ? usage.tokens
-        : 0
+    const tokens = usage.tokens
     return {
       embedding,
       embeddingModel: model,

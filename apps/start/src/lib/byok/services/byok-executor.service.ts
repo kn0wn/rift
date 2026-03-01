@@ -12,8 +12,6 @@ import {
 import {
   EMPTY_ORG_PROVIDER_KEY_STATUS,
   toOrgProviderKeyStatusSnapshot,
-  type OrgAiPolicy,
-  type OrgProviderKeyStatusSnapshot,
 } from '@/lib/model-policy/types'
 import type { ByokUpdateResult } from '../domain/types'
 import type { UpdateByokPayload } from '../domain/schemas'
@@ -95,13 +93,13 @@ const runSet = (
   ByokUpdateResult,
   ByokFeatureDisabledError | ByokPersistenceError
 > => {
-  const providerKeyStatus: OrgProviderKeyStatusSnapshot = pipe(
+  const providerKeyStatus = pipe(
     Option.fromNullishOr(existing?.providerKeyStatus),
     Option.getOrElse(() => EMPTY_ORG_PROVIDER_KEY_STATUS),
   )
   const needSyncBaseline = pipe(
     Option.fromNullishOr(existing?.providerKeyStatus),
-    Option.map((ps: OrgProviderKeyStatusSnapshot) => ps.syncedAt <= 0),
+    Option.map((ps) => ps.syncedAt <= 0),
     Option.getOrElse(() => true),
   )
   const baselineEffect = needSyncBaseline
@@ -151,13 +149,13 @@ const runRemove = (
   ByokUpdateResult,
   ByokFeatureDisabledError | ByokPersistenceError
 > => {
-  const providerKeyStatus: OrgProviderKeyStatusSnapshot = pipe(
+  const providerKeyStatus = pipe(
     Option.fromNullishOr(existing?.providerKeyStatus),
     Option.getOrElse(() => EMPTY_ORG_PROVIDER_KEY_STATUS),
   )
   const needSyncBaseline = pipe(
     Option.fromNullishOr(existing?.providerKeyStatus),
-    Option.map((ps: OrgProviderKeyStatusSnapshot) => ps.syncedAt <= 0),
+    Option.map((ps) => ps.syncedAt <= 0),
     Option.getOrElse(() => true),
   )
   const baselineEffect = needSyncBaseline
@@ -198,6 +196,7 @@ type ExecuteUpdateEffect = Effect.Effect<
   ByokUpdateResult,
   ByokFeatureDisabledError | ByokPersistenceError
 >
+type ExistingPolicy = Awaited<ReturnType<typeof getOrgAiPolicy>>
 
 export const ByokExecutorLive = Layer.succeed(ByokExecutorService, {
   executeUpdate: (
@@ -210,26 +209,18 @@ export const ByokExecutorLive = Layer.succeed(ByokExecutorService, {
         (
           enabled,
         ): Effect.Effect<
-          OrgAiPolicy | undefined,
+          ExistingPolicy,
           ByokFeatureDisabledError | ByokPersistenceError
         > =>
-          pipe(
-            Option.fromNullishOr(enabled ? true : null),
-            Option.match({
-              onNone: () =>
-                Effect.fail(
-                  new ByokFeatureDisabledError({
-                    message: 'Organization provider keys feature is disabled.',
-                  }),
-                ) as Effect.Effect<
-                  OrgAiPolicy | undefined,
-                  ByokFeatureDisabledError | ByokPersistenceError
-                >,
-              onSome: () => tryGetPolicy(orgWorkosId),
-            }),
-          ),
+          enabled
+            ? tryGetPolicy(orgWorkosId)
+            : Effect.fail(
+                new ByokFeatureDisabledError({
+                  message: 'Organization provider keys feature is disabled.',
+                }),
+              ),
       ),
-      Effect.flatMap((existing) => {
+      Effect.flatMap((existing: ExistingPolicy) => {
         switch (action.action) {
           case 'set_provider_api_key':
             return runSet(orgWorkosId, existing, action)

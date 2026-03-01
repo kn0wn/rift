@@ -1,11 +1,13 @@
 import { convertToModelMessages, smoothStream, streamText } from 'ai'
-import type { UIMessage } from 'ai'
-import type { ToolSet } from 'ai'
+import type { ToolSet, UIMessage } from 'ai'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
 import { Effect, Layer, ServiceMap } from 'effect'
 import { getCatalogModelProviderRoute } from '@/lib/ai-catalog'
-import { toReadableErrorCause, toReadableErrorMessage } from '../domain/error-formatting'
+import {
+  toReadableErrorCause,
+  toReadableErrorMessage,
+} from '../domain/error-formatting'
 import { ModelProviderError } from '../domain/errors'
 
 /**
@@ -78,7 +80,13 @@ export type ModelGatewayServiceShape = {
     readonly tools: ToolSet
     readonly activeTools?: readonly string[]
     readonly providerOptions?: Record<string, unknown>
-    readonly reasoningEffort?: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'
+    readonly reasoningEffort?:
+      | 'none'
+      | 'minimal'
+      | 'low'
+      | 'medium'
+      | 'high'
+      | 'xhigh'
     readonly onChunk?: (chunk: unknown) => void
     readonly abortSignal?: AbortSignal
   }) => Effect.Effect<ModelStreamResult, ModelProviderError>
@@ -111,7 +119,13 @@ export class ModelGatewayService extends ServiceMap.Service<
         readonly tools: ToolSet
         readonly activeTools?: readonly string[]
         readonly providerOptions?: Record<string, unknown>
-        readonly reasoningEffort?: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'
+        readonly reasoningEffort?:
+          | 'none'
+          | 'minimal'
+          | 'low'
+          | 'medium'
+          | 'high'
+          | 'xhigh'
         readonly onChunk?: (chunk: unknown) => void
         readonly abortSignal?: AbortSignal
       }) =>
@@ -130,9 +144,10 @@ export class ModelGatewayService extends ServiceMap.Service<
               tools,
               activeTools: activeTools ? [...activeTools] : undefined,
               providerOptions: providerOptions as any,
-              maxOutputTokens: reasoningEffort === 'high' || reasoningEffort === 'xhigh'
-                ? 12_000
-                : 8_000,
+              maxOutputTokens:
+                reasoningEffort === 'high' || reasoningEffort === 'xhigh'
+                  ? 12_000
+                  : 8_000,
               abortSignal,
               experimental_transform: smoothStream({
                 delayInMs: 15,

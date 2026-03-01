@@ -114,7 +114,7 @@ function batchSseStream(
 
       const pump = async () => {
         try {
-          while (true) {
+          for (;;) {
             const { done, value } = await reader.read()
             if (done) break
             buffer += value
@@ -412,7 +412,7 @@ export class StreamResumeService extends ServiceMap.Service<
                 void (async () => {
                   const localReader = localStream.getReader()
                   try {
-                    while (true) {
+                    for (;;) {
                       const { done, value } = await localReader.read()
                       if (done) break
                       local.chunks.push(value)
@@ -448,7 +448,7 @@ export class StreamResumeService extends ServiceMap.Service<
 
               // Drain the internal stream so the resumable context never stalls on backpressure.
               const reader = resumableStream.getReader()
-              while (true) {
+              for (;;) {
                 const { done } = await reader.read()
                 if (done) break
               }

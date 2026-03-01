@@ -136,17 +136,14 @@ export const makeAppendUserMessageOperation = (dependencies: {
                   threadMessages.map((row) => ({
                     messageId: row.messageId,
                     role: row.role,
-                    parentMessageId: row.parentMessageId ?? undefined,
-                    branchIndex: row.branchIndex ?? 1,
+                    parentMessageId: row.parentMessageId,
+                    branchIndex: row.branchIndex,
                     createdAt: row.created_at,
                   })),
                   normalizeThreadActiveChildMap(thread.activeChildByParent),
                 )
 
-                const parentMessageId =
-                  canonicalMessages.length > 0
-                    ? canonicalMessages[canonicalMessages.length - 1]!.messageId
-                    : undefined
+                const parentMessageId = canonicalMessages.at(-1)?.messageId
                 insertedParentMessageId = parentMessageId
 
                 const branchIndex = nextBranchIndexForParent({

@@ -1,5 +1,6 @@
-import { Effect, ServiceMap } from 'effect'
-import {
+import { ServiceMap } from 'effect'
+import type { Effect } from 'effect'
+import type {
   ByokMissingOrgContextError,
   ByokUnauthorizedError,
 } from '../domain/errors'

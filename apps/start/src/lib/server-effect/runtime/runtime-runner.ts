@@ -1,4 +1,5 @@
-import { Cause, Effect, Exit, Layer, ManagedRuntime, Option } from 'effect'
+import { Cause, Exit, ManagedRuntime, Option } from 'effect'
+import type { Effect, Layer } from 'effect'
 
 /**
  * Shared helper for running Effect programs from framework edges.

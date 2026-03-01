@@ -87,8 +87,8 @@ export const makePrepareEditOperation = (dependencies: {
                 threadMessages.map((message) => ({
                   messageId: message.messageId,
                   role: message.role,
-                  parentMessageId: message.parentMessageId ?? undefined,
-                  branchIndex: message.branchIndex ?? 1,
+                  parentMessageId: message.parentMessageId,
+                  branchIndex: message.branchIndex,
                   createdAt: message.created_at,
                 })),
                 normalizeThreadActiveChildMap(thread.activeChildByParent),

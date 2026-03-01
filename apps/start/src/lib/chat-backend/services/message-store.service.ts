@@ -2,10 +2,12 @@ import type { UIMessage } from 'ai'
 import { Effect, Layer, ServiceMap } from 'effect'
 import type { AiReasoningEffort } from '@/lib/ai-catalog/types'
 import type { ChatAttachmentInput } from '@/lib/chat-contracts/attachments'
-import {
+import type {
   BranchVersionConflictError,
   InvalidEditTargetError,
   InvalidRequestError,
+} from '@/lib/chat-backend/domain/errors'
+import {
   MessagePersistenceError,
 } from '@/lib/chat-backend/domain/errors'
 import type { IncomingUserMessage } from '@/lib/chat-backend/domain/schemas'
@@ -104,11 +106,9 @@ export type MessageStoreServiceShape = {
 export class MessageStoreService extends ServiceMap.Service<
   MessageStoreService,
   MessageStoreServiceShape
->()('chat-backend/MessageStoreService') {}
-
-export namespace MessageStoreService {
-/** Production message store implementation. */
-export const layer = Layer.effect(
+>()('chat-backend/MessageStoreService') {
+  /** Production message store implementation. */
+  static readonly layer = Layer.effect(
   MessageStoreService,
   Effect.gen(function* () {
     const attachmentRag = yield* AttachmentRagService
@@ -130,10 +130,10 @@ export const layer = Layer.effect(
       }),
     }
   }),
-)
+  )
 
-/** Test-only adapter retained for deterministic unit tests. */
-export const layerMemory = Layer.succeed(MessageStoreService, {
+  /** Test-only adapter retained for deterministic unit tests. */
+  static readonly layerMemory = Layer.succeed(MessageStoreService, {
   loadThreadMessages: ({ threadId, model: _model, untilMessageId, requestId }) =>
     Effect.sync(() => {
       const existing = getMemoryState().messages.get(threadId)
@@ -233,7 +233,7 @@ export const layerMemory = Layer.succeed(MessageStoreService, {
         throw new Error('target message not found')
       }
       const target = existing[targetIndex]
-      if (!target || target.role !== 'user') {
+      if (target.role !== 'user') {
         throw new Error('target message is not editable')
       }
       const nextId = crypto.randomUUID()
@@ -315,5 +315,5 @@ export const layerMemory = Layer.succeed(MessageStoreService, {
         ),
       ),
     ),
-})
+  })
 }

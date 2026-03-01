@@ -1,12 +1,13 @@
 import { anthropic } from '@ai-sdk/anthropic'
 import type { ProviderToolIdByProvider } from '@/lib/ai-catalog/provider-tools'
-import type { ProviderToolFactory } from './types'
-import type { ProviderToolRegistry } from './types'
+import type { ProviderToolFactory, ProviderToolRegistry } from './types'
 
 function getAnthropicToolFactory(
   toolId: ProviderToolIdByProvider['anthropic'],
 ): ProviderToolFactory | undefined {
-  const tools = anthropic.tools as unknown as Record<string, (...args: any[]) => unknown>
+  const tools = anthropic.tools as unknown as Partial<
+    Record<string, (...args: any[]) => unknown>
+  >
 
   if (toolId.startsWith('web_search_')) {
     const version = toolId.slice('web_search_'.length)
