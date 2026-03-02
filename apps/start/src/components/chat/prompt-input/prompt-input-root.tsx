@@ -34,7 +34,7 @@ export function PromptInputRoot({
     <form className={cn('relative w-full', className)} {...props}>
       <div
         className={cn(
-          'flex flex-col overflow-hidden rounded-[30px] border border-border-muted bg-bg-emphasis/80 px-2 pt-2',
+          'flex flex-col overflow-hidden rounded-[30px] border border-border-muted dark:bg-bg-emphasis bg-[#E9E9E9] px-2 pt-2',
         )}
       >
         {slots?.top}

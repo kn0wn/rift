@@ -20,6 +20,13 @@ import { ServerRuntime } from '@/lib/server-effect'
 const connectionString = process.env.ZERO_UPSTREAM_DB
 const pool = connectionString ? new Pool({ connectionString }) : null
 const dbProvider = pool ? zeroNodePg(schema, pool) : null
+/**
+ * Temporary non-production auth bypass for Zero query/mutate traffic.
+ * Enable only in isolated environments while debugging deployment/auth issues.
+ */
+const zeroAuthBypassEnabled = process.env.ZERO_AUTH_BYPASS === 'true'
+const zeroAuthBypassUserId = 'user_01KFXMPJAYZ3SNXTRJVMZ4T5JZ'
+const zeroAuthBypassOrgId = 'org_01KFXQZ63QJ5B4RB4GZ7DHA0AE'
 
 class ZeroMutateUnauthorizedError extends Schema.TaggedErrorClass<ZeroMutateUnauthorizedError>()(
   'ZeroMutateUnauthorizedError',
@@ -67,15 +74,22 @@ export const Route = createFileRoute('/api/zero/mutate')({
         }
 
         const program = Effect.gen(function* () {
-          const authContext = yield* requireUserAuth({
-            onUnauthorized: () =>
-              new ZeroMutateUnauthorizedError({ message: 'Unauthorized' }),
-          })
+          const context: ZeroContext = zeroAuthBypassEnabled
+            ? {
+                userID: zeroAuthBypassUserId,
+                orgWorkosId: zeroAuthBypassOrgId,
+              }
+            : yield* requireUserAuth({
+                onUnauthorized: () =>
+                  new ZeroMutateUnauthorizedError({ message: 'Unauthorized' }),
+              }).pipe(
+                Effect.map((authContext) => ({
+                  userID: authContext.userId,
+                  orgWorkosId: authContext.orgWorkosId,
+                })),
+              )
 
-          const context: ZeroContext = {
-            userID: authContext.userId,
-            orgWorkosId: authContext.orgWorkosId,
-          }
+          const userIdForLogging = context.userID
           const requestId =
             request.headers.get('x-request-id') ?? crypto.randomUUID()
           const processor = new PushProcessor(dbProvider, context, 'error')
@@ -94,14 +108,14 @@ export const Route = createFileRoute('/api/zero/mutate')({
               {
                 route: '/api/zero/mutate',
                 request_id: requestId,
-                user_id: authContext.userId,
+                user_id: userIdForLogging,
               },
             )
             yield* emitWideErrorEvent({
               eventName: 'chat.branch.version.conflict',
               route: '/api/zero/mutate',
               requestId,
-              userId: authContext.userId,
+              userId: userIdForLogging,
               errorCode: ChatErrorCode.BranchVersionConflict,
               errorTag: 'BranchVersionConflictError',
               message: 'branch_version_conflict',
