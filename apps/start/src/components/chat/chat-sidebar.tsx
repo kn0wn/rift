@@ -58,7 +58,7 @@ type OptimisticThread = {
 const staticSections: NavSection[] = [
   {
     items: [
-      { name: 'New Chat', href: `${CHAT_HREF}/new-chat`, icon: Link2 },
+      { name: 'New Chat', href: CHAT_HREF, icon: Link2, exact: true },
       { name: 'Projects', href: `${CHAT_HREF}/projects`, icon: Globe },
     ],
   },

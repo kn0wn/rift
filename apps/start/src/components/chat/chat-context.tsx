@@ -718,6 +718,12 @@ export function ChatProvider({
   ])
 
   useEffect(() => {
+    if (activeThreadId) return
+    if (messages.length === 0) return
+    setMessages([])
+  }, [activeThreadId, messages.length, setMessages])
+
+  useEffect(() => {
     if (!pendingBranchSelector) return
     const persistedSelector =
       storedBranchSelectorsByAnchorMessageId[pendingBranchSelector.anchorMessageId]

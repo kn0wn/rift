@@ -1,7 +1,7 @@
 // Chat prompt input with error slot and file attachments.
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useState } from 'react'
 import { useChatActions } from './chat-context'
 import {
   PromptInputRoot,
@@ -14,6 +14,12 @@ import { ModelSelectorPanel } from './model-selector-panel'
 import { ReasoningSelectorPanel } from './reasoning-selector-panel'
 import { useFileAttachments } from '../../hooks/chat/upload'
 import { parseChatApiError } from './chat-error-messages'
+import {
+  clearComposerDraft,
+  getComposerDraftValue,
+  setComposerDraft,
+  useComposerDraftValue,
+} from './composer-draft-store'
 import type {
   ChatAttachment,
   ChatAttachmentInput,
@@ -30,7 +36,6 @@ export function ChatInput() {
     setSelectedModelId,
     setSelectedReasoningEffort,
   } = useChatActions()
-  const [input, setInput] = useState('')
   const [errorDismissed, setErrorDismissed] = useState(false)
   const [uploadErrorDismissed, setUploadErrorDismissed] = useState(false)
 
@@ -41,7 +46,6 @@ export function ChatInput() {
   const isBusy = status === 'submitted' || status === 'streaming'
   const hasPendingUploads = files.some((file) => file.isUploading)
   const isSendBlocked = isBusy || hasPendingUploads
-  const isEmpty = !input.trim()
   const parsedChatError = parseChatApiError(error)
   const chatErrorMessage = parsedChatError?.message ?? null
   const chatErrorTraceId = parsedChatError?.traceId ?? null
@@ -116,9 +120,9 @@ export function ChatInput() {
   const handleSubmit = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault()
-      const text = input.trim()
+      const text = getComposerDraftValue().trim()
       if (!text || isSendBlocked) return
-      setInput('')
+      clearComposerDraft()
 
       try {
         const payload = buildAttachmentPayload()
@@ -129,10 +133,10 @@ export function ChatInput() {
           attachmentManifest: payload?.attachmentManifest,
         })
       } catch (error) {
-        setInput(text)
+        setComposerDraft(text)
       }
     },
-    [input, isSendBlocked, sendMessage, buildAttachmentPayload, clearFiles],
+    [isSendBlocked, sendMessage, buildAttachmentPayload, clearFiles],
   )
 
   const selectedModel = selectableModels.find((m) => m.id === selectedModelId)
@@ -193,21 +197,51 @@ export function ChatInput() {
       className="w-full"
       slots={{ top: topSlot, bottom: bottomSlot }}
     >
-      <PromptInputToolbar
+      <ComposerToolbar
         canAddMore={canAddMore}
         onFileSelect={handleFileSelect}
         status={status}
-        isEmpty={isEmpty}
         isBusy={isSendBlocked}
-        middle={
-          <PromptInputTextarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            aria-label="Message"
-            className="placeholder:text-content-default/65"
-          />
-        }
       />
     </PromptInputRoot>
   )
 }
+
+const ComposerTextarea = memo(function ComposerTextarea() {
+  const composerInput = useComposerDraftValue()
+
+  return (
+    <PromptInputTextarea
+      value={composerInput}
+      onChange={(e) => setComposerDraft(e.target.value)}
+      aria-label="Message"
+      className="placeholder:text-content-default/65"
+    />
+  )
+})
+
+const ComposerToolbar = memo(function ComposerToolbar({
+  canAddMore,
+  onFileSelect,
+  status,
+  isBusy,
+}: {
+  canAddMore: boolean
+  onFileSelect: (event: React.ChangeEvent<HTMLInputElement>) => void
+  status: ReturnType<typeof useChatActions>['status']
+  isBusy: boolean
+}) {
+  const composerInput = useComposerDraftValue()
+  const isEmpty = !composerInput.trim()
+
+  return (
+    <PromptInputToolbar
+      canAddMore={canAddMore}
+      onFileSelect={onFileSelect}
+      status={status}
+      isEmpty={isEmpty}
+      isBusy={isBusy}
+      middle={<ComposerTextarea />}
+    />
+  )
+})

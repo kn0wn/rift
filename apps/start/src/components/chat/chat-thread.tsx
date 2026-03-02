@@ -4,11 +4,18 @@ import { Spinner } from '@rift/ui/spinner'
 import { useChatActions, useChatMessages } from './chat-context'
 import { ChatMessage } from './chat-message'
 import { usePinToLastUserMessage } from '@rift/chat-scroll'
+import { ChatWelcomeScreen } from './chat-welcome-screen'
+import { setComposerDraft } from './composer-draft-store'
 
 export function ChatThread() {
   const { messages, status, activeThreadId, branchSelectorsByAnchorMessageId } =
     useChatMessages()
-  const { regenerateMessage, editMessage, selectBranchVersion } = useChatActions()
+  const {
+    regenerateMessage,
+    editMessage,
+    selectBranchVersion,
+  } =
+    useChatActions()
   const { userMessageCount, lastUserMessageId } = useMemo(() => {
     let count = 0
     let lastUserId: string | null = null
@@ -38,6 +45,12 @@ export function ChatThread() {
     isAwaitingStreamStart && (!lastMessage || lastMessage.role === 'user')
 
   const canRegenerate = !isStreaming
+  const handleSuggestionClick = useCallback(
+    (prompt: string) => {
+      setComposerDraft(prompt)
+    },
+    [],
+  )
 
   const findScrollParent = useCallback((node: HTMLElement | null) => {
     let current: HTMLElement | null = node?.parentElement ?? null
@@ -124,15 +137,20 @@ export function ChatThread() {
 
   return (
     <div
-      className="mx-auto w-full max-w-2xl flex flex-col pt-9"
+      className="flex w-full flex-col"
       role="log"
       aria-live="polite"
       aria-label="Chat messages"
     >
       {messages.length === 0 && (
-        <p className="py-8 text-center text-content-muted">
-          Start a new conversation
-        </p>
+        <div className="relative w-full overflow-hidden pt-9">
+          <div className="relative z-10 mx-auto w-full max-w-2xl">
+            <ChatWelcomeScreen
+              onSuggestionClick={handleSuggestionClick}
+              disabled={isStreaming}
+            />
+          </div>
+        </div>
       )}
       {messages.map((m) => {
         const isLastUserMessage =
@@ -144,6 +162,7 @@ export function ChatThread() {
         return (
           <div
             key={m.id}
+            className="mx-auto w-full max-w-2xl"
             ref={isLastUserMessage ? lastUserMessageRef : undefined}
           >
             <ChatMessage
@@ -177,7 +196,7 @@ export function ChatThread() {
       })}
       {showThinking && (
         <div
-          className="group flex w-full items-end gap-2 py-4 is-assistant"
+          className="group mx-auto flex w-full max-w-2xl items-end gap-2 py-4 is-assistant"
           aria-live="polite"
           aria-busy="true"
         >
