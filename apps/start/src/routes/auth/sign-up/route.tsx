@@ -31,11 +31,7 @@ function SignUpPage() {
     setError(null)
     setSubmitting(true)
     try {
-      await (authClient.signUp.email as (input: {
-        email: string
-        password: string
-        name: string
-      }) => Promise<unknown>)({
+      await authClient.signUp.email({
         name,
         email,
         password,

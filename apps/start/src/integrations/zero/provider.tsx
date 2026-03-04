@@ -12,7 +12,8 @@ const cacheURL = import.meta.env.VITE_ZERO_CACHE_URL
  * Anonymous users are provisioned with Better Auth anonymous sessions.
  */
 function useZeroAuth(): { userID: string; context: ZeroContext } {
-  const { user, loading, activeOrganizationId, signInAnonymously } = useAppAuth()
+  const { user, loading, activeOrganizationId, isAnonymous, signInAnonymously } =
+    useAppAuth()
   const lastAuthenticatedUserIDRef = useRef<string | null>(null)
   const anonymousBootstrapRef = useRef(false)
 
@@ -42,9 +43,9 @@ function useZeroAuth(): { userID: string; context: ZeroContext } {
     () => ({
       userID,
       organizationId: activeOrganizationId?.trim() || undefined,
-      isAnonymous: Boolean(user?.isAnonymous),
+      isAnonymous,
     }),
-    [activeOrganizationId, user?.isAnonymous, userID],
+    [activeOrganizationId, isAnonymous, userID],
   )
 
   return { userID, context }

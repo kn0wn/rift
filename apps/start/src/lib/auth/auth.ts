@@ -4,16 +4,31 @@ import { organization } from 'better-auth/plugins/organization'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import { Pool } from 'pg'
 
-const connectionString = process.env.ZERO_UPSTREAM_DB
-const pool = connectionString ? new Pool({ connectionString }) : null
-
 const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim()
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim()
 
+function requireEnv(name: string): string {
+  const value = process.env[name]?.trim()
+  if (!value) {
+    throw new Error(
+      `Missing required environment variable ${name}.`,
+    )
+  }
+  return value
+}
+
 function resolveAuthBaseURL(): string {
-  const raw = process.env.VITE_BETTER_AUTH_URL?.trim() || 'http://localhost:3000'
+  const raw = process.env.BETTER_AUTH_URL?.trim()
+  if (!raw) {
+    throw new Error(
+      'Missing BETTER_AUTH_URL. Configure apps/start/.env before starting auth.',
+    )
+  }
   return raw.replace(/\/+$/, '')
 }
+
+const connectionString = requireEnv('ZERO_UPSTREAM_DB')
+const pool = new Pool({ connectionString })
 
 /**
  * Better Auth is the only identity provider used by the app.
@@ -23,12 +38,8 @@ export const auth = betterAuth({
   appName: 'Rift',
   baseURL: resolveAuthBaseURL(),
   basePath: '/api/auth',
-  ...(process.env.BETTER_AUTH_SECRET
-    ? { secret: process.env.BETTER_AUTH_SECRET }
-    : {}),
-  ...(pool
-    ? { database: pool }
-    : {}),
+  secret: requireEnv('BETTER_AUTH_SECRET'),
+  database: pool,
   emailAndPassword: {
     enabled: true,
   },
@@ -50,7 +61,6 @@ export const auth = betterAuth({
       generateName: () => 'Guest User',
       onLinkAccount: async ({ anonymousUser, newUser }) => {
         // Reassign app-owned rows so guest chat history survives account upgrade.
-        if (!pool) return
         const fromUserId = anonymousUser.user.id
         const toUserId = newUser.user.id
         const client = await pool.connect()

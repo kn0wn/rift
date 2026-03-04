@@ -30,10 +30,7 @@ function SignInPage() {
     setError(null)
     setSubmitting(true)
     try {
-      await (authClient.signIn.email as (input: {
-        email: string
-        password: string
-      }) => Promise<unknown>)({
+      await authClient.signIn.email({
         email,
         password,
       })
@@ -81,10 +78,7 @@ function SignInPage() {
           className="w-full rounded-md border border-border-default px-3 py-2"
           type="button"
           onClick={() =>
-            (authClient.signIn.social as (input: {
-              provider: 'google'
-              callbackURL?: string
-            }) => Promise<unknown>)({
+            authClient.signIn.social({
               provider: 'google',
               callbackURL: redirectTarget,
             })
@@ -97,7 +91,9 @@ function SignInPage() {
           type="button"
           onClick={async () => {
             try {
-              await authClient.signIn.anonymous()
+              await authClient.$fetch('/sign-in/anonymous', {
+                method: 'POST',
+              })
             } catch (error) {
               const code =
                 typeof error === 'object' && error
