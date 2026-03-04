@@ -3,7 +3,7 @@ import type {
   AuthenticatedServerAuthContext,
 } from './auth-context'
 import { extractServerAuthContext } from './auth-context'
-import { getSessionFromHeaders } from '@/lib/auth/server-session'
+import { getSessionFromHeaders } from '@/lib/auth/server-session.server'
 
 export type OrgAuthenticatedServerAuthContext =
   AuthenticatedServerAuthContext & {
