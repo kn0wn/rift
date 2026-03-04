@@ -186,7 +186,7 @@ export function ModelSelectorPanel({
         )}
       >
           <div
-            className="flex h-full min-h-0 outline-none rtl:flex-row-reverse"
+            className="flex h-full min-h-0 outline-none"
             onMouseDown={(e) => e.stopPropagation()}
             tabIndex={-1}
           >

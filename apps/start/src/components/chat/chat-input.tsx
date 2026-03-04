@@ -244,6 +244,7 @@ const ComposerTextarea = memo(function ComposerTextarea() {
       value={composerInput}
       onChange={(e) => setComposerDraft(e.target.value)}
       aria-label={m.chat_input_message_aria_label()}
+      placeholder={m.chat_prompt_placeholder()}
       className="placeholder:text-content-default/65"
     />
   )
