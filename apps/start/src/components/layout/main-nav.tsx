@@ -1,15 +1,19 @@
 import { useLocation } from '@tanstack/react-router'
-import type { ComponentType, PropsWithChildren } from 'react'
+import type {
+  ComponentType,
+  Dispatch,
+  PropsWithChildren,
+  SetStateAction,
+} from 'react'
 import {
   createContext,
-  type Dispatch,
-  type SetStateAction,
   useEffect,
   useMemo,
   useState,
 } from 'react'
 
 import { cn } from '@rift/utils'
+import { directionClass, useDirection } from '@rift/ui/direction'
 import { useMediaQuery } from '@rift/ui/hooks/useMediaQuery'
 
 import {
@@ -35,6 +39,7 @@ type MainNavProps = PropsWithChildren<{
 export function MainNav({ children, sidebar: Sidebar }: MainNavProps) {
   const { pathname } = useLocation()
   const { isMobile } = useMediaQuery()
+  const direction = useDirection()
   const [isOpen, setIsOpen] = useState(false)
   const { content: rightSidebarContent } = useRightSidebar()
 
@@ -56,7 +61,8 @@ export function MainNav({ children, sidebar: Sidebar }: MainNavProps) {
     <div className="min-h-screen md:grid md:grid-cols-[min-content_minmax(0,1fr)_min-content]">
       <div
         className={cn(
-          'fixed left-0 z-50 w-screen transition-[background-color,backdrop-filter] md:sticky md:z-auto md:w-full md:bg-transparent',
+          'fixed z-50 w-screen transition-[background-color,backdrop-filter] md:sticky md:z-auto md:w-full md:bg-transparent',
+          directionClass(direction, { ltr: 'left-0', rtl: 'right-0' }),
           isOpen
             ? 'bg-bg-inverted/20 backdrop-blur-sm'
             : 'bg-transparent max-md:pointer-events-none',
@@ -72,13 +78,25 @@ export function MainNav({ children, sidebar: Sidebar }: MainNavProps) {
         <div
           className={cn(
             'relative h-full w-min max-w-full bg-bg-emphasis transition-transform md:translate-x-0',
-            !isOpen && '-translate-x-full',
+            !isOpen &&
+              directionClass(direction, {
+                ltr: '-translate-x-full',
+                rtl: 'translate-x-full',
+              }),
           )}
         >
           <Sidebar />
         </div>
       </div>
-      <div className="bg-bg-emphasis pb-[var(--page-bottom-margin)] pt-[var(--page-top-margin)] [--page-bottom-margin:0px] [--page-top-margin:0px] h-screen md:pr-2 md:pl-0 md:[--page-top-margin:0.5rem] min-w-0">
+      <div
+        className={cn(
+          'bg-bg-emphasis pb-[var(--page-bottom-margin)] pt-[var(--page-top-margin)] [--page-bottom-margin:0px] [--page-top-margin:0px] h-screen md:[--page-top-margin:0.5rem] min-w-0',
+          directionClass(direction, {
+            ltr: 'md:pr-2 md:pl-0',
+            rtl: 'md:pl-2 md:pr-0',
+          }),
+        )}
+      >
         <div className="relative h-full overflow-y-auto border-x border-t border-border-muted pt-px md:rounded-t-xl md:bg-bg-default">
           <SideNavContext.Provider value={contextValue}>
             {children}
@@ -87,7 +105,11 @@ export function MainNav({ children, sidebar: Sidebar }: MainNavProps) {
       </div>
       <div
         className={cn(
-          'sticky top-0 hidden h-dvh min-h-0 shrink-0 overflow-hidden bg-bg-emphasis pl-0 pr-2 pt-[var(--page-top-margin)] [--page-top-margin:0.5rem] lg:block',
+          'sticky top-0 hidden h-dvh min-h-0 shrink-0 overflow-hidden bg-bg-emphasis pt-[var(--page-top-margin)] [--page-top-margin:0.5rem] lg:block',
+          directionClass(direction, {
+            ltr: 'pl-0 pr-2',
+            rtl: 'pl-2 pr-0',
+          }),
           'transition-[width] duration-220 motion-reduce:transition-none',
           showRightSidebar ? 'ease-out' : 'ease-in',
         )}

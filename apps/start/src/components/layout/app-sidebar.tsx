@@ -2,9 +2,9 @@ import { ThemeToggle } from '@rift/ui/theme-toggle'
 import {
   getCurrentArea,
   NAV_AREAS,
+  SETTINGS_AREA_KEY,
 } from '@/components/layout/sidebar/app-sidebar-nav.config'
 import { SidebarAreaPanel } from '@/components/layout/sidebar/sidebar-area-panel'
-import { SETTINGS_AREA_KEY } from '@/components/layout/sidebar/app-sidebar-nav.config'
 import {
   ORG_SETTINGS_AREA_KEY,
   ORG_SETTINGS_HREF,
@@ -12,7 +12,9 @@ import {
 import { UserProfileAvatar } from '@/components/layout/user-profile-avatar'
 import { Avatar, AvatarFallback } from '@rift/ui/avatar'
 import { Button } from '@rift/ui/button'
+import { directionClass, useDirection } from '@rift/ui/direction'
 import { SidebarGroupTooltip } from '@rift/ui/tooltip'
+import { cn } from '@rift/utils'
 import { useAppAuth } from '@/lib/auth/use-auth'
 import { Link, useLocation } from '@tanstack/react-router'
 import type { ComponentType } from 'react'
@@ -26,6 +28,7 @@ const SIDEBAR_WIDTH = SIDEBAR_GROUPS_WIDTH + SIDEBAR_AREAS_WIDTH
 export const AppSidebar: ComponentType = () => {
   const { pathname } = useLocation()
   const { user } = useAppAuth()
+  const direction = useDirection()
   const currentArea = getCurrentArea(pathname)
   const showAreaPanel = currentArea !== null
 
@@ -103,10 +106,24 @@ export const AppSidebar: ComponentType = () => {
         </div>
       </nav>
       <div
-        className={`size-full overflow-hidden pt-2 pr-2 transition-opacity duration-300 ${showAreaPanel ? '' : 'pointer-events-none opacity-0'}`}
+        className={cn(
+          `size-full overflow-hidden pt-2 transition-opacity duration-300 ${showAreaPanel ? '' : 'pointer-events-none opacity-0'}`,
+          directionClass(direction, {
+            ltr: 'pr-2',
+            rtl: 'pl-2',
+          }),
+        )}
       >
         <div className="scrollbar-hide relative flex h-full min-h-0 w-[calc(var(--sidebar-areas-width)-0.5rem)] flex-col overflow-y-auto overflow-x-hidden rounded-t-xl border-x border-t border-border-muted bg-bg-subtle">
-            <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden pl-3 pt-3 pb-3 pr-0 text-content-muted">
+            <div
+              className={cn(
+                'relative flex min-h-0 flex-1 flex-col overflow-hidden pt-3 pb-3 text-content-muted',
+                directionClass(direction, {
+                  ltr: 'pl-3 pr-0',
+                  rtl: 'pr-3 pl-0',
+                }),
+              )}
+            >
               <SidebarAreaPanel
                 areas={NAV_AREAS}
                 currentArea={currentArea}

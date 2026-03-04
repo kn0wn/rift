@@ -14,3 +14,13 @@
     @apply bg-bg-default text-content-default;
   }
 }
+
+@layer utilities {
+  /*
+   * Mirrors directional icons (e.g. submenu chevrons) in RTL layouts.
+   * Keep this as a utility class so shared primitives can opt in per-icon.
+   */
+  .cn-rtl-flip:dir(rtl) {
+    transform: scaleX(-1);
+  }
+}

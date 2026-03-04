@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { z } from 'zod'
 import { authClient } from '@/lib/auth/auth-client'
+import { m } from '@/paraglide/messages.js'
 
 export const Route = createFileRoute('/auth/sign-in')({
   validateSearch: z.object({
@@ -36,7 +37,7 @@ function SignInPage() {
       })
       void navigate({ to: redirectTarget })
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Unable to sign in')
+      setError(cause instanceof Error ? cause.message : m.auth_sign_in_error_default())
     } finally {
       setSubmitting(false)
     }
@@ -44,14 +45,14 @@ function SignInPage() {
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6">
-      <h1 className="text-2xl font-semibold text-content-emphasis">Sign in</h1>
-      <p className="mt-2 text-sm text-content-muted">Use your account to continue.</p>
+      <h1 className="text-2xl font-semibold text-content-emphasis">{m.auth_sign_in_title()}</h1>
+      <p className="mt-2 text-sm text-content-muted">{m.auth_sign_in_subtitle()}</p>
 
       <form className="mt-6 space-y-3" onSubmit={onEmailSignIn}>
         <input
           className="w-full rounded-md border border-border-default bg-bg-subtle px-3 py-2"
           type="email"
-          placeholder="Email"
+          placeholder={m.auth_sign_in_email_placeholder()}
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           required
@@ -59,7 +60,7 @@ function SignInPage() {
         <input
           className="w-full rounded-md border border-border-default bg-bg-subtle px-3 py-2"
           type="password"
-          placeholder="Password"
+          placeholder={m.auth_sign_in_password_placeholder()}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           required
@@ -69,7 +70,7 @@ function SignInPage() {
           type="submit"
           disabled={submitting}
         >
-          {submitting ? 'Signing in…' : 'Sign in'}
+          {submitting ? m.auth_sign_in_submitting() : m.auth_sign_in_submit()}
         </button>
       </form>
 
@@ -84,7 +85,7 @@ function SignInPage() {
             })
           }
         >
-          Continue with Google
+          {m.auth_sign_in_google()}
         </button>
         <button
           className="w-full rounded-md border border-border-default px-3 py-2"
@@ -110,7 +111,7 @@ function SignInPage() {
             void navigate({ to: redirectTarget })
           }}
         >
-          Continue as guest
+          {m.auth_sign_in_guest()}
         </button>
       </div>
 

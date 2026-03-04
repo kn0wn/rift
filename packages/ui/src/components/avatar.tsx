@@ -248,7 +248,7 @@ function AvatarBadge({ className, ...props }: React.ComponentProps<"span">) {
     <span
       data-slot="avatar-badge"
       className={cn(
-        "bg-bg-inverted text-content-inverted ring-bg-default absolute right-0 bottom-0 z-10 inline-flex items-center justify-center rounded-full bg-blend-color ring-2 select-none",
+        "bg-bg-inverted text-content-inverted ring-bg-default absolute ltr:right-0 rtl:left-0 bottom-0 z-10 inline-flex items-center justify-center rounded-full bg-blend-color ring-2 select-none",
         "group-data-[size=sm]/avatar:size-2 group-data-[size=sm]/avatar:[&>svg]:hidden",
         "group-data-[size=default]/avatar:size-2.5 group-data-[size=default]/avatar:[&>svg]:size-2",
         "group-data-[size=lg]/avatar:size-3 group-data-[size=lg]/avatar:[&>svg]:size-2",
@@ -264,7 +264,7 @@ function AvatarGroup({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="avatar-group"
       className={cn(
-        "*:data-[slot=avatar]:ring-bg-default group/avatar-group flex -space-x-2 *:data-[slot=avatar]:ring-2",
+        "*:data-[slot=avatar]:ring-bg-default group/avatar-group flex -space-x-2 rtl:space-x-reverse *:data-[slot=avatar]:ring-2",
         className
       )}
       {...props}

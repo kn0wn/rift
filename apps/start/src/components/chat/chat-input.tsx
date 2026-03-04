@@ -158,13 +158,13 @@ export function ChatInput() {
 
   const hasReasoningOptions = !isStudyModeEnabled && reasoningOptions.length > 0
   const selectorTriggerClassName =
-    'h-8 rounded-full border border-transparent bg-transparent px-3 pr-7 text-sm leading-[21px] font-medium text-content-emphasis transition-colors hover:bg-bg-inverted/5 active:bg-bg-inverted/10 focus-visible:border-border-emphasis focus-visible:ring-2 focus-visible:ring-border-emphasis/40'
+    'h-8 rounded-full border border-transparent bg-transparent px-3 ltr:pr-7 rtl:pl-7 text-sm leading-[21px] font-medium text-content-emphasis transition-colors hover:bg-bg-inverted/5 active:bg-bg-inverted/10 focus-visible:border-border-emphasis focus-visible:ring-2 focus-visible:ring-border-emphasis/40'
 
   const modelAndReasoningSelectors = (
     <div className="flex items-center gap-1">
       {isStudyModeEnabled ? (
         <div
-          className={`${selectorTriggerClassName} inline-flex items-center gap-1.5 pr-3`}
+          className={`${selectorTriggerClassName} inline-flex items-center gap-1.5 ltr:pr-3 rtl:pl-3`}
         >
           <BookOpen className="size-4 text-blue-500" aria-hidden />
           <span className="pointer-events-none">Study Mode</span>

@@ -2,8 +2,11 @@
 
 import { useState } from 'react'
 import { Form } from '@rift/ui/form'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@rift/ui/select'
 import { ContentPage } from '@/components/layout'
 import { AvatarUploadField } from '@/components/settings/avatar-upload'
+import { locales } from '@/paraglide/runtime.js'
+import { m } from '@/paraglide/messages.js'
 import { useAccountPageLogic } from './account-page.logic'
 
 /**
@@ -14,6 +17,9 @@ export function AccountPage() {
   const {
     name,
     email,
+    language,
+    languageOptions,
+    languageError,
     avatarImage,
     avatarMessage,
     nameMessage,
@@ -22,6 +28,8 @@ export function AccountPage() {
     initials,
     setNameInput,
     setEmailInput,
+    setLanguageInput,
+    applyLanguageSelection,
     submitName,
     submitEmail,
     persistAvatar,
@@ -33,9 +41,40 @@ export function AccountPage() {
     emailMessage === 'Email change request submitted. Check your inbox to finish verification.'
       ? emailMessage
       : undefined
+  const selectedLanguageLabel =
+    languageOptions.find((localeOption) => localeOption.value === language)?.label ?? language
 
   return (
     <ContentPage title="Account" description="Manage your account details and avatar.">
+      <Form
+        title={m.settings_account_language_title()}
+        description={m.settings_account_language_description()}
+        error={languageError ?? undefined}
+        helpText={<p className="text-sm text-content-subtle">{m.settings_account_language_help()}</p>}
+        contentSlot={(
+          <Select
+            value={language}
+            onValueChange={(next) => {
+              if (!next || next === language) return
+              if (!locales.includes(next as (typeof locales)[number])) return
+              setLanguageInput(next as (typeof locales)[number])
+              void applyLanguageSelection(next as (typeof locales)[number])
+            }}
+          >
+            <SelectTrigger className="w-full max-w-md" aria-label={m.settings_account_language_title()}>
+              <SelectValue>{selectedLanguageLabel}</SelectValue>
+            </SelectTrigger>
+            <SelectContent alignItemWithTrigger={false} align="start">
+              {languageOptions.map((localeOption) => (
+                <SelectItem key={localeOption.value} value={localeOption.value}>
+                  {localeOption.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      />
+
       <Form
         title="Avatar"
         description="This is your avatar. Click on the avatar to upload a custom image."

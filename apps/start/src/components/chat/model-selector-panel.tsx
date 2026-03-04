@@ -144,7 +144,7 @@ export function ModelSelectorPanel({
       <PopoverTrigger
         tabIndex={-1}
         className={cn(
-          'h-10 rounded-lg border border-transparent bg-transparent px-3 pr-8 text-sm font-medium text-content-default outline-none focus:!outline-none focus-visible:!outline-none transition-colors hover:bg-bg-inverted/5 active:bg-bg-inverted/10 focus-visible:border-border-emphasis focus-visible:ring-[3px] focus-visible:ring-border-emphasis/50 disabled:pointer-events-none disabled:opacity-50',
+          'h-10 rounded-lg border border-transparent bg-transparent px-3 ltr:pr-8 rtl:pl-8 text-sm font-medium text-content-default outline-none focus:!outline-none focus-visible:!outline-none transition-colors hover:bg-bg-inverted/5 active:bg-bg-inverted/10 focus-visible:border-border-emphasis focus-visible:ring-[3px] focus-visible:ring-border-emphasis/50 disabled:pointer-events-none disabled:opacity-50',
           'relative flex items-center gap-2 w-fit group',
           'outline-none rounded-lg [&:focus]:!outline-none [&:focus-visible]:!outline-none',
           className,
@@ -169,7 +169,7 @@ export function ModelSelectorPanel({
           : null}
         <span className="truncate">{triggerLabel}</span>
         <ChevronDown
-          className="pointer-events-none absolute right-2 top-1/2 size-4 -translate-y-1/2 text-content-muted shrink-0"
+          className="pointer-events-none absolute ltr:right-2 rtl:left-2 top-1/2 size-4 -translate-y-1/2 text-content-muted shrink-0"
           aria-hidden
         />
       </PopoverTrigger>
@@ -185,15 +185,15 @@ export function ModelSelectorPanel({
           'animate-none data-open:animate-none data-closed:animate-none',
         )}
       >
-        <div
-          className="flex h-full min-h-0 outline-none"
-          onMouseDown={(e) => e.stopPropagation()}
-          tabIndex={-1}
-        >
+          <div
+            className="flex h-full min-h-0 outline-none rtl:flex-row-reverse"
+            onMouseDown={(e) => e.stopPropagation()}
+            tabIndex={-1}
+          >
           <aside
             className={cn(
               'w-[64px] py-3 overflow-y-auto shrink-0 flex flex-col items-center gap-1',
-              'border-r border-border-muted',
+              'ltr:border-r rtl:border-l border-border-muted',
               '[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden',
               'outline-none focus:!outline-none focus-visible:!outline-none',
             )}
@@ -213,7 +213,7 @@ export function ModelSelectorPanel({
                   </ProviderButton>
                 }
               />
-              <TooltipContent side="left" sideOffset={8}>
+              <TooltipContent side="inline-start" sideOffset={8}>
                 <p className="text-xs">All providers</p>
               </TooltipContent>
             </Tooltip>
@@ -242,7 +242,7 @@ export function ModelSelectorPanel({
                       </ProviderButton>
                     }
                   />
-                  <TooltipContent side="left" sideOffset={8}>
+                  <TooltipContent side="inline-start" sideOffset={8}>
                     <p className="text-xs">{label}</p>
                   </TooltipContent>
                 </Tooltip>
@@ -328,7 +328,7 @@ const ModelRow = React.memo(function ModelRow({
       data-active={isSelected}
       style={style}
       className={cn(
-        'w-full rounded-lg border border-transparent px-3 py-3 text-left text-sm leading-none font-normal transition-[background-color,color,font-weight] duration-0 active:duration-75 group',
+        'w-full rounded-lg border border-transparent px-3 py-3 text-start text-sm leading-none font-normal transition-[background-color,color,font-weight] duration-0 active:duration-75 group',
         'hover:bg-bg-inverted/5 active:bg-bg-inverted/10',
         'data-[active=true]:bg-bg-info/25 data-[active=true]:font-medium data-[active=true]:text-content-info',
         'data-[active=true]:hover:bg-bg-info/45 data-[active=true]:active:bg-bg-info/75',

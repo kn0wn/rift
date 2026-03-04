@@ -121,7 +121,7 @@ export function AvatarUploadField({
       </Button>
 
       {uploadError != null && onUploadError == null ? (
-        <p className="max-w-52 text-right text-xs text-content-error" role="alert">
+        <p className="max-w-52 text-end text-xs text-content-error" role="alert">
           {uploadError}
         </p>
       ) : null}

@@ -28,7 +28,7 @@ export function ToolCallPart({ toolName, state }: ToolCallPartProps) {
       </span>
       <span
         className={cn(
-          'ml-auto rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide',
+          'ltr:ml-auto rtl:mr-auto rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide',
           isStreaming
             ? 'bg-bg-muted text-content-muted'
             : 'bg-bg-muted/70 text-content-default',

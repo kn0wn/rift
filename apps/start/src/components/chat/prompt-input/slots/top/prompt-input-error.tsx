@@ -90,7 +90,7 @@ export function PromptInputError({
           <button
             type="button"
             onClick={() => traceId && copyToClipboard(traceId)}
-            className="text-sm break-all text-left hover:underline cursor-pointer"
+            className="text-sm break-all text-start hover:underline cursor-pointer"
           >
             {traceId}
           </button>

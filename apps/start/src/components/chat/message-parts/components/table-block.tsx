@@ -121,7 +121,7 @@ export const TableBlockTable = ({
       <table
         ref={tableRef}
         className={cn(
-          "w-full border-separate border-spacing-0 overflow-hidden rounded-md text-left text-sm",
+          "w-full border-separate border-spacing-0 overflow-hidden rounded-md text-start text-sm",
           "[&_thead_th:first-child]:rounded-tl-md [&_thead_th:last-child]:rounded-tr-md",
           "[&_tbody_tr:last-child_td:first-child]:rounded-bl-md [&_tbody_tr:last-child_td:last-child]:rounded-br-md",
           "[&_tbody_tr:nth-child(even)]:bg-bg-default/60",

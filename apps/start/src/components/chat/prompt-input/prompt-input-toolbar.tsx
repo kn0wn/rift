@@ -12,7 +12,7 @@ import { PromptInputActionsMenu } from './prompt-input-actions-menu'
 
 /** Styling shared with toolbar ghost buttons for visual consistency. */
 const TOOLBAR_SELECT_CLASS =
-  'h-10 rounded-lg border border-transparent bg-transparent px-3 pr-8 text-sm font-medium text-content-default appearance-none outline-none transition-colors hover:bg-bg-inverted/5 active:bg-bg-inverted/10 focus-visible:border-border-emphasis focus-visible:ring-[3px] focus-visible:ring-border-emphasis/50 disabled:pointer-events-none disabled:opacity-50'
+  'h-10 rounded-lg border border-transparent bg-transparent px-3 ltr:pr-8 rtl:pl-8 text-sm font-medium text-content-default appearance-none outline-none transition-colors hover:bg-bg-inverted/5 active:bg-bg-inverted/10 focus-visible:border-border-emphasis focus-visible:ring-[3px] focus-visible:ring-border-emphasis/50 disabled:pointer-events-none disabled:opacity-50'
 
 export type ToolbarSelectOption = {
   value: string
@@ -55,7 +55,7 @@ export function ToolbarSelect({
         ))}
       </select>
       <ChevronDown
-        className="pointer-events-none absolute right-2 top-1/2 size-4 -translate-y-1/2 text-content-muted"
+        className="pointer-events-none absolute ltr:right-2 rtl:left-2 top-1/2 size-4 -translate-y-1/2 text-content-muted"
         aria-hidden
       />
     </div>
@@ -141,7 +141,7 @@ export function PromptInputToolbar({
         {middle}
       </div>
 
-      <div className="ml-auto flex items-center self-end gap-1.5">
+      <div className="ltr:ml-auto rtl:mr-auto flex items-center self-end gap-1.5">
         {afterAttach}
         <PromptInputSubmit
           status={status}

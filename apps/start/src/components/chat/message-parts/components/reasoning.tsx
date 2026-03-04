@@ -205,7 +205,7 @@ export function ReasoningTrigger({
           />,
         )
       }
-      className="group flex w-full cursor-pointer items-center justify-start text-left transition-colors"
+      className="group flex w-full cursor-pointer items-center justify-start text-start transition-colors"
       aria-label={isStreaming ? 'Show reasoning (streaming)' : 'Show reasoning'}
     >
       <ThinkingIndicator

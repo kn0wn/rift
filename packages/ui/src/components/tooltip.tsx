@@ -158,7 +158,7 @@ function SidebarGroupTooltip({
     <Tooltip>
       <TooltipTrigger render={children} />
       <TooltipContent
-        side="right"
+        side="inline-end"
         sideOffset={8}
         className="rounded-lg px-3 py-1.5 text-sm font-medium text-white"
       >

@@ -1,3 +1,5 @@
+import { directionClass, useDirection } from '@rift/ui/direction'
+import { cn } from '@rift/utils'
 import type { NavSection } from './app-sidebar-nav.config'
 import { SidebarNavItem } from './sidebar-nav-item'
 
@@ -26,6 +28,7 @@ export function SidebarAreaLayout({
   pathname,
   scrollableSectionName,
 }: SidebarAreaLayoutProps) {
+  const direction = useDirection()
   const useConstrainedLayout = scrollableSectionName != null
 
   const content = (
@@ -65,7 +68,15 @@ export function SidebarAreaLayout({
               ) : null}
               {isScrollableSection ? (
                 <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-                  <div className="flex flex-col gap-0.5 pr-3">
+                  <div
+                    className={cn(
+                      'flex flex-col gap-0.5',
+                      directionClass(direction, {
+                        ltr: 'pr-3',
+                        rtl: 'pl-3',
+                      }),
+                    )}
+                  >
                     {section.items.map((item) => (
                       <div
                         key={item.href}
@@ -80,7 +91,12 @@ export function SidebarAreaLayout({
                   </div>
                 </div>
               ) : (
-                <div className="pr-3">
+                <div
+                  className={directionClass(direction, {
+                    ltr: 'pr-3',
+                    rtl: 'pl-3',
+                  })}
+                >
                   {section.items.map((item) => (
                     <SidebarNavItem
                       key={item.href}

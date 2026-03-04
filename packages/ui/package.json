@@ -104,6 +104,11 @@
       "import": "./src/components/dropdown-menu.tsx",
       "default": "./src/components/dropdown-menu.tsx"
     },
+    "./direction": {
+      "types": "./src/components/direction.tsx",
+      "import": "./src/components/direction.tsx",
+      "default": "./src/components/direction.tsx"
+    },
     "./field": {
       "types": "./src/components/field.tsx",
       "import": "./src/components/field.tsx",

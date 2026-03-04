@@ -362,7 +362,7 @@ export function Form({
             inputPrefix != null ? (
               <div className="flex w-full max-w-md overflow-visible rounded-md border border-border-default bg-bg-default text-content-emphasis sm:text-sm">
                 <span
-                  className="flex shrink-0 items-center border-r border-border-default bg-bg-subtle px-3 py-2 text-content-muted"
+                  className="flex shrink-0 items-center ltr:border-r rtl:border-l border-border-default bg-bg-subtle px-3 py-2 text-content-muted"
                   aria-hidden
                 >
                   {inputPrefix}
@@ -374,7 +374,7 @@ export function Form({
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
                   className={cn(
-                    "min-w-0 flex-1 rounded-none rounded-r-md border-0 border-l-0 bg-transparent px-3 py-2 placeholder:text-content-muted",
+                    "min-w-0 flex-1 rounded-none ltr:rounded-r-md rtl:rounded-l-md border-0 ltr:border-l-0 rtl:border-r-0 bg-transparent px-3 py-2 placeholder:text-content-muted",
                     "focus-visible:border-content-subtle focus-visible:ring-3 focus-visible:ring-content-subtle/50 focus-visible:ring-offset-0",
                   )}
                 />

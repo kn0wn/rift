@@ -77,7 +77,7 @@ function ContextMenuLabel({
     <ContextMenuPrimitive.GroupLabel
       data-slot="context-menu-label"
       data-inset={inset}
-      className={cn("text-content-muted px-2 py-1.5 text-xs font-medium data-inset:pl-7", className)}
+      className={cn("text-content-muted px-2 py-1.5 text-xs font-medium data-inset:ltr:pl-7 data-inset:rtl:pr-7", className)}
       {...props}
     />
   )
@@ -98,7 +98,7 @@ function ContextMenuItem({
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        "focus:bg-bg-subtle focus:text-content-default data-[variant=destructive]:text-content-error data-[variant=destructive]:focus:bg-bg-error data-[variant=destructive]:focus:text-content-error data-[variant=destructive]:*:[svg]:text-content-error gap-2 rounded-sm px-2 py-1.5 text-sm data-inset:pl-7 [&_svg:not([class*='size-'])]:size-4 group/context-menu-item relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "focus:bg-bg-subtle focus:text-content-default data-[variant=destructive]:text-content-error data-[variant=destructive]:focus:bg-bg-error data-[variant=destructive]:focus:text-content-error data-[variant=destructive]:*:[svg]:text-content-error gap-2 rounded-sm px-2 py-1.5 text-sm data-inset:ltr:pl-7 data-inset:rtl:pr-7 [&_svg:not([class*='size-'])]:size-4 group/context-menu-item relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
         className
       )}
       {...props}
@@ -125,13 +125,13 @@ function ContextMenuSubTrigger({
       data-slot="context-menu-sub-trigger"
       data-inset={inset}
       className={cn(
-        "focus:bg-bg-subtle focus:text-content-default data-open:bg-bg-subtle data-open:text-content-default gap-2 rounded-sm px-2 py-1.5 text-sm data-inset:pl-7 [&_svg:not([class*='size-'])]:size-4 flex cursor-default items-center outline-hidden select-none [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "focus:bg-bg-subtle focus:text-content-default data-open:bg-bg-subtle data-open:text-content-default gap-2 rounded-sm px-2 py-1.5 text-sm data-inset:ltr:pl-7 data-inset:rtl:pr-7 [&_svg:not([class*='size-'])]:size-4 flex cursor-default items-center outline-hidden select-none [&_svg]:pointer-events-none [&_svg]:shrink-0",
         className
       )}
       {...props}
     >
       {children}
-      <ChevronRightIcon className="cn-rtl-flip ml-auto" />
+      <ChevronRightIcon className="cn-rtl-flip ltr:ml-auto rtl:mr-auto" />
     </ContextMenuPrimitive.SubmenuTrigger>
   )
 }
@@ -143,7 +143,7 @@ function ContextMenuSubContent({
     <ContextMenuContent
       data-slot="context-menu-sub-content"
       className="shadow-lg"
-      side="right"
+      side="inline-end"
       {...props}
     />
   )
@@ -163,13 +163,13 @@ function ContextMenuCheckboxItem({
       data-slot="context-menu-checkbox-item"
       data-inset={inset}
       className={cn(
-        "focus:bg-bg-subtle focus:text-content-default gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm data-inset:pl-7 [&_svg:not([class*='size-'])]:size-4 relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "focus:bg-bg-subtle focus:text-content-default gap-2 rounded-sm py-1.5 ltr:pr-8 ltr:pl-2 rtl:pl-8 rtl:pr-2 text-sm data-inset:ltr:pl-7 data-inset:rtl:pr-7 [&_svg:not([class*='size-'])]:size-4 relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
         className
       )}
       checked={checked}
       {...props}
     >
-      <span className="absolute right-2 pointer-events-none">
+      <span className="absolute ltr:right-2 rtl:left-2 pointer-events-none">
         <ContextMenuPrimitive.CheckboxItemIndicator>
           <CheckIcon
           />
@@ -204,12 +204,12 @@ function ContextMenuRadioItem({
       data-slot="context-menu-radio-item"
       data-inset={inset}
       className={cn(
-        "focus:bg-bg-subtle focus:text-content-default gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm data-inset:pl-7 [&_svg:not([class*='size-'])]:size-4 relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "focus:bg-bg-subtle focus:text-content-default gap-2 rounded-sm py-1.5 ltr:pr-8 ltr:pl-2 rtl:pl-8 rtl:pr-2 text-sm data-inset:ltr:pl-7 data-inset:rtl:pr-7 [&_svg:not([class*='size-'])]:size-4 relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
         className
       )}
       {...props}
     >
-      <span className="absolute right-2 pointer-events-none">
+      <span className="absolute ltr:right-2 rtl:left-2 pointer-events-none">
         <ContextMenuPrimitive.RadioItemIndicator>
           <CheckIcon
           />
@@ -240,7 +240,7 @@ function ContextMenuShortcut({
   return (
     <span
       data-slot="context-menu-shortcut"
-      className={cn("text-content-muted group-focus/context-menu-item:text-content-default ml-auto text-xs tracking-widest", className)}
+      className={cn("text-content-muted group-focus/context-menu-item:text-content-default ltr:ml-auto rtl:mr-auto text-xs tracking-widest", className)}
       {...props}
     />
   )

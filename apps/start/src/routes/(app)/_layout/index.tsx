@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { m } from '@/paraglide/messages.js'
 
 export const Route = createFileRoute('/(app)/_layout/')({
   component: Home,
@@ -8,12 +9,13 @@ function Home() {
   return (
     <div className="min-h-full flex flex-col items-center justify-center p-8">
       <div className="max-w-md w-full space-y-6 text-center">
-        <h1 className="text-3xl font-bold text-content-emphasis">Rift</h1>
+        <h1 className="text-3xl font-bold text-content-emphasis">{m.home_title()}</h1>
         <p className="text-content-muted">
           <Link to="/chat" className="text-content-emphasis underline hover:no-underline">
-            Go to Chat
+            {m.home_go_to_chat()}
           </Link>
-          {' '}to get started.
+          {' '}
+          {m.home_get_started_suffix()}
         </p>
       </div>
     </div>

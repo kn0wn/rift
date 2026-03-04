@@ -135,14 +135,14 @@ export function ChatWelcomeScreen({
           Que quieres hacer hoy?
         </h2>
 
-        <div className="hidden gap-3 text-left md:grid md:grid-cols-2">
+        <div className="hidden gap-3 text-start md:grid md:grid-cols-2">
           {suggestions.map((item) => (
             <button
               key={item.title}
               type="button"
               onClick={() => onSuggestionClick(item.prompt)}
               disabled={disabled}
-              className="rounded-3xl border border-border-default bg-bg-subtle p-4 text-left cursor-pointer hover:bg-bg-inverted/5 active:bg-bg-inverted/10"
+              className="rounded-3xl border border-border-default bg-bg-subtle p-4 text-start cursor-pointer hover:bg-bg-inverted/5 active:bg-bg-inverted/10"
             >
               <h3 className="mb-2 flex items-center gap-2 font-medium text-content-default">
                 {item.icon}

@@ -4,10 +4,17 @@ import { useEffect, useState } from 'react'
 import { useServerFn } from '@tanstack/react-start'
 import { useAppAuth } from '@/lib/auth/use-auth'
 import { requestEmailChange, saveAvatar, updateProfileName } from '@/lib/settings/account'
+import { getLocale, locales, setLocale } from '@/paraglide/runtime.js'
+import { m } from '@/paraglide/messages.js'
+
+type SupportedLocale = (typeof locales)[number]
 
 export type AccountPageLogicResult = {
   name: string
   email: string
+  language: SupportedLocale
+  languageOptions: Array<{ value: SupportedLocale; label: string }>
+  languageError: string | null
   avatarImage: string | null
   avatarMessage: string | null
   nameMessage: string | null
@@ -16,6 +23,8 @@ export type AccountPageLogicResult = {
   initials: string
   setNameInput: (nextName: string) => void
   setEmailInput: (nextEmail: string) => void
+  setLanguageInput: (nextLanguage: SupportedLocale) => void
+  applyLanguageSelection: (nextLanguage: SupportedLocale) => Promise<void>
   submitName: () => Promise<void>
   submitEmail: () => Promise<void>
   persistAvatar: (uploadedUrl: string) => Promise<void>
@@ -46,6 +55,23 @@ function getInitials(name: string, email: string): string {
   return emailPrefix.slice(0, 2).toUpperCase() || '?'
 }
 
+function getLocaleLabel(targetLocale: SupportedLocale): string {
+  try {
+    const baseLanguage = targetLocale.split('-')[0] ?? targetLocale
+    /**
+     * Use endonyms (self-names) for language labels so the selector remains stable
+     * regardless of the current UI language (e.g. Hebrew UI still shows "English",
+     * "Español", etc., instead of translating them to equivalents).
+     */
+    const displayNames = new Intl.DisplayNames([baseLanguage], { type: 'language' })
+    const localizedLabel = displayNames.of(baseLanguage)
+    if (!localizedLabel) return targetLocale
+    return localizedLabel.charAt(0).toUpperCase() + localizedLabel.slice(1)
+  } catch {
+    return targetLocale
+  }
+}
+
 /**
  * Centralized logic for user account settings.
  */
@@ -57,6 +83,8 @@ export function useAccountPageLogic(): AccountPageLogicResult {
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [language, setLanguage] = useState(getLocale())
+  const [languageError, setLanguageError] = useState<string | null>(null)
   const [avatarImage, setAvatarImage] = useState<string | null>(null)
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null)
   const [nameMessage, setNameMessage] = useState<string | null>(null)
@@ -79,6 +107,10 @@ export function useAccountPageLogic(): AccountPageLogicResult {
   }, [user?.email, user?.image, user?.name])
   const canEdit = !loading && !!user && !isAnonymous
   const initials = getInitials(name, email)
+  const languageOptions = locales.map((localeCode) => ({
+    value: localeCode,
+    label: getLocaleLabel(localeCode),
+  }))
 
   const setNameInput = (nextName: string) => {
     setNameMessage(null)
@@ -88,6 +120,28 @@ export function useAccountPageLogic(): AccountPageLogicResult {
   const setEmailInput = (nextEmail: string) => {
     setEmailMessage(null)
     setEmail(nextEmail)
+  }
+
+  const setLanguageInput = (nextLanguage: SupportedLocale) => {
+    setLanguageError(null)
+    setLanguage(nextLanguage)
+  }
+
+  const applyLanguageSelection = async (nextLanguage: SupportedLocale) => {
+    if (nextLanguage === language) return
+    setLanguageError(null)
+    setLanguage(nextLanguage)
+
+    /**
+     * Keep locale transitions authoritative and consistent by delegating to Paraglide.
+     * `setLocale` persists the locale via strategy (cookie) and triggers a full reload,
+     * ensuring translated strings and direction-sensitive layout are in sync globally.
+     */
+    try {
+      await Promise.resolve(setLocale(nextLanguage))
+    } catch {
+      setLanguageError(m.settings_account_language_error_default())
+    }
   }
 
   const submitName = async () => {
@@ -173,6 +227,9 @@ export function useAccountPageLogic(): AccountPageLogicResult {
   return {
     name,
     email,
+    language,
+    languageOptions,
+    languageError,
     avatarImage,
     avatarMessage,
     nameMessage,
@@ -181,6 +238,8 @@ export function useAccountPageLogic(): AccountPageLogicResult {
     initials,
     setNameInput,
     setEmailInput,
+    setLanguageInput,
+    applyLanguageSelection,
     submitName,
     submitEmail,
     persistAvatar,
