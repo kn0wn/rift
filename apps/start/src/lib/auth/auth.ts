@@ -1,6 +1,7 @@
 import { betterAuth } from 'better-auth'
 import { anonymous } from 'better-auth/plugins/anonymous'
 import { organization } from 'better-auth/plugins/organization'
+import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import { Pool } from 'pg'
 
 const connectionString = process.env.ZERO_UPSTREAM_DB
@@ -9,13 +10,18 @@ const pool = connectionString ? new Pool({ connectionString }) : null
 const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim()
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim()
 
+function resolveAuthBaseURL(): string {
+  const raw = process.env.VITE_BETTER_AUTH_URL?.trim() || 'http://localhost:3000'
+  return raw.replace(/\/+$/, '')
+}
+
 /**
  * Better Auth is the only identity provider used by the app.
  * Database uses direct `pg.Pool` integration to avoid Kysely adapter requirements.
  */
 export const auth = betterAuth({
   appName: 'Rift',
-  baseURL: process.env.BETTER_AUTH_URL?.trim() || 'http://localhost:3000',
+  baseURL: resolveAuthBaseURL(),
   basePath: '/api/auth',
   ...(process.env.BETTER_AUTH_SECRET
     ? { secret: process.env.BETTER_AUTH_SECRET }
@@ -72,5 +78,6 @@ export const auth = betterAuth({
         }
       },
     }),
+    tanstackStartCookies(),
   ],
 })

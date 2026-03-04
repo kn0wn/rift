@@ -6,16 +6,17 @@ import { Link } from '@tanstack/react-router'
 import { SETTINGS_HREF } from '@/routes/(app)/_layout/settings/-settings-nav'
 
 export type UserProfileAvatarUser = {
-  profilePictureUrl?: string | null
+  image?: string | null
+  name?: string | null
   email?: string | null
-  firstName?: string | null
-  lastName?: string | null
 }
 
 function getInitials(user: UserProfileAvatarUser): string {
-  if (user.firstName || user.lastName) {
-    const first = (user.firstName ?? '').slice(0, 1)
-    const last = (user.lastName ?? '').slice(0, 1)
+  const normalizedName = user.name?.trim() ?? ''
+  if (normalizedName.length > 0) {
+    const parts = normalizedName.split(/\s+/).filter(Boolean)
+    const first = parts[0]?.slice(0, 1) ?? ''
+    const last = (parts.length > 1 ? parts[parts.length - 1] : '')?.slice(0, 1) ?? ''
     return (first + last).toUpperCase() || '?'
   }
   const email = user.email ?? ''
@@ -45,9 +46,9 @@ export function UserProfileAvatar({
     >
       <Link to={settingsHref}>
         <Avatar size={size}>
-          {user?.profilePictureUrl ? (
+          {user?.image ? (
             <AvatarImage
-              src={user.profilePictureUrl}
+              src={user.image}
               alt=""
             />
           ) : null}

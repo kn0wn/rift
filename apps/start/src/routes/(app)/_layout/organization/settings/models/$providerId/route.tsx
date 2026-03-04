@@ -15,11 +15,11 @@ export const Route = createFileRoute(
 })
 
 function ProviderModelsRoutePage() {
-  const { organizationId } = useAppAuth()
+  const { activeOrganizationId } = useAppAuth()
   const { providerId } = Route.useParams()
   const { payload, loading, error, updating, update } = useProviderPolicy()
 
-  if (!organizationId) {
+  if (!activeOrganizationId) {
     return (
       <ContentPage
         title="Models"

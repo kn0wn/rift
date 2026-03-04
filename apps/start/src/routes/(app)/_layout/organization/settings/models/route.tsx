@@ -14,9 +14,9 @@ export const Route = createFileRoute(
 })
 
 function ModelsLayoutPage() {
-  const { organizationId } = useAppAuth()
+  const { activeOrganizationId } = useAppAuth()
 
-  if (!organizationId) {
+  if (!activeOrganizationId) {
     return (
       <ContentPage
         title="Models"

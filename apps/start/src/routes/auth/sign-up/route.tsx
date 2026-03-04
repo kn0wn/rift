@@ -1,14 +1,25 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { z } from 'zod'
 import { authClient } from '@/lib/auth/auth-client'
 
 export const Route = createFileRoute('/auth/sign-up')({
+  validateSearch: z.object({
+    redirect: z.string().optional(),
+  }),
   component: SignUpPage,
 })
 
+function getRedirectTarget(value: string | undefined): string {
+  if (!value) return '/chat'
+  return value.startsWith('/') ? value : '/chat'
+}
+
 function SignUpPage() {
   const navigate = useNavigate()
+  const search = Route.useSearch()
+  const redirectTarget = getRedirectTarget(search.redirect)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -29,7 +40,7 @@ function SignUpPage() {
         email,
         password,
       })
-      void navigate({ to: '/chat' })
+      void navigate({ to: redirectTarget })
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to sign up')
     } finally {

@@ -11,9 +11,9 @@ export const Route = createFileRoute(
 })
 
 function ProviderPolicyRoutePage() {
-  const { organizationId } = useAppAuth()
+  const { activeOrganizationId } = useAppAuth()
 
-  if (!organizationId) {
+  if (!activeOrganizationId) {
     return (
       <ContentPage
         title="Provider policy"

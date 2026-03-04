@@ -15,9 +15,7 @@ export function ChatWelcomeScreen({
   disabled: boolean
 }) {
   const { user } = useAppAuth()
-  const firstName = user?.firstName ?? null
-  const lastName = user?.lastName ?? null
-  const displayName = firstName || lastName
+  const displayName = user?.name ?? null
 
   const suggestions = useMemo(
     () => [

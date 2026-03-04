@@ -1,7 +1,6 @@
 import { Effect } from 'effect'
 import type {
   AuthenticatedServerAuthContext,
-  ServerAuthContext,
 } from './auth-context'
 import { extractServerAuthContext } from './auth-context'
 import { getSessionFromHeaders } from '@/lib/auth/server-session'
@@ -17,13 +16,11 @@ export type OrgAuthenticatedServerAuthContext =
 export const getServerAuthContext = Effect.fn(
   'ServerAuth.getServerAuthContext',
 )(
-  (): Effect.Effect<ServerAuthContext> =>
+  () =>
     Effect.promise(async () => {
       const headers = new Headers()
       return extractServerAuthContext(await getSessionFromHeaders(headers))
-    }).pipe(
-      Effect.catch(() => Effect.succeed({ isAnonymous: false } satisfies ServerAuthContext)),
-    ),
+    }),
 )
 
 /**
@@ -31,11 +28,9 @@ export const getServerAuthContext = Effect.fn(
  */
 export const getServerAuthContextFromHeaders = Effect.fn(
   'ServerAuth.getServerAuthContextFromHeaders',
-)((headers: Headers): Effect.Effect<ServerAuthContext> =>
+)((headers: Headers) =>
   Effect.promise(async () =>
     extractServerAuthContext(await getSessionFromHeaders(headers)),
-  ).pipe(
-    Effect.catch(() => Effect.succeed({ isAnonymous: false } satisfies ServerAuthContext)),
   ),
 )
 

@@ -1,14 +1,25 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { z } from 'zod'
 import { authClient } from '@/lib/auth/auth-client'
 
 export const Route = createFileRoute('/auth/sign-in')({
+  validateSearch: z.object({
+    redirect: z.string().optional(),
+  }),
   component: SignInPage,
 })
 
+function getRedirectTarget(value: string | undefined): string {
+  if (!value) return '/chat'
+  return value.startsWith('/') ? value : '/chat'
+}
+
 function SignInPage() {
   const navigate = useNavigate()
+  const search = Route.useSearch()
+  const redirectTarget = getRedirectTarget(search.redirect)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -26,7 +37,7 @@ function SignInPage() {
         email,
         password,
       })
-      void navigate({ to: '/chat' })
+      void navigate({ to: redirectTarget })
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to sign in')
     } finally {
@@ -75,7 +86,7 @@ function SignInPage() {
               callbackURL?: string
             }) => Promise<unknown>)({
               provider: 'google',
-              callbackURL: '/chat',
+              callbackURL: redirectTarget,
             })
           }
         >
@@ -100,7 +111,7 @@ function SignInPage() {
                 throw error
               }
             }
-            void navigate({ to: '/chat' })
+            void navigate({ to: redirectTarget })
           }}
         >
           Continue as guest
