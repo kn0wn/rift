@@ -12,7 +12,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-accent-default text-content-inverted hover:bg-accent-default hover:opacity-80",
+          "bg-accent-default text-white hover:bg-accent-default hover:opacity-80",
         ghost:
           "bg-transparent text-content-default",
         danger:

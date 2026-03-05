@@ -3,7 +3,9 @@
 import { Form } from '@rift/ui/form'
 import { ContentPage } from '@/components/layout'
 import { m } from '@/paraglide/messages.js'
+import { MfaSection } from './mfa-section'
 import { useSecurityPageLogic } from './security-page.logic'
+import { SessionList } from './session-list'
 
 /**
  * User security settings page for updating account password.
@@ -14,19 +16,45 @@ export function SecurityPage() {
     newPassword,
     confirmPassword,
     passwordMessage,
+    sessionsMessage,
+    mfaEnabled,
+    mfaPendingVerification,
+    mfaBusy,
+    mfaMessage,
+    mfaSetupTotpURI,
+    mfaBackupCodes,
+    mfaSetupPassword,
+    mfaSetupCode,
+    mfaDisablePassword,
+    activeSessions,
+    sessionsLoaded,
+    sessionsLoading,
+    revokingSessionToken,
+    revokingAllOtherSessions,
     canEdit,
     setCurrentPasswordInput,
     setNewPasswordInput,
     setConfirmPasswordInput,
+    setMfaSetupPasswordInput,
+    setMfaSetupCodeInput,
+    setMfaDisablePasswordInput,
     submitPasswordChange,
+    enableMfa,
+    verifyMfaTotp,
+    cancelMfaSetup,
+    finishMfaSetup,
+    disableMfa,
+    mfaSetupStep,
+    revokeSessionByToken,
+    revokeAllOtherSessions,
   } = useSecurityPageLogic()
-
   const passwordSuccessMessage =
     passwordMessage === m.settings_security_success() ? passwordMessage : undefined
 
   // Reveal the confirm + current fields only once the user starts typing a new password.
   // This keeps the form compact and guides the user through the flow step-by-step.
   const showExtraFields = newPassword.trim().length > 0
+  const otherSessionsCount = activeSessions.filter((session) => !session.isCurrent).length
 
   return (
     <ContentPage
@@ -94,6 +122,65 @@ export function SecurityPage() {
             {m.settings_security_help_sessions()}
           </p>
         }
+      />
+
+      <Form
+        title={m.settings_security_sessions_title()}
+        description={m.settings_security_sessions_description()}
+        contentSlot={
+          <div className="space-y-3">
+            <SessionList
+              activeSessions={activeSessions}
+              sessionsLoaded={sessionsLoaded}
+              canEdit={canEdit}
+              revokingSessionToken={revokingSessionToken}
+              revokingAllOtherSessions={revokingAllOtherSessions}
+              onRevokeSession={revokeSessionByToken}
+            />
+          </div>
+        }
+        forceActions
+        buttonText={m.settings_security_sessions_revoke_others_button()}
+        buttonVariant="dangerLight"
+        buttonDisabled={
+          !canEdit ||
+          sessionsLoading ||
+          revokingSessionToken != null ||
+          revokingAllOtherSessions ||
+          otherSessionsCount === 0
+        }
+        handleSubmit={async () => {
+          await revokeAllOtherSessions()
+        }}
+        helpText={
+          sessionsMessage ? (
+            <p className="text-sm text-content-subtle">{sessionsMessage}</p>
+          ) : (
+            <p className="text-sm text-content-subtle">{m.settings_security_sessions_help_revoke()}</p>
+          )
+        }
+      />
+
+      <MfaSection
+        canEdit={canEdit}
+        mfaEnabled={mfaEnabled}
+        mfaPendingVerification={mfaPendingVerification}
+        mfaBusy={mfaBusy}
+        mfaMessage={mfaMessage}
+        mfaSetupTotpURI={mfaSetupTotpURI}
+        mfaBackupCodes={mfaBackupCodes}
+        mfaSetupPassword={mfaSetupPassword}
+        mfaSetupCode={mfaSetupCode}
+        mfaDisablePassword={mfaDisablePassword}
+        setMfaSetupPasswordInput={setMfaSetupPasswordInput}
+        setMfaSetupCodeInput={setMfaSetupCodeInput}
+        setMfaDisablePasswordInput={setMfaDisablePasswordInput}
+        enableMfa={enableMfa}
+        verifyMfaTotp={verifyMfaTotp}
+        cancelMfaSetup={cancelMfaSetup}
+        finishMfaSetup={finishMfaSetup}
+        disableMfa={disableMfa}
+        mfaSetupStep={mfaSetupStep}
       />
     </ContentPage>
   )

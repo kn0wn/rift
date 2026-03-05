@@ -1,6 +1,8 @@
 import { betterAuth } from 'better-auth'
 import { anonymous } from 'better-auth/plugins/anonymous'
+import { multiSession } from 'better-auth/plugins/multi-session'
 import { organization } from 'better-auth/plugins/organization'
+import { twoFactor } from 'better-auth/plugins/two-factor'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import { Pool } from 'pg'
 import { sendAuthEmail } from './auth-email.server'
@@ -105,6 +107,27 @@ export const auth = betterAuth({
           client.release()
         }
       },
+    }),
+    multiSession({
+      /**
+       * Allow users to stay signed in from multiple devices/browsers
+       * while still being able to revoke specific sessions from settings.
+       */
+      maximumSessions: 10,
+    }),
+    twoFactor({
+      issuer: 'Rift',
+      totpOptions: {
+        digits: 6,
+        period: 30,
+      },
+      backupCodeOptions: {
+        amount: 10,
+        length: 10,
+        storeBackupCodes: 'encrypted',
+      },
+      twoFactorCookieMaxAge: 10 * 60,
+      trustDeviceMaxAge: 30 * 24 * 60 * 60,
     }),
     tanstackStartCookies(),
   ],

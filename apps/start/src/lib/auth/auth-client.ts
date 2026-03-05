@@ -1,5 +1,6 @@
 import { createAuthClient } from 'better-auth/react'
-import { anonymousClient, organizationClient } from 'better-auth/client/plugins'
+import { anonymousClient, multiSessionClient, organizationClient } from 'better-auth/client/plugins'
+import { twoFactorClient } from 'better-auth/client/plugins'
 
 function resolveAuthClientBaseURL(): string {
   const raw = import.meta.env.VITE_BETTER_AUTH_URL?.trim()
@@ -17,7 +18,7 @@ const baseURL = resolveAuthClientBaseURL()
 
 export const authClient = createAuthClient({
   baseURL,
-  plugins: [organizationClient(), anonymousClient()],
+  plugins: [organizationClient(), anonymousClient(), multiSessionClient(), twoFactorClient()],
 })
 
 export type AppSession = typeof authClient.$Infer.Session
