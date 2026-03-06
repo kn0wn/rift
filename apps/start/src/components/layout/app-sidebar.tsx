@@ -10,11 +10,12 @@ import {
   ORG_SETTINGS_HREF,
 } from '@/routes/(app)/_layout/organization/settings/-organization-settings-nav'
 import { UserProfileAvatar } from '@/components/layout/user-profile-avatar'
-import { Avatar, AvatarFallback } from '@rift/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@rift/ui/avatar'
 import { Button } from '@rift/ui/button'
 import { directionClass, useDirection } from '@rift/ui/direction'
 import { SidebarGroupTooltip } from '@rift/ui/tooltip'
 import { cn } from '@rift/utils'
+import { useActiveOrganization } from '@/lib/auth/active-organization'
 import { useAppAuth } from '@/lib/auth/use-auth'
 import { Link, useLocation } from '@tanstack/react-router'
 import type { ComponentType } from 'react'
@@ -29,9 +30,11 @@ const SIDEBAR_WIDTH = SIDEBAR_GROUPS_WIDTH + SIDEBAR_AREAS_WIDTH
 export const AppSidebar: ComponentType = () => {
   const { pathname } = useLocation()
   const { user, loading } = useAppAuth()
+  const { activeOrganization, loading: activeOrganizationLoading } = useActiveOrganization()
   const direction = useDirection()
   const currentArea = getCurrentArea(pathname)
   const showAreaPanel = currentArea !== null
+  const showOrganizationFallback = !activeOrganizationLoading && !activeOrganization?.logo && !!activeOrganization
 
   const sidebarWidth =
     showAreaPanel ? SIDEBAR_WIDTH : SIDEBAR_GROUPS_WIDTH
@@ -56,7 +59,7 @@ export const AppSidebar: ComponentType = () => {
         <div className="flex flex-col items-center gap-3">
             <div className="pb-1 pt-2" />
             <SidebarGroupTooltip
-              name={m.layout_organization_tooltip_name()}
+              name={activeOrganization?.name ?? m.layout_organization_tooltip_name()}
               description={m.layout_organization_tooltip_description()}
             >
               <Button
@@ -67,7 +70,15 @@ export const AppSidebar: ComponentType = () => {
               >
                 <Link to={ORG_SETTINGS_HREF} aria-label={m.layout_organization_settings_aria_label()}>
                   <Avatar size="xs">
-                    <AvatarFallback />
+                    {activeOrganization?.logo ? (
+                      <AvatarImage
+                        src={activeOrganization.logo}
+                        alt={activeOrganization.name ?? m.layout_organization_tooltip_name()}
+                      />
+                    ) : null}
+                    {showOrganizationFallback ? (
+                      <AvatarFallback name={activeOrganization.name} />
+                    ) : null}
                   </Avatar>
                 </Link>
               </Button>
