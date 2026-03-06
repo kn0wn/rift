@@ -2,7 +2,13 @@
 
 import { useNavigate } from '@tanstack/react-router'
 import { useCallback, useState } from 'react'
+import { m } from '@/paraglide/messages.js'
 import { authClient } from '@/lib/auth/auth-client'
+import {
+  getDefaultAuthDisplayName,
+  normalizeEmailAddress,
+  OTP_EXPIRES_IN_SECONDS,
+} from '@/components/auth/auth-shared'
 
 /** Redirect target derived from search.redirect; defaults to /chat. */
 export function getRedirectTarget(redirect: string | undefined): string {
@@ -10,16 +16,70 @@ export function getRedirectTarget(redirect: string | undefined): string {
   return redirect.startsWith('/') ? redirect : '/chat'
 }
 
+export type SignInPageView =
+  | 'auth-form'
+  | 'forgot-password'
+  | 'email-verification'
+  | 'mfa-verification'
+
 export type SignInPageLogicResult = {
+  view: SignInPageView
   isSignUp: boolean
-  showForgotPassword: boolean
+  pendingVerificationEmail: string
+  pendingMfaEmail: string
+  verificationMessage: string
+  otpSentAt: number | null
+  otpExpiresInSeconds: number
   isLoading: boolean
   error: string
+  clearError: () => void
   handleToggleMode: () => void
   handleShowForgotPassword: () => void
   handleBackToLogin: () => void
   /** Single submit handler: sign-in or sign-up based on current isSignUp. */
   handleAuthSubmit: (email: string, password: string) => Promise<void>
+  handleVerifyEmailOtp: (otp: string) => Promise<void>
+  handleVerifyMfaTotp: (otp: string) => Promise<void>
+  handleResendVerificationOtp: () => Promise<void>
+  handleBackFromMfa: () => void
+}
+
+function readAuthErrorMessage(error: { message?: string; code?: string } | null | undefined, fallback: string) {
+  if (!error) return fallback
+
+  if (error.code === 'TOO_MANY_ATTEMPTS') {
+    return m.auth_error_too_many_attempts()
+  }
+
+  return error.message ?? fallback
+}
+
+function readRecord(value: unknown): Record<string, unknown> | null {
+  if (value == null || typeof value !== 'object') return null
+  return value as Record<string, unknown>
+}
+
+function readBooleanField(source: Record<string, unknown> | null, keys: Array<string>): boolean | null {
+  if (!source) return null
+  for (const key of keys) {
+    const value = source[key]
+    if (typeof value === 'boolean') return value
+  }
+  return null
+}
+
+/**
+ * Better Auth may return the 2FA redirect flag either at the top-level result
+ * or nested under `data`, depending on the client method/callback shape.
+ */
+function requiresTwoFactorVerification(result: unknown): boolean {
+  const root = readRecord(result)
+  const data = readRecord(root?.data)
+
+  return (
+    readBooleanField(root, ['twoFactorRedirect']) === true ||
+    readBooleanField(data, ['twoFactorRedirect']) === true
+  )
 }
 
 /**
@@ -32,58 +92,166 @@ export function useSignInPageLogic(
 ): SignInPageLogicResult {
   const navigate = useNavigate()
   const [isSignUp, setIsSignUp] = useState(initialMode === 'sign-up')
-  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [view, setView] = useState<SignInPageView>('auth-form')
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState('')
+  const [pendingVerificationPassword, setPendingVerificationPassword] = useState('')
+  const [pendingMfaEmail, setPendingMfaEmail] = useState('')
+  const [verificationMessage, setVerificationMessage] = useState('')
+  const [otpSentAt, setOtpSentAt] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
+  const clearError = useCallback(() => {
+    setError('')
+  }, [])
+
+  const openEmailVerificationStep = useCallback(
+    (email: string, password: string, message: string) => {
+      setPendingVerificationEmail(email)
+      setPendingVerificationPassword(password)
+      setVerificationMessage(message)
+      setOtpSentAt(Date.now())
+      setView('email-verification')
+    },
+    [],
+  )
+
+  const openMfaVerificationStep = useCallback((email: string) => {
+    setPendingVerificationEmail('')
+    setPendingVerificationPassword('')
+    setVerificationMessage('')
+    setOtpSentAt(null)
+    setPendingMfaEmail(email)
+    setView('mfa-verification')
+  }, [])
+
+  const attemptCredentialSignIn = useCallback(async (email: string, password: string) => {
+    let requiresTwoFactor = false
+
+    const result = await authClient.signIn.email(
+      {
+        email,
+        password,
+      },
+      {
+        onSuccess(context) {
+          requiresTwoFactor =
+            requiresTwoFactor ||
+            requiresTwoFactorVerification(context) ||
+            requiresTwoFactorVerification(context.data)
+        },
+      },
+    )
+
+    return {
+      ...result,
+      requiresTwoFactor: requiresTwoFactor || requiresTwoFactorVerification(result),
+    }
+  }, [])
+
   const handleToggleMode = useCallback(() => {
     setIsSignUp((prev) => !prev)
+    setView('auth-form')
+    setPendingVerificationEmail('')
+    setPendingVerificationPassword('')
+    setPendingMfaEmail('')
+    setVerificationMessage('')
+    setOtpSentAt(null)
     setError('')
   }, [])
 
   const handleShowForgotPassword = useCallback(() => {
-    setShowForgotPassword(true)
+    setView('forgot-password')
+    setPendingVerificationEmail('')
+    setPendingVerificationPassword('')
+    setPendingMfaEmail('')
+    setVerificationMessage('')
+    setOtpSentAt(null)
+    setError('')
   }, [])
 
   const handleBackToLogin = useCallback(() => {
-    setShowForgotPassword(false)
+    setIsSignUp(false)
+    setView('auth-form')
+    setPendingVerificationEmail('')
+    setPendingVerificationPassword('')
+    setPendingMfaEmail('')
+    setVerificationMessage('')
+    setOtpSentAt(null)
     setError('')
   }, [])
 
   const handleSignInSubmit = useCallback(
     async (email: string, password: string) => {
+      const normalizedEmail = normalizeEmailAddress(email)
+
       setIsLoading(true)
       setError('')
 
-      const { data, error } = await authClient.signIn.email({ email, password })
+      const result = await attemptCredentialSignIn(normalizedEmail, password)
       setIsLoading(false)
 
-      if (error) {
-        setError(error.message ?? 'An unexpected error occurred. Please try again.')
+      if (result.error) {
+        if (result.error.status === 403) {
+          const otpResult = await authClient.emailOtp.sendVerificationOtp({
+            email: normalizedEmail,
+            type: 'email-verification',
+          })
+
+          if (otpResult.error) {
+            setError(
+              readAuthErrorMessage(
+                otpResult.error,
+                m.auth_error_send_verification_failed(),
+              ),
+            )
+            return
+          }
+
+          openEmailVerificationStep(
+            normalizedEmail,
+            password,
+            m.auth_error_email_not_verified(),
+          )
+          return
+        }
+
+        setError(readAuthErrorMessage(result.error, m.auth_error_unexpected()))
+        return
+      }
+
+      if (result.requiresTwoFactor) {
+        openMfaVerificationStep(normalizedEmail)
         return
       }
 
       void navigate({ to: redirectTarget })
     },
-    [redirectTarget, navigate],
+    [attemptCredentialSignIn, navigate, openEmailVerificationStep, openMfaVerificationStep, redirectTarget],
   )
 
   const handleSignUpSubmit = useCallback(
     async (email: string, password: string) => {
+      const normalizedEmail = normalizeEmailAddress(email)
+
       setIsLoading(true)
       setError('')
 
-      const { data, error } = await authClient.signUp.email({ name: '', email, password })
+      const { error } = await authClient.signUp.email({
+        name: getDefaultAuthDisplayName(normalizedEmail),
+        email: normalizedEmail,
+        password,
+      })
       setIsLoading(false)
 
       if (error) {
-        setError(error.message ?? 'An unexpected error occurred. Please try again.')
+        setError(readAuthErrorMessage(error, m.auth_error_unexpected()))
         return
       }
 
-      void navigate({ to: '/chat' })
+      openEmailVerificationStep(normalizedEmail, password, '')
     },
-    [navigate],
+    [openEmailVerificationStep],
   )
 
   const handleAuthSubmit = useCallback(
@@ -97,14 +265,152 @@ export function useSignInPageLogic(
     [isSignUp, handleSignInSubmit, handleSignUpSubmit],
   )
 
+  const handleVerifyEmailOtp = useCallback(
+    async (otp: string) => {
+      if (!pendingVerificationEmail || !pendingVerificationPassword) {
+        setError(m.auth_error_verify_first())
+        return
+      }
+
+      setIsLoading(true)
+      setError('')
+
+      const verifyResult = await authClient.emailOtp.verifyEmail({
+        email: pendingVerificationEmail,
+        otp,
+      })
+
+      if (verifyResult.error) {
+        setIsLoading(false)
+        setError(
+          readAuthErrorMessage(
+            verifyResult.error,
+            m.auth_error_invalid_or_expired_code(),
+          ),
+        )
+        return
+      }
+
+      const signInResult = await attemptCredentialSignIn(
+        pendingVerificationEmail,
+        pendingVerificationPassword,
+      )
+
+      setIsLoading(false)
+
+      if (signInResult.error) {
+        setError(
+          readAuthErrorMessage(
+            signInResult.error,
+            m.auth_error_verified_but_sign_in_failed(),
+          ),
+        )
+        return
+      }
+
+      if (signInResult.requiresTwoFactor) {
+        openMfaVerificationStep(pendingVerificationEmail)
+        return
+      }
+
+      void navigate({ to: redirectTarget })
+    },
+    [
+      attemptCredentialSignIn,
+      navigate,
+      openMfaVerificationStep,
+      pendingVerificationEmail,
+      pendingVerificationPassword,
+      redirectTarget,
+    ],
+  )
+
+  const handleVerifyMfaTotp = useCallback(
+    async (otp: string) => {
+      const normalizedCode = otp.replace(/\D+/g, '').slice(0, 6)
+
+      if (normalizedCode.length !== 6) {
+        setError(m.auth_error_mfa_invalid_code())
+        return
+      }
+
+      setIsLoading(true)
+      setError('')
+
+      const result = await authClient.twoFactor.verifyTotp({
+        code: normalizedCode,
+      })
+
+      setIsLoading(false)
+
+      if (result.error) {
+        setError(
+          readAuthErrorMessage(
+            result.error,
+            m.auth_error_mfa_invalid_or_expired(),
+          ),
+        )
+        return
+      }
+
+      void navigate({ to: redirectTarget })
+    },
+    [navigate, redirectTarget],
+  )
+
+  const handleResendVerificationOtp = useCallback(async () => {
+    if (!pendingVerificationEmail) {
+      setError(m.auth_error_no_pending_email())
+      return
+    }
+
+    setIsLoading(true)
+    setError('')
+
+    const result = await authClient.emailOtp.sendVerificationOtp({
+      email: pendingVerificationEmail,
+      type: 'email-verification',
+    })
+
+    setIsLoading(false)
+
+    if (result.error) {
+      setError(
+        readAuthErrorMessage(
+          result.error,
+          m.auth_error_resend_verification_failed(),
+        ),
+      )
+      return
+    }
+
+    setOtpSentAt(Date.now())
+  }, [pendingVerificationEmail])
+
+  const handleBackFromMfa = useCallback(() => {
+    setView('auth-form')
+    setPendingMfaEmail('')
+    setError('')
+  }, [])
+
   return {
+    view,
     isSignUp,
-    showForgotPassword,
+    pendingVerificationEmail,
+    pendingMfaEmail,
+    verificationMessage,
+    otpSentAt,
+    otpExpiresInSeconds: OTP_EXPIRES_IN_SECONDS,
     isLoading,
     error,
+    clearError,
     handleToggleMode,
     handleShowForgotPassword,
     handleBackToLogin,
     handleAuthSubmit,
+    handleVerifyEmailOtp,
+    handleVerifyMfaTotp,
+    handleResendVerificationOtp,
+    handleBackFromMfa,
   }
 }

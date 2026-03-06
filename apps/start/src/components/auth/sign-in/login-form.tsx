@@ -2,11 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
+import { m } from '@/paraglide/messages.js'
 import { Button } from '@rift/ui/button'
 import { Input } from '@rift/ui/input'
 import { Label } from '@rift/ui/label'
 import { cardVariants, staggerChildVariants } from '@/lib/animations'
 import { GoogleIcon, MicrosoftIcon } from '@/components/icons/provider-icons'
+import {
+  AUTH_PASSWORD_MIN_LENGTH,
+  isValidEmailAddress,
+  normalizeEmailAddress,
+} from '@/components/auth/auth-shared'
 import { authClient } from '@/lib/auth/auth-client'
 
 export type LoginFormProps = {
@@ -18,8 +24,6 @@ export type LoginFormProps = {
   error: string
   onForgotPassword?: () => void
 }
-
-const PASSWORD_MIN_LENGTH = 8
 
 export function LoginForm({
   isSignUp = false,
@@ -45,7 +49,7 @@ export function LoginForm({
         { provider: 'google' },
         {
           onError: (ctx) => {
-            setEmailError(ctx.error?.message ?? 'Error al iniciar con Google')
+            setEmailError(ctx.error?.message ?? m.auth_error_google())
             setIsGoogleLoading(false)
           },
         },
@@ -62,7 +66,7 @@ export function LoginForm({
         { provider: 'microsoft' },
         {
           onError: (ctx) => {
-            setEmailError(ctx.error?.message ?? 'Error al iniciar con Microsoft')
+            setEmailError(ctx.error?.message ?? m.auth_error_microsoft())
             setIsMicrosoftLoading(false)
           },
         },
@@ -74,32 +78,34 @@ export function LoginForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const normalizedEmail = normalizeEmailAddress(email)
+
     setEmailError('')
     setPasswordError('')
     setConfirmPasswordError('')
 
+    if (!isValidEmailAddress(normalizedEmail)) {
+      setEmailError(m.auth_error_invalid_email())
+      return
+    }
+
     if (isSignUp) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(email)) {
-        setEmailError('Por favor ingresa una dirección de correo válida')
-        return
-      }
-      if (password.length < PASSWORD_MIN_LENGTH) {
-        setPasswordError('La contraseña debe tener al menos 8 caracteres')
+      if (password.length < AUTH_PASSWORD_MIN_LENGTH) {
+        setPasswordError(m.auth_error_password_min_length({ count: String(AUTH_PASSWORD_MIN_LENGTH) }))
         return
       }
       if (password !== confirmPassword) {
-        setConfirmPasswordError('Las contraseñas no coinciden')
+        setConfirmPasswordError(m.auth_error_password_mismatch())
         return
       }
     }
 
     try {
-      await onSubmit(email, password)
+      await onSubmit(normalizedEmail, password)
     } catch {
       const msg = isSignUp
-        ? 'Error al crear la cuenta. Por favor intenta de nuevo.'
-        : 'Credenciales inválidas'
+        ? m.auth_error_sign_up_failed()
+        : m.auth_error_invalid_credentials()
       setEmailError(msg)
       setPasswordError(msg)
       if (isSignUp) setConfirmPasswordError(msg)
@@ -108,11 +114,12 @@ export function LoginForm({
 
   useEffect(() => {
     if (!parentError) return
-    if (emailError || passwordError || (isSignUp && confirmPasswordError)) return
-    setEmailError(parentError)
-    setPasswordError(parentError)
-    if (isSignUp) setConfirmPasswordError(parentError)
-  }, [parentError, isSignUp])
+    setEmailError((currentError) => currentError || parentError)
+    setPasswordError((currentError) => currentError || parentError)
+    if (isSignUp) {
+      setConfirmPasswordError((currentError) => currentError || parentError)
+    }
+  }, [isSignUp, parentError])
 
   return (
     <motion.div
@@ -128,7 +135,7 @@ export function LoginForm({
           >
         <motion.div variants={staggerChildVariants} className="space-y-2 relative">
           <Label htmlFor="email" variant="muted">
-            Correo Electrónico
+            {m.auth_form_email_label()}
           </Label>
           <Input
             id="email"
@@ -136,7 +143,7 @@ export function LoginForm({
             type="email"
             variant="alt"
             inputSize="large"
-            placeholder="Ingresa tu correo electrónico"
+            placeholder={m.auth_form_email_placeholder()}
             value={email}
             onChange={(e) => {
               setEmail(e.target.value)
@@ -164,7 +171,7 @@ export function LoginForm({
 
         <motion.div variants={staggerChildVariants} className="space-y-2 relative">
           <Label htmlFor="password" variant="muted">
-            Contraseña
+            {m.auth_form_password_label()}
           </Label>
           <Input
             id="password"
@@ -172,7 +179,7 @@ export function LoginForm({
             type="password"
             variant="alt"
             inputSize="large"
-            placeholder={isSignUp ? 'Crea una contraseña' : 'Ingresa tu contraseña'}
+            placeholder={isSignUp ? m.auth_form_create_password() : m.auth_form_password_placeholder()}
             value={password}
             onChange={(e) => {
               setPassword(e.target.value)
@@ -181,6 +188,7 @@ export function LoginForm({
             disabled={parentIsLoading}
             autoComplete={isSignUp ? 'section-sign-up new-password' : 'section-sign-in current-password'}
             aria-invalid={!!passwordError}
+            showPasswordToggle
             required
           />
           <AnimatePresence>
@@ -211,7 +219,7 @@ export function LoginForm({
             >
               <div className="space-y-2 relative">
                 <Label htmlFor="confirmPassword" variant="muted">
-                  Confirmar Contraseña
+                  {m.auth_form_confirm_password()}
                 </Label>
                 <Input
                   id="confirmPassword"
@@ -219,7 +227,7 @@ export function LoginForm({
                   type="password"
                   variant="alt"
                   inputSize="large"
-                  placeholder="Confirma tu contraseña"
+                  placeholder={m.auth_form_confirm_password_placeholder()}
                   value={confirmPassword}
                   onChange={(e) => {
                     setConfirmPassword(e.target.value)
@@ -228,6 +236,7 @@ export function LoginForm({
                   disabled={parentIsLoading}
                   autoComplete="section-sign-up new-password"
                   aria-invalid={!!confirmPasswordError}
+                  showPasswordToggle
                   required={isSignUp}
                 />
                 <AnimatePresence>
@@ -263,7 +272,7 @@ export function LoginForm({
                 className="overflow-hidden"
               >
                 <Button type="button" variant="link" onClick={onForgotPassword}>
-                  ¿Olvidaste tu contraseña?
+                  {m.auth_login_forgot_password()}
                 </Button>
               </motion.div>
             )}
@@ -278,10 +287,10 @@ export function LoginForm({
             disabled={parentIsLoading}
           >
             {parentIsLoading
-              ? 'Por favor espera...'
+              ? m.auth_login_submitting()
               : isSignUp
-                ? 'Crear Cuenta'
-                : 'Iniciar Sesión'}
+                ? m.auth_login_create_account()
+                : m.auth_login_sign_in()}
           </Button>
         </motion.div>
           </form>
@@ -291,7 +300,7 @@ export function LoginForm({
             className="my-6 flex items-center gap-3"
           >
             <div className="h-px flex-1 bg-border-default" />
-            <span className="text-sm text-content-muted">O</span>
+            <span className="text-sm text-content-muted">{m.auth_login_divider()}</span>
             <div className="h-px flex-1 bg-border-default" />
           </motion.div>
 
@@ -305,8 +314,8 @@ export function LoginForm({
             >
               <GoogleIcon className="mr-2.5 size-5" />
               {isGoogleLoading
-                ? (isSignUp ? 'Creando cuenta...' : 'Iniciando sesión...')
-                : (isSignUp ? 'Registrarse con Google' : 'Iniciar sesión con Google')}
+                ? (isSignUp ? m.auth_login_submitting_google_sign_up() : m.auth_login_submitting_google())
+                : (isSignUp ? m.auth_login_sign_up_google() : m.auth_login_sign_in_google())}
             </Button>
             <Button
               type="button"
@@ -317,8 +326,8 @@ export function LoginForm({
             >
               <MicrosoftIcon className="mr-2.5 size-5" />
               {isMicrosoftLoading
-                ? (isSignUp ? 'Creando cuenta...' : 'Iniciando sesión...')
-                : (isSignUp ? 'Registrarse con Microsoft' : 'Iniciar sesión con Microsoft')}
+                ? (isSignUp ? m.auth_login_submitting_microsoft_sign_up() : m.auth_login_submitting_microsoft())
+                : (isSignUp ? m.auth_login_sign_up_microsoft() : m.auth_login_sign_in_microsoft())}
             </Button>
           </motion.div>
         </div>
@@ -331,16 +340,16 @@ export function LoginForm({
         <p className="text-center text-sm text-content-subtle">
           {isSignUp ? (
             <>
-              ¿Ya tienes una cuenta?{' '}
+              {m.auth_form_already_have_account()}{' '}
               <Button type="button" onClick={onToggleMode} variant="link">
-                Iniciar sesión
+                {m.auth_login_sign_in()}
               </Button>
             </>
           ) : (
             <>
-              ¿No tienes una cuenta?{' '}
+              {m.auth_form_no_account()}{' '}
               <Button type="button" onClick={onToggleMode} variant="link">
-                Registrarse
+                {m.auth_login_sign_up()}
               </Button>
             </>
           )}

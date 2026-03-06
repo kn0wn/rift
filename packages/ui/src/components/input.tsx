@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Input as InputPrimitive } from "@base-ui/react/input"
 import { cva, type VariantProps } from "class-variance-authority"
+import { Eye, EyeOff } from "lucide-react"
 
 import { cn } from "@rift/utils"
 
@@ -29,22 +30,65 @@ const inputVariants = cva(
 )
 
 export type InputProps = Omit<React.ComponentProps<"input">, "size"> &
-  VariantProps<typeof inputVariants>
+  VariantProps<typeof inputVariants> & {
+    showPasswordToggle?: boolean
+  }
 
 function Input({
   className,
   type,
   variant = "default",
   inputSize = "default",
+  showPasswordToggle = false,
   ...props
 }: InputProps) {
+  const showPasswordLabel = "Show"
+  const hidePasswordLabel = "Hide"
+  const [passwordVisible, setPasswordVisible] = React.useState(false)
+  const shouldShowPasswordToggle = showPasswordToggle && type === "password"
+  const resolvedType = shouldShowPasswordToggle
+    ? passwordVisible
+      ? "text"
+      : "password"
+    : type
+  const inputClassName = cn(
+    inputVariants({ variant, inputSize }),
+    shouldShowPasswordToggle && "pr-12",
+    className
+  )
+
+  if (shouldShowPasswordToggle) {
+    return (
+      <div className="relative">
+        <InputPrimitive
+          type={resolvedType}
+          data-slot="input"
+          data-size={inputSize}
+          data-variant={variant}
+          className={inputClassName}
+          {...props}
+        />
+        <button
+          type="button"
+          className="absolute top-1/2 right-2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-black/50 transition-colors outline-none hover:text-black focus-visible:ring-2 focus-visible:ring-border-emphasis/50 disabled:pointer-events-none disabled:opacity-50 dark:text-white/50 dark:hover:text-white"
+          aria-label={passwordVisible ? hidePasswordLabel : showPasswordLabel}
+          aria-pressed={passwordVisible}
+          onClick={() => setPasswordVisible((current) => !current)}
+          disabled={props.disabled}
+        >
+          {passwordVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        </button>
+      </div>
+    )
+  }
+
   return (
     <InputPrimitive
-      type={type}
+      type={resolvedType}
       data-slot="input"
       data-size={inputSize}
       data-variant={variant}
-      className={cn(inputVariants({ variant, inputSize }), className)}
+      className={inputClassName}
       {...props}
     />
   )

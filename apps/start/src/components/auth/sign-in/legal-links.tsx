@@ -1,6 +1,7 @@
 'use client'
 
 import { motion } from 'motion/react'
+import { m } from '@/paraglide/messages.js'
 import { staggerChildVariants } from '@/lib/animations'
 
 export type LegalLinksProps = {
@@ -14,45 +15,26 @@ const linkClassName =
  * Legal links section: terms, acceptable use, and privacy policy.
  */
 export function LegalLinks({ isSignUp }: LegalLinksProps) {
+  const prefix = isSignUp ? m.auth_legal_sign_up_prefix() : m.auth_legal_sign_in_prefix()
   return (
     <motion.div
       variants={staggerChildVariants}
       className="text-center mt-6"
     >
       <p className="text-[10px] text-black/60 dark:text-white/60 leading-relaxed">
-        {isSignUp ? (
-          <>
-            Al registrarte, aceptas nuestros{' '}
-            <a href="/legal/terms" className={linkClassName}>
-              Términos
-            </a>
-            ,{' '}
-            <a href="/legal/acceptable-use" className={linkClassName}>
-              Uso Aceptable
-            </a>
-            , y{' '}
-            <a href="/legal/privacy" className={linkClassName}>
-              Política de Privacidad
-            </a>
-            .
-          </>
-        ) : (
-          <>
-            Al iniciar sesión, aceptas nuestros{' '}
-            <a href="/legal/terms" className={linkClassName}>
-              Términos
-            </a>
-            ,{' '}
-            <a href="/legal/acceptable-use" className={linkClassName}>
-              Uso Aceptable
-            </a>
-            , y{' '}
-            <a href="/legal/privacy" className={linkClassName}>
-              Política de Privacidad
-            </a>
-            .
-          </>
-        )}
+        {prefix}
+        <a href="/legal/terms" className={linkClassName}>
+          {m.auth_legal_terms()}
+        </a>
+        {m.auth_legal_comma()}
+        <a href="/legal/acceptable-use" className={linkClassName}>
+          {m.auth_legal_acceptable_use()}
+        </a>
+        {m.auth_legal_and()}
+        <a href="/legal/privacy" className={linkClassName}>
+          {m.auth_legal_privacy()}
+        </a>
+        {m.auth_legal_suffix()}
       </p>
     </motion.div>
   )

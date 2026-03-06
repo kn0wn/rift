@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'motion/react'
+import { motion } from 'motion/react'
+import { m } from '@/paraglide/messages.js'
 import { Button } from '@rift/ui/button'
 import { Label } from '@rift/ui/label'
 import { Input } from '@rift/ui/input'
@@ -13,43 +13,69 @@ import {
   menuCardButtonVariants,
   menuCardContentVariants,
 } from '@/lib/animations'
-import { authClient } from '@/lib/auth/auth-client'
+import { OtpStep } from '@/components/auth/otp-step'
+import { useForgotPasswordLogic } from './forgot-password.logic'
 
 export type ForgotPasswordProps = {
+  redirectTarget: string
   onBackToLogin: () => void
 }
 
-/**
- * Forgot-password flow: single email field and "Send reset link" / "Back".
- * Uses the same motion and card styling as the sign-in page.
- */
-export function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
-  const [email, setEmail] = useState('')
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+export function ForgotPassword({ redirectTarget, onBackToLogin }: ForgotPasswordProps) {
+  const {
+    email,
+    setEmail,
+    otp,
+    newPassword,
+    setNewPassword,
+    confirmPassword,
+    setConfirmPassword,
+    otpSentAt,
+    step,
+    setStep,
+    error,
+    setError,
+    successMessage,
+    setSuccessMessage,
+    isLoading,
+    otpExpiresInSeconds,
+    handleEmailSubmit,
+    handleOtpSubmit,
+    handleResendOtp,
+    handlePasswordReset,
+  } = useForgotPasswordLogic(redirectTarget)
 
-  const handleEmailSubmit = async () => {
-    setIsLoading(true)
-    setError('')
-
-    try {
-      const result = await authClient.requestPasswordReset({
-        email,
-        redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/reset-password`,
-      })
-
-      if (result.error) {
-        setError('Correo electrónico inválido')
-        return
-      }
-      setSuccess(true)
-    } catch {
-      setError('Correo electrónico inválido')
-    } finally {
-      setIsLoading(false)
-    }
+  if (step === 'enter-otp') {
+    return (
+      <OtpStep
+        title={m.auth_forgot_password_otp_title()}
+        description={m.auth_forgot_password_otp_description()}
+        instruction={m.auth_forgot_password_otp_instruction({ email })}
+        formId="forgot-password-otp-form"
+        initialOtp={otp}
+        otpSentAt={otpSentAt}
+        otpExpiresInSeconds={otpExpiresInSeconds}
+        error={error}
+        isLoading={isLoading}
+        onClearError={() => setError('')}
+        onSubmit={handleOtpSubmit}
+        onResend={handleResendOtp}
+        onBack={() => {
+          setError('')
+          setStep('request-email')
+        }}
+        submitText={m.auth_forgot_password_otp_submit()}
+        resendText={m.auth_forgot_password_otp_resend()}
+        backText={m.auth_forgot_password_otp_back()}
+      />
+    )
   }
+
+  const isRequestStep = step === 'request-email'
+  const title = isRequestStep ? m.auth_forgot_password_restore_title() : m.auth_forgot_password_new_title()
+  const description = isRequestStep
+    ? m.auth_forgot_password_restore_description()
+    : m.auth_forgot_password_new_description()
 
   return (
     <motion.div
@@ -63,12 +89,8 @@ export function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
         className="text-center mb-8"
         variants={menuCardHeaderVariants}
       >
-        <h1 className="text-3xl font-bold text-black dark:text-white mb-4">
-          Restablecer Contraseña
-        </h1>
-        <p className="text-black/70 dark:text-white/60 text-lg mb-6">
-          Ingresa tu correo electrónico para recibir un enlace de restablecimiento
-        </p>
+        <h1 className="text-3xl font-bold text-black dark:text-white mb-4">{title}</h1>
+        <p className="text-black/70 dark:text-white/60 text-lg mb-6">{description}</p>
       </motion.div>
 
       <motion.div
@@ -76,59 +98,114 @@ export function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
         variants={menuCardContentVariants}
       >
         <div className="rounded-b-3xl bg-bg-muted p-8 shadow-[0_0_1px_rgba(0,0,0,0.3),0_4px_12px_rgba(0,0,0,0.08)] transition-colors duration-200">
-          <motion.div
+          <motion.form
+            id="forgot-password-form"
+            onSubmit={isRequestStep ? handleEmailSubmit : handlePasswordReset}
             variants={cardVariants}
             initial="hidden"
             animate="visible"
             className="space-y-6"
           >
-            <motion.div variants={staggerChildVariants} className="space-y-2 relative">
-              <Label htmlFor="forgot-email" variant="muted">
-                Correo Electrónico
-              </Label>
-              <Input
-                id="forgot-email"
-                type="email"
-                variant="alt"
-                inputSize="large"
-                placeholder="Ingresa tu correo electrónico"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value)
-                  if (error) setError('')
-                  if (success) setSuccess(false)
-                }}
-                disabled={isLoading}
-                required
-              />
-              <div className="h-4 flex items-center">
-                <AnimatePresence>
-                  {error && (
-                    <motion.p
-                      className="absolute top-full left-0 text-red-500 dark:text-red-400 text-sm mt-1"
-                      initial={{ opacity: 0, y: -5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -5 }}
-                      transition={{ duration: 0.2, ease: 'easeOut' }}
-                    >
-                      {error}
-                    </motion.p>
-                  )}
-                  {success && (
-                    <motion.p
-                      className="absolute top-full left-0 text-green-600 dark:text-green-400 text-sm mt-1"
-                      initial={{ opacity: 0, y: -5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -5 }}
-                      transition={{ duration: 0.2, ease: 'easeOut' }}
-                    >
-                      Enlace de restablecimiento enviado
-                    </motion.p>
-                  )}
-                </AnimatePresence>
-              </div>
-            </motion.div>
-          </motion.div>
+            {isRequestStep ? (
+              <motion.div variants={staggerChildVariants} className="space-y-2 relative">
+                <Label htmlFor="forgot-email" variant="muted">
+                  {m.auth_forgot_password_email_label()}
+                </Label>
+                <Input
+                  id="forgot-email"
+                  name="email"
+                  type="email"
+                  variant="alt"
+                  inputSize="large"
+                  placeholder={m.auth_forgot_password_email_placeholder()}
+                  value={email}
+                  onChange={(event) => {
+                    setEmail(event.target.value)
+                    if (error) setError('')
+                    if (successMessage) setSuccessMessage('')
+                  }}
+                  disabled={isLoading}
+                  autoComplete="email"
+                  required
+                />
+              </motion.div>
+            ) : (
+              <>
+                <motion.div variants={staggerChildVariants}>
+                  <p className="text-sm text-content-subtle">
+                    {m.auth_forgot_password_we_will_update({ email })}
+                  </p>
+                </motion.div>
+
+                <motion.div variants={staggerChildVariants} className="space-y-2 relative">
+                  <Label htmlFor="forgot-password-new-password" variant="muted">
+                    {m.auth_forgot_password_new_label()}
+                  </Label>
+                  <Input
+                    id="forgot-password-new-password"
+                    name="forgot-password-new-password"
+                    type="password"
+                    autoComplete="new-password"
+                    variant="alt"
+                    inputSize="large"
+                    placeholder={m.auth_forgot_password_new_placeholder()}
+                    value={newPassword}
+                    onChange={(event) => {
+                      setNewPassword(event.target.value)
+                      if (error) setError('')
+                    }}
+                    showPasswordToggle
+                    disabled={isLoading}
+                    required
+                  />
+                </motion.div>
+
+                <motion.div variants={staggerChildVariants} className="space-y-2 relative">
+                  <Label htmlFor="forgot-password-confirm-password" variant="muted">
+                    {m.auth_forgot_password_confirm_label()}
+                  </Label>
+                  <Input
+                    id="forgot-password-confirm-password"
+                    name="forgot-password-confirm-password"
+                    type="password"
+                    autoComplete="new-password"
+                    variant="alt"
+                    inputSize="large"
+                    placeholder={m.auth_forgot_password_confirm_placeholder()}
+                    value={confirmPassword}
+                    onChange={(event) => {
+                      setConfirmPassword(event.target.value)
+                      if (error) setError('')
+                    }}
+                    showPasswordToggle
+                    disabled={isLoading}
+                    required
+                  />
+                </motion.div>
+              </>
+            )}
+
+            {error ? (
+              <motion.p
+                variants={staggerChildVariants}
+                className="rounded-2xl border border-content-error/20 bg-content-error/10 px-4 py-3 text-sm text-content-error"
+                role="alert"
+              >
+                {error}
+              </motion.p>
+            ) : null}
+
+            {successMessage ? (
+              <motion.p
+                variants={staggerChildVariants}
+                className="rounded-2xl border border-content-info/20 bg-content-info/10 px-4 py-3 text-sm text-content-info"
+                role="status"
+                aria-live="polite"
+              >
+                {successMessage}
+              </motion.p>
+            ) : null}
+          </motion.form>
         </div>
 
         <motion.div
@@ -139,18 +216,30 @@ export function ForgotPassword({ onBackToLogin }: ForgotPasswordProps) {
             type="button"
             variant="ghost"
             size="large"
-            onClick={onBackToLogin}
+            onClick={
+              isRequestStep
+                ? onBackToLogin
+                : () => {
+                    setError('')
+                    setStep('enter-otp')
+                  }
+            }
+            disabled={isLoading}
           >
-            Volver
+            {m.auth_forgot_password_back()}
           </Button>
           <Button
-            type="button"
+            type="submit"
             variant="default"
             size="large"
-            onClick={handleEmailSubmit}
-            disabled={!email || isLoading}
+            form="forgot-password-form"
+            disabled={
+              !email ||
+              isLoading ||
+              (!isRequestStep && (!newPassword || !confirmPassword))
+            }
           >
-            {isLoading ? 'Enviando...' : 'Enviar Enlace'}
+            {isRequestStep ? m.auth_forgot_password_send_code() : m.auth_forgot_password_update()}
           </Button>
         </motion.div>
       </motion.div>
