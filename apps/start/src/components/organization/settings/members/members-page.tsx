@@ -1,18 +1,38 @@
 'use client'
 
+import { useMemo } from 'react'
+import { cn } from '@rift/utils'
 import { DataTable, type DataTableColumnDef } from '@rift/ui/data-table'
 import { Avatar, AvatarFallback, AvatarImage } from '@rift/ui/avatar'
 import { Badge } from '@rift/ui/badge'
-import { Button } from '@rift/ui/button'
-import { UserPlus } from 'lucide-react'
 
 import { ContentPage } from '@/components/layout'
+import { MEMBERS_DIRECTORY_PAGE_SIZE } from '@/integrations/zero/queries/org-settings.queries'
 import { useMembersPageLogic, type MemberRow } from './members-page.logic'
+import { InviteMembersDialog } from './invite-members-dialog'
+
+/** Maps member role to Badge variant and optional custom classes for visual hierarchy. */
+function getRoleBadgeProps(role: string): {
+  variant: 'default' | 'secondary' | 'outline'
+  className?: string
+} {
+  const normalized = role.toLowerCase()
+  switch (normalized) {
+    case 'owner':
+      return { variant: 'default' }
+    case 'admin':
+      return { variant: 'outline', className: 'border-content-info/40 bg-bg-info/25 text-content-info' }
+    case 'member':
+      return { variant: 'outline' }
+    default:
+      return { variant: 'secondary' }
+  }
+}
 
 const MEMBERS_COLUMNS: Array<DataTableColumnDef<MemberRow>> = [
   {
     accessorKey: 'name',
-    header: 'User',
+    header: () => <span className="pl-11">User</span>,
     cell: ({ row }) => {
       const member = row.original
       return (
@@ -30,23 +50,27 @@ const MEMBERS_COLUMNS: Array<DataTableColumnDef<MemberRow>> = [
     accessorKey: 'email',
     header: 'Email',
     cell: ({ row }) => (
-      <span className="text-content-muted">{row.getValue('email')}</span>
+      <span className="text-content-subtle">{row.getValue('email')}</span>
     ),
   },
   {
     accessorKey: 'role',
     header: 'Role',
-    cell: ({ row }) => (
-      <Badge variant="outline" className="rounded-full px-2 py-0.5 capitalize">
-        {String(row.getValue('role'))}
-      </Badge>
-    ),
+    cell: ({ row }) => {
+      const role = String(row.getValue('role'))
+      const { variant, className } = getRoleBadgeProps(role)
+      return (
+        <Badge variant={variant} className={cn('capitalize', className)}>
+          {role}
+        </Badge>
+      )
+    },
   },
   {
     accessorKey: 'status',
     header: 'Status',
     cell: ({ row }) => (
-      <Badge variant="secondary" className="rounded-full px-2 py-0.5 capitalize">
+      <Badge variant="secondary" className="rounded-full px-2 py-0.5 capitalize text-content-subtle">
         {String(row.getValue('status'))}
       </Badge>
     ),
@@ -54,7 +78,24 @@ const MEMBERS_COLUMNS: Array<DataTableColumnDef<MemberRow>> = [
 ]
 
 export function MembersPage() {
-  const { data, isLoading } = useMembersPageLogic()
+  const {
+    data,
+    isLoading,
+    hasNextPage,
+    hasPreviousPage,
+    nextPage,
+    previousPage,
+  } = useMembersPageLogic()
+
+  const serverPagination = useMemo(
+    () => ({
+      hasNextPage,
+      hasPreviousPage,
+      onNextPage: nextPage,
+      onPreviousPage: previousPage,
+    }),
+    [hasNextPage, hasPreviousPage, nextPage, previousPage],
+  )
 
   return (
     <ContentPage
@@ -65,6 +106,8 @@ export function MembersPage() {
         data={data}
         isLoading={isLoading}
         columns={MEMBERS_COLUMNS}
+        pageSize={MEMBERS_DIRECTORY_PAGE_SIZE}
+        serverPagination={serverPagination}
         filterColumn="name"
         filterPlaceholder="Filter members..."
         messages={{
@@ -76,12 +119,7 @@ export function MembersPage() {
           rowsSelected: 'row(s) selected.',
         }}
         tableWrapperClassName="border-border-default bg-bg-default/95"
-        toolbarActionsRight={
-          <Button variant="default" disabled>
-            <UserPlus aria-hidden />
-            Invite members
-          </Button>
-        }
+        toolbarActionsRight={<InviteMembersDialog />}
       />
     </ContentPage>
   )

@@ -44,6 +44,13 @@ export type DataTableMessages = {
   next?: string
 }
 
+export type DataTableServerPagination = {
+  hasNextPage: boolean
+  hasPreviousPage: boolean
+  onNextPage: () => void
+  onPreviousPage: () => void
+}
+
 export type DataTableProps<TData, TValue> = {
   columns: Array<ColumnDef<TData, TValue>>
   data: Array<TData>
@@ -54,6 +61,7 @@ export type DataTableProps<TData, TValue> = {
   showColumnToggle?: boolean
   initialColumnVisibility?: VisibilityState
   pageSize?: number
+  serverPagination?: DataTableServerPagination
   className?: string
   tableWrapperClassName?: string
   messages?: DataTableMessages
@@ -88,6 +96,7 @@ export function DataTable<TData, TValue>({
   showColumnToggle = true,
   initialColumnVisibility,
   pageSize = 10,
+  serverPagination,
   className,
   tableWrapperClassName,
   messages,
@@ -239,8 +248,16 @@ export function DataTable<TData, TValue>({
           <Button
             variant="ghost"
             size="default"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
+            onClick={() =>
+              serverPagination
+                ? serverPagination.onPreviousPage()
+                : table.previousPage()
+            }
+            disabled={
+              serverPagination
+                ? !serverPagination.hasPreviousPage
+                : !table.getCanPreviousPage()
+            }
           >
             <ChevronLeft className="size-4" aria-hidden />
             {copy.previous}
@@ -248,8 +265,16 @@ export function DataTable<TData, TValue>({
           <Button
             variant="ghost"
             size="default"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
+            onClick={() =>
+              serverPagination
+                ? serverPagination.onNextPage()
+                : table.nextPage()
+            }
+            disabled={
+              serverPagination
+                ? !serverPagination.hasNextPage
+                : !table.getCanNextPage()
+            }
           >
             {copy.next}
             <ChevronRight className="size-4" aria-hidden />

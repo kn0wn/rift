@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useTransition } from 'react'
 import { useQuery } from '@rocicorp/zero/react'
 import { queries } from '@/integrations/zero'
 
@@ -31,15 +32,15 @@ export type OrgDirectoryRow = {
   members?: Array<OrgMemberDirectoryEntry>
 }
 
-function sortMembers(left: MemberRow, right: MemberRow): number {
-  const rolePriority: Record<string, number> = {
-    owner: 0,
-    admin: 1,
-    member: 2,
-  }
+const ROLE_PRIORITY: Record<string, number> = {
+  owner: 0,
+  admin: 1,
+  member: 2,
+}
 
-  const leftPriority = rolePriority[left.role.toLowerCase()] ?? Number.MAX_SAFE_INTEGER
-  const rightPriority = rolePriority[right.role.toLowerCase()] ?? Number.MAX_SAFE_INTEGER
+function sortMembers(left: MemberRow, right: MemberRow): number {
+  const leftPriority = ROLE_PRIORITY[left.role.toLowerCase()] ?? Number.MAX_SAFE_INTEGER
+  const rightPriority = ROLE_PRIORITY[right.role.toLowerCase()] ?? Number.MAX_SAFE_INTEGER
 
   if (leftPriority !== rightPriority) {
     return leftPriority - rightPriority
@@ -73,20 +74,71 @@ function toMemberRows(members: Array<OrgMemberDirectoryEntry>): Array<MemberRow>
 export type MembersPageLogicResult = {
   data: Array<MemberRow>
   isLoading: boolean
+  hasNextPage: boolean
+  hasPreviousPage: boolean
+  nextPage: () => void
+  previousPage: () => void
 }
 
-/**
- * Fetches the org members directory
- */
 export function useMembersPageLogic(): MembersPageLogicResult {
-  const [directory, directoryResult] = useQuery(queries.orgSettings.membersDirectory())
+  const [isPending, startTransition] = useTransition()
+  const [pageIndex, setPageIndex] = React.useState(0)
+  const [cursors, setCursors] = React.useState<Array<string>>([])
+  const nextCursorRef = React.useRef<string | null>(null)
 
-  const data = React.useMemo<Array<MemberRow>>(() => {
-    const members = (directory as OrgDirectoryRow | undefined | null)?.members ?? []
-    return toMemberRows(members)
-  }, [directory])
+  const queryArgs = React.useMemo(() => {
+    if (pageIndex === 0) return {}
+    const cursorId = cursors[pageIndex - 1] ?? nextCursorRef.current
+    return cursorId ? { cursor: { id: cursorId } } : {}
+  }, [pageIndex, cursors])
 
-  const isLoading = directoryResult.type !== 'complete'
+  const [directory, directoryResult] = useQuery(
+    queries.orgSettings.membersDirectory(queryArgs),
+  )
 
-  return { data, isLoading }
+  const rawMembers = React.useMemo(
+    () => (directory as OrgDirectoryRow | undefined | null)?.members ?? [],
+    [directory],
+  )
+
+  const data = React.useMemo(() => toMemberRows(rawMembers), [rawMembers])
+  const isLoading = directoryResult.type !== 'complete' || isPending
+
+  const hasNextPage = rawMembers.length >= 50
+  const hasPreviousPage = pageIndex > 0
+
+  if (rawMembers.length >= 50) {
+    const lastId = rawMembers[rawMembers.length - 1]?.id ?? null
+    nextCursorRef.current = lastId
+  }
+
+  React.useEffect(() => {
+    if (rawMembers.length >= 50 && cursors.length === pageIndex) {
+      const lastId = rawMembers[rawMembers.length - 1]?.id
+      if (lastId) {
+        setCursors((c) => [...c, lastId])
+      }
+    }
+  }, [rawMembers, pageIndex, cursors.length])
+
+  const nextPage = React.useCallback(() => {
+    if (hasNextPage) {
+      startTransition(() => setPageIndex((p) => p + 1))
+    }
+  }, [hasNextPage, startTransition])
+
+  const previousPage = React.useCallback(() => {
+    if (hasPreviousPage) {
+      startTransition(() => setPageIndex((p) => p - 1))
+    }
+  }, [hasPreviousPage, startTransition])
+
+  return {
+    data,
+    isLoading,
+    hasNextPage,
+    hasPreviousPage,
+    nextPage,
+    previousPage,
+  }
 }
