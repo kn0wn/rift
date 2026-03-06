@@ -5,29 +5,14 @@ import { Form } from '@rift/ui/form'
 import type { ByokProvider } from '@/lib/byok/types'
 import { m } from '@/paraglide/messages.js'
 
-/**
- * Help text component with a link to obtain API keys
- */
-function ApiKeyHelpText({ providerId }: { providerId: ByokProvider }) {
-  const isOpenAI = providerId === 'openai'
-  const href = isOpenAI
+function getProviderApiKeyHref(providerId: ByokProvider): string {
+  return providerId === 'openai'
     ? 'https://platform.openai.com/api-keys'
     : 'https://console.anthropic.com/settings/keys'
-  const providerName = isOpenAI ? 'OpenAI' : 'Anthropic'
+}
 
-  return (
-    <span className="text-sm text-content-subtle">
-      {m.org_byok_api_key_help_prefix({ providerName })}{' '}
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="font-medium text-accent-default underline underline-offset-2 hover:text-accent-default/80"
-      >
-        {m.org_byok_api_key_help_link_text()}
-      </a>
-    </span>
-  )
+function getProviderName(providerId: ByokProvider): string {
+  return providerId === 'openai' ? 'OpenAI' : 'Anthropic'
 }
 
 interface ProviderCard {
@@ -187,9 +172,13 @@ export function ByokForm({
               !featureEnabled ? (
                 m.org_byok_feature_disabled_help()
               ) : (
-                <ApiKeyHelpText providerId={card.providerId} />
+                m.org_byok_api_key_help_prefix({
+                  providerName: getProviderName(card.providerId),
+                })
               )
             }
+            helpLearnMoreHref={featureEnabled ? getProviderApiKeyHref(card.providerId) : undefined}
+            helpLearnMoreLabel={featureEnabled ? m.org_byok_api_key_help_link_text() : undefined}
           />
         </div>
       ))}

@@ -173,6 +173,13 @@ export interface FormProps extends Omit<
    * Prefer passing ReactNode (e.g. JSX) for dynamic or user-derived content.
    */
   helpText?: string | ReactNode;
+  /**
+   * Optional "Learn more" link URL shown in the footer help area.
+   * Renders a link with external icon after the help text when set.
+   */
+  helpLearnMoreHref?: string;
+  /** Optional custom label for the footer learn-more link. Defaults to "Learn more". */
+  helpLearnMoreLabel?: ReactNode;
   /** Optional custom content rendered to the right of the title/description header row. */
   headerSlot?: ReactNode;
   /** Optional class override for the header row container. */
@@ -282,6 +289,8 @@ export function Form({
   error,
   success,
   helpText,
+  helpLearnMoreHref,
+  helpLearnMoreLabel,
   headerSlot,
   headerClassName,
   contentSlot,
@@ -694,7 +703,7 @@ export function Form({
           )}
         </div>
 
-        {(helpText != null || error != null || success != null || hasMainField) && (
+        {(helpText != null || helpLearnMoreHref != null || error != null || success != null || hasMainField) && (
           <div
             className={cn(
               "relative z-0 -mt-3 flex flex-col items-start justify-between gap-4 rounded-b-xl border-t px-5 pb-4 pt-6 transition-[background-color,border-color] duration-250 ease-out sm:flex-row sm:items-center sm:justify-between sm:space-y-0 sm:pb-3 sm:pt-5",
@@ -734,15 +743,34 @@ export function Form({
                       {visibleSuccess}
                     </div>
                   )
-                ) : helpText != null ? (
-                  typeof helpText === "string" ? (
-                    <p
-                      className="text-content-subtle prose-a:underline prose-a:underline-offset-4 hover:prose-a:text-content-default transition-colors"
-                      dangerouslySetInnerHTML={{ __html: helpText }}
-                    />
-                  ) : (
-                    helpText
-                  )
+                ) : helpText != null || helpLearnMoreHref != null ? (
+                  <div className="text-sm text-content-subtle prose-a:underline prose-a:underline-offset-4 hover:prose-a:text-content-default transition-colors">
+                    {helpText != null &&
+                      (typeof helpText === "string" ? (
+                        <span
+                          dangerouslySetInnerHTML={{ __html: helpText }}
+                        />
+                      ) : (
+                        helpText
+                      ))}
+                    {helpLearnMoreHref != null && (
+                      <>
+                        {helpText != null && " "}
+                        <a
+                          href={helpLearnMoreHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 font-medium text-accent-default underline underline-offset-2 hover:text-accent-default/80"
+                        >
+                          {helpLearnMoreLabel ?? "Learn more"}
+                          <ExternalLink
+                            className="size-3.5"
+                            aria-hidden
+                          />
+                        </a>
+                      </>
+                    )}
+                  </div>
                 ) : null}
               </motion.div>
             </AnimatePresence>

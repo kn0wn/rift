@@ -40,6 +40,7 @@ import { Route as appLayoutOrganizationSettingsModelsRouteRouteImport } from './
 import { Route as appLayoutOrganizationSettingsMembersRouteRouteImport } from './routes/(app)/_layout/organization/settings/members/route'
 import { Route as appLayoutOrganizationSettingsCompliancePolicyRouteRouteImport } from './routes/(app)/_layout/organization/settings/compliance-policy/route'
 import { Route as appLayoutOrganizationSettingsByokRouteRouteImport } from './routes/(app)/_layout/organization/settings/byok/route'
+import { Route as appLayoutOrganizationSettingsAnalyticsRouteRouteImport } from './routes/(app)/_layout/organization/settings/analytics/route'
 import { Route as appLayoutOrganizationSettingsModelsIndexRouteImport } from './routes/(app)/_layout/organization/settings/models/index'
 import { Route as appLayoutOrganizationSettingsModelsProviderIdRouteRouteImport } from './routes/(app)/_layout/organization/settings/models/$providerId/route'
 
@@ -209,6 +210,12 @@ const appLayoutOrganizationSettingsByokRouteRoute =
     path: '/byok',
     getParentRoute: () => appLayoutOrganizationSettingsRouteRoute,
   } as any)
+const appLayoutOrganizationSettingsAnalyticsRouteRoute =
+  appLayoutOrganizationSettingsAnalyticsRouteRouteImport.update({
+    id: '/analytics',
+    path: '/analytics',
+    getParentRoute: () => appLayoutOrganizationSettingsRouteRoute,
+  } as any)
 const appLayoutOrganizationSettingsModelsIndexRoute =
   appLayoutOrganizationSettingsModelsIndexRouteImport.update({
     id: '/',
@@ -247,6 +254,7 @@ export interface FileRoutesByFullPath {
   '/settings/security': typeof appLayoutSettingsSecurityRouteRoute
   '/chat/': typeof appLayoutChatIndexRoute
   '/settings/': typeof appLayoutSettingsIndexRoute
+  '/organization/settings/analytics': typeof appLayoutOrganizationSettingsAnalyticsRouteRoute
   '/organization/settings/byok': typeof appLayoutOrganizationSettingsByokRouteRoute
   '/organization/settings/compliance-policy': typeof appLayoutOrganizationSettingsCompliancePolicyRouteRoute
   '/organization/settings/members': typeof appLayoutOrganizationSettingsMembersRouteRoute
@@ -278,6 +286,7 @@ export interface FileRoutesByTo {
   '/settings/security': typeof appLayoutSettingsSecurityRouteRoute
   '/chat': typeof appLayoutChatIndexRoute
   '/settings': typeof appLayoutSettingsIndexRoute
+  '/organization/settings/analytics': typeof appLayoutOrganizationSettingsAnalyticsRouteRoute
   '/organization/settings/byok': typeof appLayoutOrganizationSettingsByokRouteRoute
   '/organization/settings/compliance-policy': typeof appLayoutOrganizationSettingsCompliancePolicyRouteRoute
   '/organization/settings/members': typeof appLayoutOrganizationSettingsMembersRouteRoute
@@ -313,6 +322,7 @@ export interface FileRoutesById {
   '/(app)/_layout/settings/security': typeof appLayoutSettingsSecurityRouteRoute
   '/(app)/_layout/chat/': typeof appLayoutChatIndexRoute
   '/(app)/_layout/settings/': typeof appLayoutSettingsIndexRoute
+  '/(app)/_layout/organization/settings/analytics': typeof appLayoutOrganizationSettingsAnalyticsRouteRoute
   '/(app)/_layout/organization/settings/byok': typeof appLayoutOrganizationSettingsByokRouteRoute
   '/(app)/_layout/organization/settings/compliance-policy': typeof appLayoutOrganizationSettingsCompliancePolicyRouteRoute
   '/(app)/_layout/organization/settings/members': typeof appLayoutOrganizationSettingsMembersRouteRoute
@@ -349,6 +359,7 @@ export interface FileRouteTypes {
     | '/settings/security'
     | '/chat/'
     | '/settings/'
+    | '/organization/settings/analytics'
     | '/organization/settings/byok'
     | '/organization/settings/compliance-policy'
     | '/organization/settings/members'
@@ -380,6 +391,7 @@ export interface FileRouteTypes {
     | '/settings/security'
     | '/chat'
     | '/settings'
+    | '/organization/settings/analytics'
     | '/organization/settings/byok'
     | '/organization/settings/compliance-policy'
     | '/organization/settings/members'
@@ -414,6 +426,7 @@ export interface FileRouteTypes {
     | '/(app)/_layout/settings/security'
     | '/(app)/_layout/chat/'
     | '/(app)/_layout/settings/'
+    | '/(app)/_layout/organization/settings/analytics'
     | '/(app)/_layout/organization/settings/byok'
     | '/(app)/_layout/organization/settings/compliance-policy'
     | '/(app)/_layout/organization/settings/members'
@@ -655,6 +668,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appLayoutOrganizationSettingsByokRouteRouteImport
       parentRoute: typeof appLayoutOrganizationSettingsRouteRoute
     }
+    '/(app)/_layout/organization/settings/analytics': {
+      id: '/(app)/_layout/organization/settings/analytics'
+      path: '/analytics'
+      fullPath: '/organization/settings/analytics'
+      preLoaderRoute: typeof appLayoutOrganizationSettingsAnalyticsRouteRouteImport
+      parentRoute: typeof appLayoutOrganizationSettingsRouteRoute
+    }
     '/(app)/_layout/organization/settings/models/': {
       id: '/(app)/_layout/organization/settings/models/'
       path: '/'
@@ -720,6 +740,7 @@ const appLayoutOrganizationSettingsModelsRouteRouteWithChildren =
   )
 
 interface appLayoutOrganizationSettingsRouteRouteChildren {
+  appLayoutOrganizationSettingsAnalyticsRouteRoute: typeof appLayoutOrganizationSettingsAnalyticsRouteRoute
   appLayoutOrganizationSettingsByokRouteRoute: typeof appLayoutOrganizationSettingsByokRouteRoute
   appLayoutOrganizationSettingsCompliancePolicyRouteRoute: typeof appLayoutOrganizationSettingsCompliancePolicyRouteRoute
   appLayoutOrganizationSettingsMembersRouteRoute: typeof appLayoutOrganizationSettingsMembersRouteRoute
@@ -730,6 +751,8 @@ interface appLayoutOrganizationSettingsRouteRouteChildren {
 
 const appLayoutOrganizationSettingsRouteRouteChildren: appLayoutOrganizationSettingsRouteRouteChildren =
   {
+    appLayoutOrganizationSettingsAnalyticsRouteRoute:
+      appLayoutOrganizationSettingsAnalyticsRouteRoute,
     appLayoutOrganizationSettingsByokRouteRoute:
       appLayoutOrganizationSettingsByokRouteRoute,
     appLayoutOrganizationSettingsCompliancePolicyRouteRoute:
