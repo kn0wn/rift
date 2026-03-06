@@ -32,6 +32,7 @@ import { Route as appLayoutSettingsSecurityRouteRouteImport } from './routes/(ap
 import { Route as appLayoutSettingsDebugAuthRouteRouteImport } from './routes/(app)/_layout/settings/debug-auth/route'
 import { Route as appLayoutOrganizationSettingsRouteRouteImport } from './routes/(app)/_layout/organization/settings/route'
 import { Route as appLayoutChatThreadIdRouteRouteImport } from './routes/(app)/_layout/chat/$threadId/route'
+import { Route as appLayoutAcceptInvitationIdRouteRouteImport } from './routes/(app)/_layout/accept-invitation/$id/route'
 import { Route as appLayoutOrganizationSettingsIndexRouteImport } from './routes/(app)/_layout/organization/settings/index'
 import { Route as appLayoutOrganizationSettingsProviderPolicyRouteRouteImport } from './routes/(app)/_layout/organization/settings/provider-policy/route'
 import { Route as appLayoutOrganizationSettingsModelsRouteRouteImport } from './routes/(app)/_layout/organization/settings/models/route'
@@ -160,6 +161,12 @@ const appLayoutChatThreadIdRouteRoute =
     path: '/$threadId',
     getParentRoute: () => appLayoutChatRouteRoute,
   } as any)
+const appLayoutAcceptInvitationIdRouteRoute =
+  appLayoutAcceptInvitationIdRouteRouteImport.update({
+    id: '/accept-invitation/$id',
+    path: '/accept-invitation/$id',
+    getParentRoute: () => appLayoutRouteRoute,
+  } as any)
 const appLayoutOrganizationSettingsIndexRoute =
   appLayoutOrganizationSettingsIndexRouteImport.update({
     id: '/',
@@ -226,6 +233,7 @@ export interface FileRoutesByFullPath {
   '/$': typeof appLayoutSplatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/': typeof appLayoutIndexRoute
+  '/accept-invitation/$id': typeof appLayoutAcceptInvitationIdRouteRoute
   '/chat/$threadId': typeof appLayoutChatThreadIdRouteRoute
   '/organization/settings': typeof appLayoutOrganizationSettingsRouteRouteWithChildren
   '/settings/debug-auth': typeof appLayoutSettingsDebugAuthRouteRoute
@@ -256,6 +264,7 @@ export interface FileRoutesByTo {
   '/$': typeof appLayoutSplatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/': typeof appLayoutIndexRoute
+  '/accept-invitation/$id': typeof appLayoutAcceptInvitationIdRouteRoute
   '/chat/$threadId': typeof appLayoutChatThreadIdRouteRoute
   '/settings/debug-auth': typeof appLayoutSettingsDebugAuthRouteRoute
   '/settings/security': typeof appLayoutSettingsSecurityRouteRoute
@@ -288,6 +297,7 @@ export interface FileRoutesById {
   '/(app)/_layout/$': typeof appLayoutSplatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/(app)/_layout/': typeof appLayoutIndexRoute
+  '/(app)/_layout/accept-invitation/$id': typeof appLayoutAcceptInvitationIdRouteRoute
   '/(app)/_layout/chat/$threadId': typeof appLayoutChatThreadIdRouteRoute
   '/(app)/_layout/organization/settings': typeof appLayoutOrganizationSettingsRouteRouteWithChildren
   '/(app)/_layout/settings/debug-auth': typeof appLayoutSettingsDebugAuthRouteRoute
@@ -322,6 +332,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/api/auth/$'
     | '/'
+    | '/accept-invitation/$id'
     | '/chat/$threadId'
     | '/organization/settings'
     | '/settings/debug-auth'
@@ -352,6 +363,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/api/auth/$'
     | '/'
+    | '/accept-invitation/$id'
     | '/chat/$threadId'
     | '/settings/debug-auth'
     | '/settings/security'
@@ -383,6 +395,7 @@ export interface FileRouteTypes {
     | '/(app)/_layout/$'
     | '/api/auth/$'
     | '/(app)/_layout/'
+    | '/(app)/_layout/accept-invitation/$id'
     | '/(app)/_layout/chat/$threadId'
     | '/(app)/_layout/organization/settings'
     | '/(app)/_layout/settings/debug-auth'
@@ -575,6 +588,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appLayoutChatThreadIdRouteRouteImport
       parentRoute: typeof appLayoutChatRouteRoute
     }
+    '/(app)/_layout/accept-invitation/$id': {
+      id: '/(app)/_layout/accept-invitation/$id'
+      path: '/accept-invitation/$id'
+      fullPath: '/accept-invitation/$id'
+      preLoaderRoute: typeof appLayoutAcceptInvitationIdRouteRouteImport
+      parentRoute: typeof appLayoutRouteRoute
+    }
     '/(app)/_layout/organization/settings/': {
       id: '/(app)/_layout/organization/settings/'
       path: '/'
@@ -736,6 +756,7 @@ interface appLayoutRouteRouteChildren {
   appLayoutWriterRouteRoute: typeof appLayoutWriterRouteRoute
   appLayoutSplatRoute: typeof appLayoutSplatRoute
   appLayoutIndexRoute: typeof appLayoutIndexRoute
+  appLayoutAcceptInvitationIdRouteRoute: typeof appLayoutAcceptInvitationIdRouteRoute
 }
 
 const appLayoutRouteRouteChildren: appLayoutRouteRouteChildren = {
@@ -746,6 +767,7 @@ const appLayoutRouteRouteChildren: appLayoutRouteRouteChildren = {
   appLayoutWriterRouteRoute: appLayoutWriterRouteRoute,
   appLayoutSplatRoute: appLayoutSplatRoute,
   appLayoutIndexRoute: appLayoutIndexRoute,
+  appLayoutAcceptInvitationIdRouteRoute: appLayoutAcceptInvitationIdRouteRoute,
 }
 
 const appLayoutRouteRouteWithChildren = appLayoutRouteRoute._addFileChildren(

@@ -23,12 +23,20 @@ const buttonVariants = cva(
           "focus-visible:ring-2 focus-visible:ring-border-emphasis/50 data-[active=true]:bg-bg-default data-[active=true]:hover:bg-bg-default data-[active=true]:active:bg-bg-default",
         sidebarNavItem:
           "flex h-8 w-full items-center justify-between rounded-lg p-2 text-sm leading-normal font-normal text-content-default outline-none transition-[background-color,color,font-weight] duration-0 active:duration-75 focus-visible:ring-2 focus-visible:ring-border-emphasis hover:bg-bg-inverted/5 active:bg-bg-inverted/10 data-[active=true]:bg-bg-info/25 data-[active=true]:font-medium data-[active=true]:text-content-info data-[active=true]:hover:bg-bg-info/45 data-[active=true]:active:bg-bg-info/75",
+        outline:
+          "border border-black/10 dark:border-white/10 bg-white/50 dark:bg-black/20 backdrop-blur-sm text-black dark:text-white hover:bg-white/70 dark:hover:bg-black/30",
+        primaryAlt:
+          "bg-accent-default text-white hover:bg-accent-default/70 active:bg-accent-default/50 shadow-lg hover:shadow-xl",
+        link:
+          "bg-transparent border-0 shadow-none text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium hover:bg-transparent active:bg-transparent whitespace-nowrap",
       },
       size: {
         default:
           "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
         large:
           "h-10 px-4.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        big:
+          "h-12 w-full rounded-2xl gap-2.5 transition-all duration-200",
         icon:
           "aspect-square h-10 w-10 rounded-lg",
         iconSmall: 
@@ -56,6 +64,8 @@ function Button({
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
   }) {
+  const variantClasses = buttonVariants({ variant, size })
+
   if (asChild) {
     const { children, ...rest } = props
     const child = React.Children.only(children) as React.ReactElement<{
@@ -63,11 +73,7 @@ function Button({
       [key: string]: unknown
     }>
     const merged = {
-      className: cn(
-        buttonVariants({ variant, size }),
-        child.props?.className,
-        className
-      ),
+      className: cn(variantClasses, child.props?.className, className),
       "data-slot": "button",
       ...rest,
     }
@@ -77,7 +83,7 @@ function Button({
   return (
     <ButtonPrimitive
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(variantClasses, className)}
       {...props}
     />
   )

@@ -29,6 +29,11 @@
       "import": "./src/components/badge.tsx",
       "default": "./src/components/badge.tsx"
     },
+    "./blob-background-graphic": {
+      "types": "./src/components/blob-background-graphic.tsx",
+      "import": "./src/components/blob-background-graphic.tsx",
+      "default": "./src/components/blob-background-graphic.tsx"
+    },
     "./breadcrumb": {
       "types": "./src/components/breadcrumb.tsx",
       "import": "./src/components/breadcrumb.tsx",

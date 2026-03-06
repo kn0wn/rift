@@ -33,10 +33,6 @@ function resolveAuthBaseURL(): string {
 const connectionString = requireEnv('ZERO_UPSTREAM_DB')
 const pool = new Pool({ connectionString })
 
-/**
- * Better Auth is the only identity provider used by the app.
- * Database uses direct `pg.Pool` integration to avoid Kysely adapter requirements.
- */
 export const auth = betterAuth({
   appName: 'Rift',
   baseURL: resolveAuthBaseURL(),
@@ -76,6 +72,19 @@ export const auth = betterAuth({
   plugins: [
     organization({
       allowUserToCreateOrganization: true,
+      sendInvitationEmail: async (data) => {
+        const baseURL = resolveAuthBaseURL()
+        const inviteLink = `${baseURL}/accept-invitation/${data.id}`
+        const inviterName = data.inviter?.user?.name ?? data.inviter?.user?.email ?? 'A team member'
+        const orgName = data.organization?.name ?? 'the organization'
+        void sendAuthEmail({
+          to: data.email,
+          subject: `You're invited to join ${orgName}`,
+          text: `${inviterName} invited you to join ${orgName}. Open this link to accept: ${inviteLink}`,
+        }).catch((error) => {
+          console.error('Failed to send organization invitation email', error)
+        })
+      },
     }),
     anonymous({
       generateName: () => 'Guest User',

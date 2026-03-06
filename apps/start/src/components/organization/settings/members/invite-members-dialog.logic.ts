@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { authClient } from '@/lib/auth/auth-client'
 
 export const INVITE_BATCH_MAX = 10
@@ -131,13 +132,14 @@ export function useInviteMembersDialogLogic(): InviteMembersDialogLogicResult {
       return
     }
 
-    setSubmitSuccess(
+    const successMessage =
       toInvite.length === 1
         ? 'Invitation sent.'
-        : `${toInvite.length} invitations sent.`,
-    )
+        : `${toInvite.length} invitations sent.`
+    setSubmitSuccess(successMessage)
     setInviteDialogOpen(false)
     resetEntries()
+    toast.success(successMessage)
   }
 
   return {
