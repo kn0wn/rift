@@ -5,9 +5,10 @@ import { cn } from '@rift/utils'
 import {
   CodeBlock,
   CodeBlockActions,
-  CodeBlockFullscreenButton,
   CodeBlockCopyButton,
+  CodeBlockDownloadButton,
   CodeBlockFilename,
+  CodeBlockFullscreenButton,
   CodeBlockHeader,
   CodeBlockLineWrapButton,
   CodeBlockTitle,
@@ -91,21 +92,26 @@ const Code: NonNullable<Components['code']> = ({
           <CodeBlockFilename>{toLanguageLabel(language)}</CodeBlockFilename>
         </CodeBlockTitle>
         <CodeBlockActions>
+          <CodeBlockCopyButton
+            aria-label={m.common_copy()}
+            className="h-7 w-7 rounded-md border border-transparent p-1.5 text-content-subtle transition-colors duration-100 hover:bg-bg-muted hover:text-content-default focus-visible:border-border-default focus-visible:ring-0"
+            variant="ghost"
+          />
+          <CodeBlockDownloadButton
+            aria-label={m.chat_code_block_download_aria_label()}
+            className="h-7 w-7 rounded-md border border-transparent p-1.5 text-content-subtle transition-colors duration-100 hover:bg-bg-muted hover:text-content-default focus-visible:border-border-default focus-visible:ring-0"
+            variant="ghost"
+          />
           <CodeBlockLineWrapButton
             aria-label={m.chat_code_block_toggle_line_wrap_aria_label()}
-            className="h-6 w-6 rounded-md border border-transparent p-0 text-content-subtle transition-colors duration-100 hover:bg-bg-muted hover:text-content-default focus-visible:border-border-default focus-visible:ring-0"
+            className="h-7 w-7 rounded-md border border-transparent p-1.5 text-content-subtle transition-colors duration-100 hover:bg-bg-muted hover:text-content-default focus-visible:border-border-default focus-visible:ring-0"
             size="icon"
             variant="ghost"
           />
           <CodeBlockFullscreenButton
             aria-label={m.chat_code_block_toggle_fullscreen_aria_label()}
-            className="h-6 w-6 rounded-md border border-transparent p-0 text-content-subtle transition-colors duration-100 hover:bg-bg-muted hover:text-content-default focus-visible:border-border-default focus-visible:ring-0"
+            className="h-7 w-7 rounded-md border border-transparent p-1.5 text-content-subtle transition-colors duration-100 hover:bg-bg-muted hover:text-content-default focus-visible:border-border-default focus-visible:ring-0"
             size="icon"
-            variant="ghost"
-          />
-          <CodeBlockCopyButton
-            aria-label={m.common_copy()}
-            className="h-6 w-6 rounded-md border border-transparent p-0 text-content-subtle transition-colors duration-100 hover:bg-bg-muted hover:text-content-default focus-visible:border-border-default focus-visible:ring-0"
             variant="ghost"
           />
         </CodeBlockActions>
@@ -121,9 +127,9 @@ const Table: NonNullable<Components['table']> = ({
 }: HTMLAttributes<HTMLTableElement> & { children?: ReactNode }) => (
   <TableBlock className="my-4" label={m.chat_table_block_label()}>
     <TableBlockFloatingControls>
-      <TableBlockFullscreenButton aria-label={m.chat_table_block_toggle_fullscreen_aria_label()} />
       <TableBlockCopyButton aria-label={m.chat_table_block_copy_tsv_aria_label()} />
       <TableBlockDownloadButton aria-label={m.chat_table_block_download_csv_aria_label()} />
+      <TableBlockFullscreenButton aria-label={m.chat_table_block_toggle_fullscreen_aria_label()} />
     </TableBlockFloatingControls>
     <TableBlockTable className={cn(className)} {...props}>
       {children}
@@ -132,7 +138,7 @@ const Table: NonNullable<Components['table']> = ({
 )
 
 /**
- * Streamdown element overrides used by the TanStack chat renderer.
+ * Streamdown element overrides used by the chat renderer.
  *
  * We replace fenced code rendering with the shared chat `CodeBlock` component
  * so code snippets have consistent styling/actions across message parts.

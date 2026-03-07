@@ -20,6 +20,7 @@ import { cn } from "@rift/utils";
 import {
   CheckIcon,
   CopyIcon,
+  DownloadIcon,
   ExpandIcon,
   MinimizeIcon,
   WrapTextIcon,
@@ -37,7 +38,6 @@ import {
 import { createPortal } from "react-dom";
 import { createHighlighter } from "shiki";
 
-// Shiki uses bitflags for font styles: 1=italic, 2=bold, 4=underline
 // biome-ignore lint/suspicious/noBitwiseOperators: shiki bitflag check
 // eslint-disable-next-line no-bitwise -- shiki bitflag check
 const isItalic = (fontStyle: number | undefined) => fontStyle && fontStyle & 1;
@@ -50,7 +50,6 @@ const isUnderline = (fontStyle: number | undefined) =>
   // oxlint-disable-next-line eslint(no-bitwise)
   fontStyle && fontStyle & 4;
 
-// Transform tokens to include pre-computed keys to avoid noArrayIndexKey lint
 interface KeyedToken {
   token: ThemedToken;
   key: string;
@@ -69,7 +68,6 @@ const addKeysToTokens = (lines: ThemedToken[][]): KeyedLine[] =>
     })),
   }));
 
-// Token rendering component
 const TokenSpan = ({ token }: { token: ThemedToken }) => (
   <span
     className="dark:!bg-[var(--shiki-dark-bg)] dark:!text-[var(--shiki-dark)]"
@@ -88,7 +86,6 @@ const TokenSpan = ({ token }: { token: ThemedToken }) => (
   </span>
 );
 
-// Line rendering component
 const LineSpan = ({
   keyedLine,
   showLineNumbers,
@@ -129,7 +126,6 @@ const LineSpan = ({
   </span>
 );
 
-// Types
 type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
   code: string;
   language: BundledLanguage;
@@ -144,31 +140,46 @@ interface TokenizedCode {
 
 interface CodeBlockContextType {
   code: string;
+  language: BundledLanguage;
   isLineWrapped: boolean;
   isFullscreen: boolean;
   toggleLineWrap: () => void;
   toggleFullscreen: () => void;
 }
 
-// Context
 const CodeBlockContext = createContext<CodeBlockContextType>({
   code: "",
+  language: "markdown",
   isLineWrapped: false,
   isFullscreen: false,
   toggleLineWrap: () => {},
   toggleFullscreen: () => {},
 });
 
-// Highlighter cache (singleton per language)
+const LANGUAGE_EXTENSION: Partial<Record<BundledLanguage, string>> = {
+  bash: "sh",
+  css: "css",
+  html: "html",
+  javascript: "js",
+  json: "json",
+  jsx: "jsx",
+  markdown: "md",
+  python: "py",
+  scss: "scss",
+  shell: "sh",
+  sql: "sql",
+  tsx: "tsx",
+  typescript: "ts",
+  yaml: "yml",
+};
+
 const highlighterCache = new Map<
   string,
   Promise<HighlighterGeneric<BundledLanguage, BundledTheme>>
 >();
 
-// Token cache
 const tokensCache = new Map<string, TokenizedCode>();
 
-// Subscribers for async token updates
 const subscribers = new Map<string, Set<(result: TokenizedCode) => void>>();
 
 const getTokensCacheKey = (code: string, language: BundledLanguage) => {
@@ -194,7 +205,6 @@ const getHighlighter = (
   return highlighterPromise;
 };
 
-// Create raw tokens for immediate display while highlighting loads
 const createRawTokens = (code: string): TokenizedCode => ({
   bg: "transparent",
   fg: "inherit",
@@ -210,7 +220,6 @@ const createRawTokens = (code: string): TokenizedCode => ({
   ),
 });
 
-// Synchronous highlight with callback for async results
 export const highlightCode = (
   code: string,
   language: BundledLanguage,
@@ -219,13 +228,11 @@ export const highlightCode = (
 ): TokenizedCode | null => {
   const tokensCacheKey = getTokensCacheKey(code, language);
 
-  // Return cached result if available
   const cached = tokensCache.get(tokensCacheKey);
   if (cached) {
     return cached;
   }
 
-  // Subscribe callback if provided
   if (callback) {
     if (!subscribers.has(tokensCacheKey)) {
       subscribers.set(tokensCacheKey, new Set());
@@ -233,7 +240,6 @@ export const highlightCode = (
     subscribers.get(tokensCacheKey)?.add(callback);
   }
 
-  // Start highlighting in background - fire-and-forget async pattern
   getHighlighter(language)
     // oxlint-disable-next-line eslint-plugin-promise(prefer-await-to-then)
     .then((highlighter) => {
@@ -254,10 +260,8 @@ export const highlightCode = (
         tokens: result.tokens,
       };
 
-      // Cache the result
       tokensCache.set(tokensCacheKey, tokenized);
 
-      // Notify all subscribers
       const subs = subscribers.get(tokensCacheKey);
       if (subs) {
         for (const sub of subs) {
@@ -364,7 +368,7 @@ export const CodeBlockHeader = ({
 }: HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex items-center justify-between border-border-muted border-b bg-bg-default px-4 py-2 text-[13px] leading-[22px] text-content-subtle",
+      "flex items-center justify-between border-border-muted border-b bg-bg-default px-3 py-1.5 text-[13px] leading-[22px] text-content-subtle",
       className
     )}
     {...props}
@@ -400,7 +404,7 @@ export const CodeBlockActions = ({
 }: HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex items-center gap-1",
+      "flex items-center gap-2.5",
       className
     )}
     {...props}
@@ -419,10 +423,8 @@ export const CodeBlockContent = ({
   showLineNumbers?: boolean;
 }) => {
   const { isLineWrapped } = useContext(CodeBlockContext);
-  // Memoized raw tokens for immediate display
   const rawTokens = useMemo(() => createRawTokens(code), [code]);
 
-  // Try to get cached result synchronously, otherwise use raw tokens
   const [tokenized, setTokenized] = useState<TokenizedCode>(
     () => highlightCode(code, language) ?? rawTokens
   );
@@ -430,10 +432,8 @@ export const CodeBlockContent = ({
   useEffect(() => {
     let cancelled = false;
 
-    // Reset to raw tokens when code changes (shows current code, not stale tokens)
     setTokenized(highlightCode(code, language) ?? rawTokens);
 
-    // Subscribe to async highlighting result
     highlightCode(code, language, (result) => {
       if (!cancelled) {
         setTokenized(result);
@@ -502,12 +502,13 @@ export const CodeBlock = ({
   const contextValue = useMemo(
     () => ({
       code,
+      language,
       isLineWrapped,
       isFullscreen,
       toggleLineWrap,
       toggleFullscreen,
     }),
-    [code, isLineWrapped, isFullscreen, toggleLineWrap, toggleFullscreen]
+    [code, language, isLineWrapped, isFullscreen, toggleLineWrap, toggleFullscreen]
   );
 
   const blockChildren: ReactNode = (
@@ -525,7 +526,11 @@ export const CodeBlock = ({
 
   return (
     <CodeBlockContext.Provider value={contextValue}>
-      {isFullscreen && typeof document !== "undefined" ? (
+      <CodeBlockContainer className={className} language={language} {...props}>
+        {blockChildren}
+      </CodeBlockContainer>
+      {isFullscreen &&
+        typeof document !== "undefined" &&
         createPortal(
           <div className="fixed inset-0 z-[110] flex p-4">
             <div
@@ -545,12 +550,7 @@ export const CodeBlock = ({
             </CodeBlockContainer>
           </div>,
           document.body
-        )
-      ) : (
-        <CodeBlockContainer className={className} language={language} {...props}>
-          {blockChildren}
-        </CodeBlockContainer>
-      )}
+        )}
     </CodeBlockContext.Provider>
   );
 };
@@ -618,9 +618,6 @@ export const CodeBlockCopyButton = ({
 
 export type CodeBlockLineWrapButtonProps = ComponentProps<typeof Button>;
 
-/**
- * Toggles soft-wrapping for long lines while preserving original copied text.
- */
 export const CodeBlockLineWrapButton = ({
   className,
   ...props
@@ -641,11 +638,55 @@ export const CodeBlockLineWrapButton = ({
   );
 };
 
+export type CodeBlockDownloadButtonProps = ComponentProps<typeof Button> & {
+  filename?: string;
+  onError?: (error: Error) => void;
+};
+
+function getDefaultDownloadFilename(language: BundledLanguage): string {
+  const ext = LANGUAGE_EXTENSION[language] ?? "txt";
+  return `code.${ext}`;
+}
+
+export const CodeBlockDownloadButton = ({
+  className,
+  filename,
+  onError,
+  children,
+  ...props
+}: CodeBlockDownloadButtonProps) => {
+  const { code, language } = useContext(CodeBlockContext);
+  const resolvedFilename = filename ?? getDefaultDownloadFilename(language);
+
+  const download = useCallback(() => {
+    try {
+      const blob = new Blob([code], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = resolvedFilename;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      onError?.(error as Error);
+    }
+  }, [code, resolvedFilename, onError]);
+
+  return (
+    <Button
+      className={cn("shrink-0", className)}
+      onClick={download}
+      size="icon"
+      variant="ghost"
+      {...props}
+    >
+      {children ?? <DownloadIcon size={14} />}
+    </Button>
+  );
+};
+
 export type CodeBlockFullscreenButtonProps = ComponentProps<typeof Button>;
 
-/**
- * Expands the code block into a fullscreen overlay for easier reading.
- */
 export const CodeBlockFullscreenButton = ({
   className,
   ...props

@@ -93,10 +93,7 @@ export function ActiveOrganizationProvider({ children }: PropsWithChildren) {
       return
     }
 
-    const shouldShowLoadingState = activeOrganization == null
-    if (shouldShowLoadingState) {
-      setLoading(true)
-    }
+    setLoading(true)
     authClient.organization
       .list()
       .then(({ data, error }) => {
@@ -113,7 +110,7 @@ export function ActiveOrganizationProvider({ children }: PropsWithChildren) {
         )
       })
       .finally(() => {
-        if (!cancelled && shouldShowLoadingState) {
+        if (!cancelled) {
           setLoading(false)
         }
       })
@@ -121,7 +118,7 @@ export function ActiveOrganizationProvider({ children }: PropsWithChildren) {
     return () => {
       cancelled = true
     }
-  }, [userId, activeOrganization, activeOrganizationId])
+  }, [userId, activeOrganizationId])
 
   /**
    * Org settings mutations update the shared snapshot so shell UI reflects the

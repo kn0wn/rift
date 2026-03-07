@@ -140,6 +140,7 @@
   "auth_forgot_success_toast": "הסיסמה עודכנה בהצלחה.",
   "common_copy": "העתק",
   "common_copied": "הועתק",
+  "chat_code_block_download_aria_label": "הורד קוד",
   "chat_code_block_language_text_fallback": "טקסט",
   "chat_code_block_toggle_fullscreen_aria_label": "מצב מסך מלא",
   "chat_code_block_toggle_line_wrap_aria_label": "גלישת שורות",

@@ -140,6 +140,7 @@
   "auth_forgot_success_toast": "Tu contraseña se actualizó correctamente.",
   "common_copy": "Copiar",
   "common_copied": "Copiado",
+  "chat_code_block_download_aria_label": "Descargar código",
   "chat_code_block_language_text_fallback": "texto",
   "chat_code_block_toggle_fullscreen_aria_label": "Alternar pantalla completa",
   "chat_code_block_toggle_line_wrap_aria_label": "Alternar ajuste de línea",

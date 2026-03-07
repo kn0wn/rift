@@ -143,7 +143,7 @@ export function ChatThread() {
       aria-live="polite"
       aria-label={m.chat_thread_messages_aria_label()}
     >
-      {messages.length === 0 && (
+      {messages.length === 0 && !activeThreadId && (
         <div className="relative w-full overflow-hidden pt-9">
           <div className="relative z-10 mx-auto w-full max-w-2xl">
             <ChatWelcomeScreen
