@@ -43,6 +43,7 @@ export function ReasoningSelectorPanel({
     medium: m.chat_reasoning_effort_medium(),
     high: m.chat_reasoning_effort_high(),
     xhigh: m.chat_reasoning_effort_xhigh(),
+    max: m.chat_reasoning_effort_max(),
   }
 
   const handleSelect = React.useCallback(

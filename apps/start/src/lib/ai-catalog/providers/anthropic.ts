@@ -12,24 +12,27 @@ function anthropicBaseOptions(): AnthropicLanguageModelOptions {
 }
 
 /**
- * Builds Anthropic provider options for a given reasoning effort and thinking
- * budget. Merges base options with effort and thinking config for reasoning models.
+ * Builds Anthropic provider options for a given reasoning effort.
  */
 function anthropicReasoningOptions(
-  effort: 'low' | 'medium' | 'high',
-  budgetTokens: number,
+  effort: 'low' | 'medium' | 'high' | 'max',
+  options: number | { adaptive: true },
 ): Record<string, unknown> {
+  const thinking =
+    typeof options === 'object' && options.adaptive
+      ? { type: 'adaptive' as const }
+      : { type: 'enabled' as const, budgetTokens: options as number }
   return {
     anthropic: {
       ...anthropicBaseOptions(),
       effort,
-      thinking: { type: 'enabled' as const, budgetTokens },
+      thinking,
     } satisfies AnthropicLanguageModelOptions,
   }
 }
 
 /**
- * Default provider options for models that do not use per-effort options.
+ * Default provider options for models that do not use per-effort options
  */
 function anthropicDefaultProviderOptions(): Record<string, unknown> {
   return { anthropic: anthropicBaseOptions() }
@@ -58,12 +61,13 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
       supportsPdfInput: true,
     },
     providerToolIds: [],
-    reasoningEfforts: ['low', 'medium', 'high'],
+    reasoningEfforts: ['low', 'medium', 'high', 'max'],
     defaultReasoningEffort: 'medium',
     providerOptionsByReasoning: {
-      low: anthropicReasoningOptions('low', 4000),
-      medium: anthropicReasoningOptions('medium', 10000),
-      high: anthropicReasoningOptions('high', 20000),
+      low: anthropicReasoningOptions('low', { adaptive: true }),
+      medium: anthropicReasoningOptions('medium', { adaptive: true }),
+      high: anthropicReasoningOptions('high', { adaptive: true }),
+      max: anthropicReasoningOptions('max', { adaptive: true }),
     },
     defaultProviderOptions: anthropicDefaultProviderOptions(),
     defaultMaxOutputTokens: 128000,
@@ -124,6 +128,58 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
       outputPerToken: '0.000025',
       inputCacheReadPerToken: '0.0000005',
       inputCacheWritePerToken: '0.00000625',
+    },
+  },
+  {
+    id: 'anthropic/claude-sonnet-4.6',
+    providerId: 'anthropic',
+    providers: ['anthropic', 'gateway'],
+    providerModelIds: { anthropic: 'claude-sonnet-4-6' },
+    name: 'Claude Sonnet 4.6',
+    description:
+      'Claude Sonnet 4.6 is Anthropic\'s most capable Sonnet model, with significant improvements in coding, computer use, long-context reasoning, and agent planning. Supports adaptive thinking for dynamic reasoning depth.',
+    contextWindow: 1000000,
+    zeroDataRetention: true,
+    capabilities: {
+      supportsTools: true,
+      supportsStreaming: true,
+      supportsReasoning: true,
+      supportsImageInput: true,
+      supportsFileInput: true,
+      supportsPdfInput: true,
+    },
+    providerToolIds: [],
+    reasoningEfforts: ['low', 'medium', 'high'],
+    defaultReasoningEffort: 'medium',
+    providerOptionsByReasoning: {
+      low: anthropicReasoningOptions('low', { adaptive: true }),
+      medium: anthropicReasoningOptions('medium', { adaptive: true }),
+      high: anthropicReasoningOptions('high', { adaptive: true }),
+    },
+    defaultProviderOptions: anthropicDefaultProviderOptions(),
+    defaultMaxOutputTokens: 64000,
+    pricing: {
+      inputPerToken: '0.000003',
+      outputPerToken: '0.000015',
+      inputCacheReadPerToken: '0.0000003',
+      inputCacheWritePerToken: '0.00000375',
+      webSearchPerRequest: '10',
+      inputTiers: [
+        { cost: '0.000003', min: 0, max: 200001 },
+        { cost: '0.000006', min: 200001 },
+      ],
+      outputTiers: [
+        { cost: '0.000015', min: 0, max: 200001 },
+        { cost: '0.0000225', min: 200001 },
+      ],
+      inputCacheReadTiers: [
+        { cost: '0.0000003', min: 0, max: 200001 },
+        { cost: '0.0000006', min: 200001 },
+      ],
+      inputCacheWriteTiers: [
+        { cost: '0.00000375', min: 0, max: 200001 },
+        { cost: '0.0000075', min: 200001 },
+      ],
     },
   },
   {

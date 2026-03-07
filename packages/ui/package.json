@@ -94,6 +94,11 @@
       "import": "./src/components/icons/svg-icons.tsx",
       "default": "./src/components/icons/svg-icons.tsx"
     },
+    "./hover-card": {
+      "types": "./src/components/hover-card.tsx",
+      "import": "./src/components/hover-card.tsx",
+      "default": "./src/components/hover-card.tsx"
+    },
     "./hooks/useMediaQuery": {
       "types": "./src/hooks/useMediaQuery.ts",
       "import": "./src/hooks/useMediaQuery.ts",

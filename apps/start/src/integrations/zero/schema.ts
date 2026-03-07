@@ -97,7 +97,7 @@ const thread = table('thread')
     userId: string().from('user_id'),
     model: string(),
     reasoningEffort: enumeration<
-      'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'
+      'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
     >()
       .from('reasoning_effort')
       .optional(),
@@ -166,7 +166,14 @@ const message = table('message')
       temperature?: number
       topP?: number
       topK?: number
-      reasoningEffort?: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'
+      reasoningEffort?:
+        | 'none'
+        | 'minimal'
+        | 'low'
+        | 'medium'
+        | 'high'
+        | 'xhigh'
+        | 'max'
       includeSearch?: boolean
     }>()
       .from('model_params')

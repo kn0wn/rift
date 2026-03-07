@@ -195,6 +195,7 @@
   "chat_reasoning_effort_minimal": "מינימלי",
   "chat_reasoning_effort_none": "ללא",
   "chat_reasoning_effort_xhigh": "גבוה מאוד",
+  "chat_reasoning_effort_max": "מקסימלי",
   "chat_reasoning_finished": "סיום החשיבה",
   "chat_reasoning_label": "חשיבה",
   "chat_reasoning_select_aria_label": "בחירת רמת חשיבה",

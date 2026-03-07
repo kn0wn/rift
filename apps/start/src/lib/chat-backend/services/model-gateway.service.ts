@@ -88,6 +88,7 @@ export type ModelGatewayServiceShape = {
       | 'medium'
       | 'high'
       | 'xhigh'
+      | 'max'
     readonly onChunk?: (chunk: unknown) => void
     readonly abortSignal?: AbortSignal
   }) => Effect.Effect<ModelStreamResult, ModelProviderError>
@@ -129,6 +130,7 @@ export class ModelGatewayService extends ServiceMap.Service<
           | 'medium'
           | 'high'
           | 'xhigh'
+          | 'max'
         readonly onChunk?: (chunk: unknown) => void
         readonly abortSignal?: AbortSignal
       }) =>
@@ -148,7 +150,9 @@ export class ModelGatewayService extends ServiceMap.Service<
               activeTools: activeTools ? [...activeTools] : undefined,
               providerOptions: providerOptions as any,
               maxOutputTokens:
-                reasoningEffort === 'high' || reasoningEffort === 'xhigh'
+                reasoningEffort === 'high' ||
+                reasoningEffort === 'xhigh' ||
+                reasoningEffort === 'max'
                   ? 12_000
                   : 8_000,
               abortSignal,

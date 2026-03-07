@@ -309,9 +309,8 @@ export class ThreadService extends ServiceMap.Service<
 
             const generation = yield* Effect.tryPromise({
               try: async () => {
-                const { openai } = await import('@ai-sdk/openai')
                 return generateText({
-                  model: openai(TITLE_GENERATION_MODEL),
+                  model: TITLE_GENERATION_MODEL,
                   prompt: `You are an expert title generator. You are given a message and you need to generate a short title based on it.
 - you will generate a short 3-4 words title based on the first message a user begins a conversation with
 - the title should creative and unique
@@ -320,7 +319,6 @@ export class ThreadService extends ServiceMap.Service<
 - do not use any other text other than the title
 - the title should be in same language as the user message
 User message: ${trimmedMessage}`,
-                  temperature: 0.5,
                   maxOutputTokens: 50,
                 })
               },
@@ -630,7 +628,7 @@ User message: ${trimmedMessage}`,
   })
 }
 const DEFAULT_THREAD_TITLE = 'Nuevo Chat'
-const TITLE_GENERATION_MODEL = 'gpt-5-mini'
+const TITLE_GENERATION_MODEL = 'meta/llama-4-maverick'
 const MAX_USER_MESSAGE_LENGTH = 200
 const MAX_TITLE_WORDS = 8
 const MAX_TITLE_LENGTH = 50

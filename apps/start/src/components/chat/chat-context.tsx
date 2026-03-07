@@ -737,15 +737,20 @@ export function ChatProvider({
     ) {
       return
     }
-    if (!selectableModels.some((model) => model.id === threadRow.model)) return
+    const model = selectableModels.find((m) => m.id === threadRow.model)
+    if (!model) return
 
     hydratedModelSelectionThreadIdRef.current = activeThreadId
     setSelectedModelId(threadRow.model)
-    setSelectedReasoningEffort(
+    const threadEffort =
       'reasoningEffort' in threadRow &&
-        typeof threadRow.reasoningEffort === 'string'
+      typeof threadRow.reasoningEffort === 'string'
         ? (threadRow.reasoningEffort as AiReasoningEffort)
-        : undefined,
+        : undefined
+    setSelectedReasoningEffort(
+      threadEffort && model.reasoningEfforts.includes(threadEffort)
+        ? threadEffort
+        : model.defaultReasoningEffort,
     )
   }, [activeThreadId, threadRow, selectableModels])
 

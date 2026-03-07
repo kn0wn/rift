@@ -186,10 +186,20 @@ export class ModelPolicyService extends ServiceMap.Service<
             requestedReasoningEffort ??
             threadReasoningEffort ??
             selectedModel.defaultReasoningEffort
-          const reasoningEffort =
-            requestedEffort === 'none'
+          // Validate that the requested effort is supported by the model.
+          // Threads may have stale values (e.g. 'minimal' for o1/o3) after catalog updates.
+          const supportedEfforts = selectedModel.reasoningEfforts
+          const effectiveEffort =
+            supportedEfforts.length === 0
               ? undefined
-              : (requestedEffort as AiReasoningEffort | undefined)
+              : requestedEffort &&
+                supportedEfforts.includes(requestedEffort)
+                ? requestedEffort
+                : selectedModel.defaultReasoningEffort ?? supportedEfforts[0]
+          const reasoningEffort =
+            effectiveEffort === 'none'
+              ? undefined
+              : (effectiveEffort as AiReasoningEffort | undefined)
 
           const strictProviderKeyPolicyEnabled = Boolean(
             policy?.complianceFlags.require_org_provider_key,

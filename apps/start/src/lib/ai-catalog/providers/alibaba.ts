@@ -7,6 +7,15 @@ function alibabaDefaultProviderOptions(): Record<string, unknown> {
   return {}
 }
 
+function alibabaReasoningOptions(thinkingBudget: number): Record<string, unknown> {
+  return {
+    alibaba: {
+      enableThinking: true,
+      thinkingBudget,
+    },
+  }
+}
+
 export const ALIBABA_MODELS: readonly AiModelCatalogEntry<'alibaba'>[] = [
   {
     id: 'alibaba/qwen3-max-thinking',
@@ -26,8 +35,14 @@ export const ALIBABA_MODELS: readonly AiModelCatalogEntry<'alibaba'>[] = [
       supportsPdfInput: false,
     },
     providerToolIds: [],
-    reasoningEfforts: [],
-    defaultProviderOptions: alibabaDefaultProviderOptions(),
+    reasoningEfforts: ['low', 'medium', 'high'],
+    defaultReasoningEffort: 'medium',
+    providerOptionsByReasoning: {
+      low: alibabaReasoningOptions(2048),
+      medium: alibabaReasoningOptions(8192),
+      high: alibabaReasoningOptions(16384),
+    },
+    defaultProviderOptions: alibabaReasoningOptions(8192),
     defaultMaxOutputTokens: 65536,
     pricing: {
       inputPerToken: '0.0000012',
@@ -104,8 +119,14 @@ export const ALIBABA_MODELS: readonly AiModelCatalogEntry<'alibaba'>[] = [
       supportsPdfInput: false,
     },
     providerToolIds: [],
-    reasoningEfforts: [],
-    defaultProviderOptions: alibabaDefaultProviderOptions(),
+    reasoningEfforts: ['low', 'medium', 'high'],
+    defaultReasoningEffort: 'medium',
+    providerOptionsByReasoning: {
+      low: alibabaReasoningOptions(2048),
+      medium: alibabaReasoningOptions(8192),
+      high: alibabaReasoningOptions(16384),
+    },
+    defaultProviderOptions: alibabaReasoningOptions(8192),
     defaultMaxOutputTokens: 65536,
     pricing: {
       inputPerToken: '0.00000015',

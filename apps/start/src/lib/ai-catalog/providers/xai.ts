@@ -9,22 +9,6 @@ function xaiBaseOptions(): XaiLanguageModelResponsesOptions {
 }
 
 /**
- * Builds xAI Responses API provider options for reasoning.
- */
-function xaiReasoningOptions(
-  reasoningEffort: NonNullable<
-    XaiLanguageModelResponsesOptions['reasoningEffort']
-  >,
-): Record<string, unknown> {
-  return {
-    xai: {
-      ...xaiBaseOptions(),
-      reasoningEffort,
-    } satisfies XaiLanguageModelResponsesOptions,
-  }
-}
-
-/**
  * XAI default provider options.
  */
 function xaiDefaultProviderOptions(): Record<string, unknown> {
@@ -32,82 +16,6 @@ function xaiDefaultProviderOptions(): Record<string, unknown> {
 }
 
 export const XAI_MODELS: readonly AiModelCatalogEntry<'xai'>[] = [
-  {
-    id: 'xai/grok-4-fast-reasoning',
-    providerId: 'xai',
-    providers: ['gateway'],
-    name: 'Grok 4 Fast Reasoning',
-    description:
-      'Grok 4 fast variant with reasoning and tool support. Large context with implicit caching.',
-    contextWindow: 2000000,
-    zeroDataRetention: false,
-    capabilities: {
-      supportsTools: true,
-      supportsStreaming: true,
-      supportsReasoning: true,
-      supportsImageInput: true,
-      supportsFileInput: true,
-      supportsPdfInput: false,
-    },
-    providerToolIds: ['web_search', 'x_search', 'code_execution'],
-    reasoningEfforts: ['low', 'medium', 'high'],
-    defaultReasoningEffort: 'medium',
-    providerOptionsByReasoning: {
-      low: xaiReasoningOptions('low'),
-      medium: xaiReasoningOptions('medium'),
-      high: xaiReasoningOptions('high'),
-    },
-    defaultProviderOptions: xaiDefaultProviderOptions(),
-    defaultMaxOutputTokens: 256000,
-    pricing: {
-      inputPerToken: '0.0000002',
-      outputPerToken: '0.0000005',
-      inputCacheReadPerToken: '0.00000005',
-      inputTiers: [
-        { cost: '0.0000002', min: 0, max: 128001 },
-        { cost: '0.0000004', min: 128001 },
-      ],
-      outputTiers: [
-        { cost: '0.0000005', min: 0, max: 128001 },
-        { cost: '0.000001', min: 128001 },
-      ],
-    },
-  },
-  {
-    id: 'xai/grok-4-fast-non-reasoning',
-    providerId: 'xai',
-    providers: ['gateway'],
-    name: 'Grok 4 Fast Non-Reasoning',
-    description:
-      'Grok 4 fast variant tuned for low-latency responses without reasoning.',
-    contextWindow: 2000000,
-    zeroDataRetention: false,
-    capabilities: {
-      supportsTools: true,
-      supportsStreaming: true,
-      supportsReasoning: false,
-      supportsImageInput: true,
-      supportsFileInput: true,
-      supportsPdfInput: false,
-    },
-    providerToolIds: ['web_search', 'x_search'],
-    reasoningEfforts: [],
-    defaultProviderOptions: xaiDefaultProviderOptions(),
-    defaultMaxOutputTokens: 256000,
-    pricing: {
-      inputPerToken: '0.0000002',
-      outputPerToken: '0.0000005',
-      inputCacheReadPerToken: '0.00000005',
-      inputTiers: [
-        { cost: '0.0000002', min: 0, max: 128001 },
-        { cost: '0.0000004', min: 128001 },
-      ],
-      outputTiers: [
-        { cost: '0.0000005', min: 0, max: 128001 },
-        { cost: '0.000001', min: 128001 },
-      ],
-    },
-  },
   {
     id: 'xai/grok-4.1-fast-reasoning',
     providerId: 'xai',
@@ -126,13 +34,7 @@ export const XAI_MODELS: readonly AiModelCatalogEntry<'xai'>[] = [
       supportsPdfInput: false,
     },
     providerToolIds: ['web_search', 'x_search', 'code_execution'],
-    reasoningEfforts: ['low', 'medium', 'high'],
-    defaultReasoningEffort: 'medium',
-    providerOptionsByReasoning: {
-      low: xaiReasoningOptions('low'),
-      medium: xaiReasoningOptions('medium'),
-      high: xaiReasoningOptions('high'),
-    },
+    reasoningEfforts: [],
     defaultProviderOptions: xaiDefaultProviderOptions(),
     defaultMaxOutputTokens: 30000,
     pricing: {
@@ -200,19 +102,83 @@ export const XAI_MODELS: readonly AiModelCatalogEntry<'xai'>[] = [
       supportsPdfInput: false,
     },
     providerToolIds: ['code_execution', 'web_search'],
-    reasoningEfforts: ['low', 'medium', 'high'],
-    defaultReasoningEffort: 'medium',
-    providerOptionsByReasoning: {
-      low: xaiReasoningOptions('low'),
-      medium: xaiReasoningOptions('medium'),
-      high: xaiReasoningOptions('high'),
-    },
+    reasoningEfforts: [],
     defaultProviderOptions: xaiDefaultProviderOptions(),
     defaultMaxOutputTokens: 256000,
     pricing: {
       inputPerToken: '0.0000002',
       outputPerToken: '0.0000015',
       inputCacheReadPerToken: '0.00000002',
+    },
+  },
+  {
+    id: 'xai/grok-4-fast-reasoning',
+    providerId: 'xai',
+    providers: ['gateway'],
+    name: 'Grok 4 Fast Reasoning',
+    description:
+      'Grok 4 fast variant with reasoning and tool support. Large context with implicit caching.',
+    contextWindow: 2000000,
+    zeroDataRetention: false,
+    capabilities: {
+      supportsTools: true,
+      supportsStreaming: true,
+      supportsReasoning: true,
+      supportsImageInput: true,
+      supportsFileInput: true,
+      supportsPdfInput: false,
+    },
+    providerToolIds: ['web_search', 'x_search', 'code_execution'],
+    reasoningEfforts: [],
+    defaultProviderOptions: xaiDefaultProviderOptions(),
+    defaultMaxOutputTokens: 256000,
+    pricing: {
+      inputPerToken: '0.0000002',
+      outputPerToken: '0.0000005',
+      inputCacheReadPerToken: '0.00000005',
+      inputTiers: [
+        { cost: '0.0000002', min: 0, max: 128001 },
+        { cost: '0.0000004', min: 128001 },
+      ],
+      outputTiers: [
+        { cost: '0.0000005', min: 0, max: 128001 },
+        { cost: '0.000001', min: 128001 },
+      ],
+    },
+  },
+  {
+    id: 'xai/grok-4-fast-non-reasoning',
+    providerId: 'xai',
+    providers: ['gateway'],
+    name: 'Grok 4 Fast Non-Reasoning',
+    description:
+      'Grok 4 fast variant tuned for low-latency responses without reasoning.',
+    contextWindow: 2000000,
+    zeroDataRetention: false,
+    capabilities: {
+      supportsTools: true,
+      supportsStreaming: true,
+      supportsReasoning: false,
+      supportsImageInput: true,
+      supportsFileInput: true,
+      supportsPdfInput: false,
+    },
+    providerToolIds: ['web_search', 'x_search'],
+    reasoningEfforts: [],
+    defaultProviderOptions: xaiDefaultProviderOptions(),
+    defaultMaxOutputTokens: 256000,
+    pricing: {
+      inputPerToken: '0.0000002',
+      outputPerToken: '0.0000005',
+      inputCacheReadPerToken: '0.00000005',
+      inputTiers: [
+        { cost: '0.0000002', min: 0, max: 128001 },
+        { cost: '0.0000004', min: 128001 },
+      ],
+      outputTiers: [
+        { cost: '0.0000005', min: 0, max: 128001 },
+        { cost: '0.000001', min: 128001 },
+      ],
     },
   },
 ]

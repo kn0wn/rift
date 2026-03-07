@@ -10,10 +10,10 @@ function moonshotaiDefaultProviderOptions(): Record<string, unknown> {
 /**
  * Provider options for Moonshot thinking/reasoning models.
  */
-function moonshotaiThinkingProviderOptions(): Record<string, unknown> {
+function moonshotaiReasoningOptions(budgetTokens: number): Record<string, unknown> {
   return {
     moonshotai: {
-      thinking: { type: 'enabled' as const, budgetTokens: 2048 },
+      thinking: { type: 'enabled' as const, budgetTokens },
       reasoningHistory: 'interleaved' as const,
     },
   }
@@ -63,8 +63,14 @@ export const MOONSHOTAI_MODELS: readonly AiModelCatalogEntry<'moonshotai'>[] = [
       supportsPdfInput: false,
     },
     providerToolIds: [],
-    reasoningEfforts: [],
-    defaultProviderOptions: moonshotaiThinkingProviderOptions(),
+    reasoningEfforts: ['low', 'medium', 'high'],
+    defaultReasoningEffort: 'medium',
+    providerOptionsByReasoning: {
+      low: moonshotaiReasoningOptions(1024),
+      medium: moonshotaiReasoningOptions(2048),
+      high: moonshotaiReasoningOptions(8192),
+    },
+    defaultProviderOptions: moonshotaiReasoningOptions(2048),
     defaultMaxOutputTokens: 16384,
   },
   {

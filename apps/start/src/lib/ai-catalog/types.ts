@@ -12,6 +12,7 @@ export type AiReasoningEffort =
   | 'medium'
   | 'high'
   | 'xhigh'
+  | 'max'
 
 /** Provider-local tool id that can be attached to specific models. */
 export type AiProviderToolId = CatalogProviderToolId

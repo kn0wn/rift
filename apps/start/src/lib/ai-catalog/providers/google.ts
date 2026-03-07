@@ -11,13 +11,31 @@ function googleBaseOptions(): GoogleLanguageModelOptions {
 /**
  * Builds Google provider options for reasoning with thinking enabled.
  */
-function googleReasoningOptions(thinkingBudget: number): Record<string, unknown> {
+function googleReasoningOptionsByBudget(
+  thinkingBudget: number,
+): Record<string, unknown> {
   return {
     google: {
       ...googleBaseOptions(),
       thinkingConfig: {
         includeThoughts: true,
         thinkingBudget,
+      } satisfies NonNullable<
+        GoogleLanguageModelOptions['thinkingConfig']
+      >,
+    } satisfies GoogleLanguageModelOptions,
+  }
+}
+
+function googleReasoningOptionsByLevel(
+  thinkingLevel: 'minimal' | 'low' | 'medium' | 'high',
+): Record<string, unknown> {
+  return {
+    google: {
+      ...googleBaseOptions(),
+      thinkingConfig: {
+        includeThoughts: true,
+        thinkingLevel,
       } satisfies NonNullable<
         GoogleLanguageModelOptions['thinkingConfig']
       >,
@@ -57,9 +75,9 @@ export const GOOGLE_MODELS: readonly AiModelCatalogEntry<'google'>[] = [
     reasoningEfforts: ['low', 'medium', 'high'],
     defaultReasoningEffort: 'medium',
     providerOptionsByReasoning: {
-      low: googleReasoningOptions(4096),
-      medium: googleReasoningOptions(12288),
-      high: googleReasoningOptions(24576),
+      low: googleReasoningOptionsByLevel('low'),
+      medium: googleReasoningOptionsByLevel('medium'),
+      high: googleReasoningOptionsByLevel('high'),
     },
     defaultProviderOptions: googleDefaultProviderOptions(),
     defaultMaxOutputTokens: 64000,
@@ -100,12 +118,11 @@ export const GOOGLE_MODELS: readonly AiModelCatalogEntry<'google'>[] = [
       supportsPdfInput: true,
     },
     providerToolIds: [],
-    reasoningEfforts: ['low', 'medium', 'high'],
-    defaultReasoningEffort: 'medium',
+    reasoningEfforts: ['low', 'high'],
+    defaultReasoningEffort: 'high',
     providerOptionsByReasoning: {
-      low: googleReasoningOptions(4096),
-      medium: googleReasoningOptions(12288),
-      high: googleReasoningOptions(24576),
+      low: googleReasoningOptionsByLevel('low'),
+      high: googleReasoningOptionsByLevel('high'),
     },
     defaultProviderOptions: googleDefaultProviderOptions(),
     defaultMaxOutputTokens: 64000,
@@ -146,12 +163,13 @@ export const GOOGLE_MODELS: readonly AiModelCatalogEntry<'google'>[] = [
       supportsPdfInput: true,
     },
     providerToolIds: [],
-    reasoningEfforts: ['low', 'medium', 'high'],
+    reasoningEfforts: ['minimal', 'low', 'medium', 'high'],
     defaultReasoningEffort: 'low',
     providerOptionsByReasoning: {
-      low: googleReasoningOptions(4096),
-      medium: googleReasoningOptions(8192),
-      high: googleReasoningOptions(16384),
+      minimal: googleReasoningOptionsByLevel('minimal'),
+      low: googleReasoningOptionsByLevel('low'),
+      medium: googleReasoningOptionsByLevel('medium'),
+      high: googleReasoningOptionsByLevel('high'),
     },
     defaultProviderOptions: googleDefaultProviderOptions(),
     defaultMaxOutputTokens: 64000,
@@ -175,6 +193,40 @@ export const GOOGLE_MODELS: readonly AiModelCatalogEntry<'google'>[] = [
     },
   },
   {
+    id: 'google/gemini-3.1-flash-lite-preview',
+    providerId: 'google',
+    providers: ['gateway'],
+    name: 'Gemini 3.1 Flash Lite',
+    description:
+      'Gemini 3.1 Flash Lite outperforms 2.5 Flash Lite on overall quality and lands close to 2.5 Flash performance. Workhorse model for high-volume use cases, with improvements across audio input/ASR, RAG snippet ranking, translation, data extraction, and code completion.',
+    contextWindow: 1000000,
+    zeroDataRetention: true,
+    capabilities: {
+      supportsTools: true,
+      supportsStreaming: true,
+      supportsReasoning: true,
+      supportsImageInput: true,
+      supportsFileInput: true,
+      supportsPdfInput: true,
+    },
+    providerToolIds: [],
+    reasoningEfforts: ['minimal', 'low', 'medium', 'high'],
+    defaultReasoningEffort: 'low',
+    providerOptionsByReasoning: {
+      minimal: googleReasoningOptionsByLevel('minimal'),
+      low: googleReasoningOptionsByLevel('low'),
+      medium: googleReasoningOptionsByLevel('medium'),
+      high: googleReasoningOptionsByLevel('high'),
+    },
+    defaultProviderOptions: googleDefaultProviderOptions(),
+    defaultMaxOutputTokens: 65000,
+    pricing: {
+      inputPerToken: '0.00000025',
+      outputPerToken: '0.0000015',
+      webSearchPerRequest: '14',
+    },
+  },
+  {
     id: 'google/gemini-2.5-flash',
     providerId: 'google',
     providers: ['gateway'],
@@ -195,9 +247,9 @@ export const GOOGLE_MODELS: readonly AiModelCatalogEntry<'google'>[] = [
     reasoningEfforts: ['low', 'medium', 'high'],
     defaultReasoningEffort: 'low',
     providerOptionsByReasoning: {
-      low: googleReasoningOptions(2048),
-      medium: googleReasoningOptions(8192),
-      high: googleReasoningOptions(16384),
+      low: googleReasoningOptionsByBudget(2048),
+      medium: googleReasoningOptionsByBudget(8192),
+      high: googleReasoningOptionsByBudget(16384),
     },
     defaultProviderOptions: googleDefaultProviderOptions(),
     defaultMaxOutputTokens: 65536,
@@ -227,9 +279,9 @@ export const GOOGLE_MODELS: readonly AiModelCatalogEntry<'google'>[] = [
     reasoningEfforts: ['low', 'medium', 'high'],
     defaultReasoningEffort: 'medium',
     providerOptionsByReasoning: {
-      low: googleReasoningOptions(4096),
-      medium: googleReasoningOptions(12288),
-      high: googleReasoningOptions(24576),
+      low: googleReasoningOptionsByBudget(4096),
+      medium: googleReasoningOptionsByBudget(12288),
+      high: googleReasoningOptionsByBudget(24576),
     },
     defaultProviderOptions: googleDefaultProviderOptions(),
     defaultMaxOutputTokens: 65536,

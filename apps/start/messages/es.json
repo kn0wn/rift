@@ -195,6 +195,7 @@
   "chat_reasoning_effort_minimal": "Mínimo",
   "chat_reasoning_effort_none": "Ninguno",
   "chat_reasoning_effort_xhigh": "Muy alto",
+  "chat_reasoning_effort_max": "Máximo",
   "chat_reasoning_finished": "Razonamiento finalizado",
   "chat_reasoning_label": "Razonamiento",
   "chat_reasoning_select_aria_label": "Seleccionar nivel de razonamiento",
