@@ -4,12 +4,24 @@ import { Button } from '@rift/ui/button'
 import { cn } from '@rift/utils'
 import { ReasoningIcon } from '@rift/ui/icons/svg-icons'
 import { X } from 'lucide-react'
-import { forwardRef, useEffect, useState, type HTMLAttributes } from 'react'
+import {
+  forwardRef,
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type HTMLAttributes,
+  type MutableRefObject,
+} from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Streamdown } from 'streamdown'
 import { useRightSidebar } from '@/components/layout/right-sidebar-context'
 import { m } from '@/paraglide/messages.js'
-import { streamdownComponents } from '../renderers/streamdown-components'
+import {
+  streamdownStaticComponents,
+  streamdownStreamingComponents,
+} from '../renderers/streamdown-components'
 
 type ReasoningTriggerProps = {
   reasoningText: string
@@ -69,7 +81,11 @@ function ReasoningPanel({
         <Streamdown
           controls={false}
           mode={isStreaming ? 'streaming' : 'static'}
-          components={streamdownComponents}
+          components={
+            isStreaming
+              ? streamdownStreamingComponents
+              : streamdownStaticComponents
+          }
           className="chat-streamdown min-w-0 max-w-full break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
         >
           {text || '\u00a0'}
@@ -82,7 +98,7 @@ function ReasoningPanel({
 /**
  * Thinking indicator UI shown in assistant rows where reasoning content exists.
  */
-const ThinkingIndicator = forwardRef<
+const ThinkingIndicatorBase = forwardRef<
   HTMLDivElement,
   HTMLAttributes<HTMLDivElement> & { isStreaming: boolean }
 >(({ className, isStreaming, ...props }, ref) => {
@@ -186,7 +202,66 @@ const ThinkingIndicator = forwardRef<
   )
 })
 
-ThinkingIndicator.displayName = 'ThinkingIndicator'
+ThinkingIndicatorBase.displayName = 'ThinkingIndicator'
+
+const ThinkingIndicator = memo(
+  ThinkingIndicatorBase,
+  (previous, next) =>
+    previous.isStreaming === next.isStreaming &&
+    previous.className === next.className,
+)
+
+type ReasoningTriggerButtonProps = {
+  reasoningTextRef: MutableRefObject<string>
+  isStreaming: boolean
+}
+
+const ReasoningTriggerButton = memo(function ReasoningTriggerButton({
+  reasoningTextRef,
+  isStreaming,
+}: ReasoningTriggerButtonProps) {
+  const { open, close } = useRightSidebar()
+  const ariaLabel = isStreaming
+    ? m.chat_reasoning_show_streaming_aria_label()
+    : m.chat_reasoning_show_aria_label()
+
+  const handleOpen = useCallback(() => {
+    const reasoningText = reasoningTextRef.current.trim()
+    if (!reasoningText) return
+
+    open(
+      <ReasoningPanel
+        text={reasoningTextRef.current}
+        isStreaming={isStreaming}
+        onClose={close}
+      />,
+    )
+  }, [close, isStreaming, open, reasoningTextRef])
+
+  return (
+    <button
+      type="button"
+      onClick={handleOpen}
+      className="group flex w-full cursor-pointer items-center justify-start text-start transition-colors"
+      aria-label={ariaLabel}
+    >
+      <ThinkingIndicator
+        isStreaming={isStreaming}
+        className="text-secondary-text p-0"
+      />
+    </button>
+  )
+}, areReasoningTriggerButtonsEqual)
+
+function areReasoningTriggerButtonsEqual(
+  previous: ReasoningTriggerButtonProps,
+  next: ReasoningTriggerButtonProps,
+): boolean {
+  return (
+    previous.reasoningTextRef === next.reasoningTextRef &&
+    previous.isStreaming === next.isStreaming
+  )
+}
 
 /**
  * Opens the right sidebar with the message's reasoning
@@ -195,33 +270,15 @@ export function ReasoningTrigger({
   reasoningText,
   isStreaming,
 }: ReasoningTriggerProps) {
-  const { open, close } = useRightSidebar()
+  const reasoningTextRef = useRef(reasoningText)
+  reasoningTextRef.current = reasoningText
 
   if (!reasoningText.trim()) return null
 
   return (
-    <button
-      type="button"
-      onClick={() =>
-        open(
-          <ReasoningPanel
-            text={reasoningText}
-            isStreaming={isStreaming}
-            onClose={close}
-          />,
-        )
-      }
-      className="group flex w-full cursor-pointer items-center justify-start text-start transition-colors"
-      aria-label={
-        isStreaming
-          ? m.chat_reasoning_show_streaming_aria_label()
-          : m.chat_reasoning_show_aria_label()
-      }
-    >
-      <ThinkingIndicator
-        isStreaming={isStreaming}
-        className="text-secondary-text p-0"
-      />
-    </button>
+    <ReasoningTriggerButton
+      reasoningTextRef={reasoningTextRef}
+      isStreaming={isStreaming}
+    />
   )
 }

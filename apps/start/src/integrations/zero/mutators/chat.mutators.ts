@@ -84,6 +84,7 @@ export const chatMutatorDefinitions = {
         pinned: args.pinned,
         activeChildByParent: {},
         branchVersion: 1,
+        ownerOrgId: ctx.organizationId,
       })
     }),
 

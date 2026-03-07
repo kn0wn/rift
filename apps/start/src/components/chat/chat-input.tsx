@@ -3,7 +3,7 @@
 
 import { memo, useCallback, useEffect, useState } from 'react'
 import { BookOpen } from 'lucide-react'
-import { useChatActions } from './chat-context'
+import { useChatComposer } from './chat-context'
 import {
   PromptInputRoot,
   PromptInputTextarea,
@@ -42,7 +42,7 @@ export function ChatInput() {
     selectedModeId,
     isModeEnforced,
     setSelectedModeId,
-  } = useChatActions()
+  } = useChatComposer()
   const [errorDismissed, setErrorDismissed] = useState(false)
   const [uploadErrorDismissed, setUploadErrorDismissed] = useState(false)
 
@@ -263,13 +263,13 @@ const ComposerToolbar = memo(function ComposerToolbar({
 }: {
   canAddMore: boolean
   onFileSelect: (event: React.ChangeEvent<HTMLInputElement>) => void
-  status: ReturnType<typeof useChatActions>['status']
+  status: ReturnType<typeof useChatComposer>['status']
   isBusy: boolean
   isStudyModeEnabled: boolean
   isModeEnforced: boolean
   activeThreadId: string | null
   modeLockedModelName: string
-  setSelectedModeId: ReturnType<typeof useChatActions>['setSelectedModeId']
+  setSelectedModeId: ReturnType<typeof useChatComposer>['setSelectedModeId']
 }) {
   const composerInput = useComposerDraftValue()
   const isEmpty = !composerInput.trim()

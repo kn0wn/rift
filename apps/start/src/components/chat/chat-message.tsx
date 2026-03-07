@@ -1,5 +1,5 @@
 // Single chat message renderer (user/assistant).
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { UIMessage } from 'ai'
 import type { ChatMessageMetadata } from '@/lib/chat-contracts/message-metadata'
 import type { ChatAttachment } from '@/lib/chat-contracts/attachments'
@@ -49,6 +49,44 @@ type ChatMessageProps = {
   }
 }
 
+const AssistantMessageContent = memo(function AssistantMessageContent({
+  parts,
+  isAnimating,
+}: {
+  parts: UIMessage['parts']
+  isAnimating: boolean
+}) {
+  return (
+    <div className="space-y-4 size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+      <AssistantMessageParts parts={parts} isMessageStreaming={isAnimating} />
+    </div>
+  )
+})
+
+const AssistantMessageFooter = memo(function AssistantMessageFooter({
+  messageId,
+  text,
+  modelName,
+  canRegenerate,
+  onRegenerate,
+}: {
+  messageId: string
+  text: string
+  modelName?: string | null
+  canRegenerate: boolean
+  onRegenerate: (messageId: string) => void
+}) {
+  return (
+    <AssistantMessageActions
+      messageId={messageId}
+      text={text}
+      modelName={modelName}
+      canRegenerate={canRegenerate}
+      onRegenerate={onRegenerate}
+    />
+  )
+})
+
 export function ChatMessage({
   message,
   isAnimating = false,
@@ -58,7 +96,7 @@ export function ChatMessage({
   onEdit,
   branchSelector,
 }: ChatMessageProps) {
-  const text = getRawMessageText(message)
+  const text = useMemo(() => getRawMessageText(message), [message.parts])
   const [isEditing, setIsEditing] = useState(false)
   const [draftText, setDraftText] = useState(text)
   const [isSavingEdit, setIsSavingEdit] = useState(false)
@@ -217,13 +255,8 @@ export function ChatMessage({
         dir="auto"
         className="flex w-full flex-col gap-3 overflow-hidden text-content-emphasis leading-[21px]"
       >
-        <div className="space-y-4 size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-          <AssistantMessageParts
-            parts={message.parts}
-            isMessageStreaming={isAnimating}
-          />
-        </div>
-        <AssistantMessageActions
+        <AssistantMessageContent parts={message.parts} isAnimating={isAnimating} />
+        <AssistantMessageFooter
           messageId={message.id}
           text={text}
           modelName={modelName}

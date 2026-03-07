@@ -133,6 +133,7 @@ export class ChatOrchestratorService extends ServiceMap.Service<
             requestId,
             createIfMissing,
             requestedModelId: modelId,
+            organizationId,
           })
 
           const effectiveMode = resolveEffectiveChatMode({

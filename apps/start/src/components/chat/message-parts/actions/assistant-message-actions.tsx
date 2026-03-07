@@ -1,3 +1,4 @@
+import { memo, useCallback, useRef } from 'react'
 import { CheckIcon, CopyIcon, RedoIcon } from '@rift/ui/icons/svg-icons'
 import {
   MessageActionButton,
@@ -17,14 +18,22 @@ type AssistantMessageActionsProps = {
 /**
  * Assistant-message action cluster plus optional model caption.
  */
-export function AssistantMessageActions({
+type AssistantMessageActionsInnerProps = {
+  messageId: string
+  modelName?: string | null
+  canRegenerate: boolean
+  onRegenerate: (messageId: string) => void
+  getText: () => string
+}
+
+const AssistantMessageActionsInner = memo(function AssistantMessageActionsInner({
   messageId,
-  text,
   modelName,
   canRegenerate,
   onRegenerate,
-}: AssistantMessageActionsProps) {
-  const { isCopied, copy } = useMessageCopyAction(text)
+  getText,
+}: AssistantMessageActionsInnerProps) {
+  const { isCopied, copy } = useMessageCopyAction(getText)
 
   return (
     <div className="flex items-center gap-2">
@@ -56,5 +65,42 @@ export function AssistantMessageActions({
         </span>
       ) : null}
     </div>
+  )
+},
+areAssistantMessageActionsEqual)
+
+function areAssistantMessageActionsEqual(
+  previous: AssistantMessageActionsInnerProps,
+  next: AssistantMessageActionsInnerProps,
+): boolean {
+  return (
+    previous.messageId === next.messageId &&
+    previous.modelName === next.modelName &&
+    previous.canRegenerate === next.canRegenerate &&
+    previous.onRegenerate === next.onRegenerate &&
+    previous.getText === next.getText
+  )
+}
+
+export function AssistantMessageActions({
+  messageId,
+  text,
+  modelName,
+  canRegenerate,
+  onRegenerate,
+}: AssistantMessageActionsProps) {
+  const latestTextRef = useRef(text)
+  latestTextRef.current = text
+
+  const getText = useCallback(() => latestTextRef.current, [])
+
+  return (
+    <AssistantMessageActionsInner
+      messageId={messageId}
+      modelName={modelName}
+      canRegenerate={canRegenerate}
+      onRegenerate={onRegenerate}
+      getText={getText}
+    />
   )
 }

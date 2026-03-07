@@ -1,12 +1,120 @@
 // Renders chat messages and keeps scroll pinned to the latest user message.
-import { useCallback, useMemo } from 'react'
+import { memo, useCallback, useMemo } from 'react'
+import type { RefObject } from 'react'
+import type { UIMessage } from 'ai'
 import { Spinner } from '@rift/ui/spinner'
-import { useChatActions, useChatMessages } from './chat-context'
+import { useChatMessageActions, useChatMessages } from './chat-context'
 import { ChatMessage } from './chat-message'
 import { usePinToLastUserMessage } from '@rift/chat-scroll'
 import { ChatWelcomeScreen } from './chat-welcome-screen'
 import { setComposerDraft } from './composer-draft-store'
 import { m } from '@/paraglide/messages.js'
+
+type BranchSelectorState = {
+  parentMessageId: string
+  optionMessageIds: readonly string[]
+  selectedMessageId: string
+}
+
+type ChatThreadMessageRowProps = {
+  message: UIMessage
+  lastUserMessageId: string | null
+  lastMessageId?: string
+  isStreaming: boolean
+  lastUserMessageRef: RefObject<HTMLDivElement | null>
+  branchSelector?: BranchSelectorState
+  onRegenerate: (messageId: string) => void
+  onEdit: (input: { messageId: string; editedText: string }) => Promise<void>
+  onSelectBranchVersion: (input: {
+    parentMessageId: string
+    childMessageId: string
+  }) => Promise<void>
+}
+
+function areBranchSelectorsEqual(
+  previous?: BranchSelectorState,
+  next?: BranchSelectorState,
+): boolean {
+  if (previous === next) return true
+  if (!previous || !next) return previous == null && next == null
+  if (previous.parentMessageId !== next.parentMessageId) return false
+  if (previous.selectedMessageId !== next.selectedMessageId) return false
+  if (previous.optionMessageIds.length !== next.optionMessageIds.length) return false
+  for (let index = 0; index < previous.optionMessageIds.length; index += 1) {
+    if (previous.optionMessageIds[index] !== next.optionMessageIds[index]) {
+      return false
+    }
+  }
+  return true
+}
+
+const ChatThreadMessageRow = memo(function ChatThreadMessageRow({
+  message,
+  lastUserMessageId,
+  lastMessageId,
+  isStreaming,
+  lastUserMessageRef,
+  branchSelector,
+  onRegenerate,
+  onEdit,
+  onSelectBranchVersion,
+}: ChatThreadMessageRowProps) {
+  const isLastUserMessage =
+    message.role === 'user' &&
+    lastUserMessageId != null &&
+    message.id === lastUserMessageId
+  const isAnimatingMessage =
+    isStreaming && lastMessageId === message.id && message.role === 'assistant'
+
+  return (
+    <div
+      className="mx-auto w-full max-w-2xl"
+      ref={isLastUserMessage ? lastUserMessageRef : undefined}
+    >
+      <ChatMessage
+        message={message}
+        isAnimating={isAnimatingMessage}
+        canRegenerate={!isStreaming}
+        canEdit={!isStreaming}
+        onRegenerate={onRegenerate}
+        onEdit={onEdit}
+        branchSelector={
+          message.role === 'user' && branchSelector
+            ? {
+                parentMessageId: branchSelector.parentMessageId,
+                optionMessageIds: branchSelector.optionMessageIds,
+                selectedMessageId: branchSelector.selectedMessageId,
+                disabled: isStreaming,
+                onSelectMessageId: (childMessageId: string) => {
+                  void onSelectBranchVersion({
+                    parentMessageId: branchSelector.parentMessageId,
+                    childMessageId,
+                  })
+                },
+              }
+            : undefined
+        }
+      />
+    </div>
+  )
+}, areChatThreadMessageRowPropsEqual)
+
+function areChatThreadMessageRowPropsEqual(
+  previous: ChatThreadMessageRowProps,
+  next: ChatThreadMessageRowProps,
+): boolean {
+  return (
+    previous.message === next.message &&
+    previous.lastUserMessageId === next.lastUserMessageId &&
+    previous.lastMessageId === next.lastMessageId &&
+    previous.isStreaming === next.isStreaming &&
+    previous.lastUserMessageRef === next.lastUserMessageRef &&
+    previous.onRegenerate === next.onRegenerate &&
+    previous.onEdit === next.onEdit &&
+    previous.onSelectBranchVersion === next.onSelectBranchVersion &&
+    areBranchSelectorsEqual(previous.branchSelector, next.branchSelector)
+  )
+}
 
 export function ChatThread() {
   const { messages, status, activeThreadId, branchSelectorsByAnchorMessageId } =
@@ -16,7 +124,7 @@ export function ChatThread() {
     editMessage,
     selectBranchVersion,
   } =
-    useChatActions()
+    useChatMessageActions()
   const { userMessageCount, lastUserMessageId } = useMemo(() => {
     let count = 0
     let lastUserId: string | null = null
@@ -45,7 +153,6 @@ export function ChatThread() {
   const showThinking =
     isAwaitingStreamStart && (!lastMessage || lastMessage.role === 'user')
 
-  const canRegenerate = !isStreaming
   const handleSuggestionClick = useCallback(
     (prompt: string) => {
       setComposerDraft(prompt)
@@ -154,45 +261,23 @@ export function ChatThread() {
         </div>
       )}
       {messages.map((m) => {
-        const isLastUserMessage =
-          m.role === 'user' &&
-          lastUserMessageId != null &&
-          m.id === lastUserMessageId
-        const isAnimatingMessage =
-          isStreaming && lastMessage?.id === m.id && m.role === 'assistant'
         return (
-          <div
+          <ChatThreadMessageRow
             key={m.id}
-            className="mx-auto w-full max-w-2xl"
-            ref={isLastUserMessage ? lastUserMessageRef : undefined}
-          >
-            <ChatMessage
-              message={m}
-              isAnimating={isAnimatingMessage}
-              canRegenerate={canRegenerate}
-              canEdit={!isStreaming}
-              onRegenerate={regenerateWithoutScrollShift}
-              onEdit={editWithoutScrollShift}
-              branchSelector={
-                m.role === 'user' ? (() => {
-                  const selector = branchSelectorsByAnchorMessageId[m.id]
-                  if (!selector) return undefined
-                  return {
-                    parentMessageId: selector.parentMessageId,
-                    optionMessageIds: selector.optionMessageIds,
-                    selectedMessageId: selector.selectedMessageId,
-                    disabled: isStreaming,
-                    onSelectMessageId: (childMessageId: string) => {
-                      void selectBranchVersionWithoutScrollShift({
-                        parentMessageId: selector.parentMessageId,
-                        childMessageId,
-                      })
-                    },
-                  }
-                })() : undefined
-              }
-            />
-          </div>
+            message={m}
+            lastUserMessageId={lastUserMessageId}
+            lastMessageId={lastMessage?.id}
+            isStreaming={isStreaming}
+            lastUserMessageRef={lastUserMessageRef}
+            branchSelector={
+              m.role === 'user'
+                ? branchSelectorsByAnchorMessageId[m.id]
+                : undefined
+            }
+            onRegenerate={regenerateWithoutScrollShift}
+            onEdit={editWithoutScrollShift}
+            onSelectBranchVersion={selectBranchVersionWithoutScrollShift}
+          />
         )
       })}
       {showThinking && (

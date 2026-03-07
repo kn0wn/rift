@@ -44,6 +44,8 @@ export function usePinToLastUserMessage(
     useOptimizedScroll(bottomRef);
 
   const shouldAutoScroll = userMessageCount > 1;
+  const isMessageGenerationActive =
+    status === "submitted" || status === "streaming";
 
   const getScrollParent = useCallback((node: HTMLElement | null) => {
     let el: HTMLElement | null = node?.parentElement ?? null;
@@ -257,6 +259,7 @@ export function usePinToLastUserMessage(
     prevUserMessageCountRef.current = userMessageCount;
 
     if (!hasInitialAlignmentRef.current) return;
+    if (!isMessageGenerationActive) return;
     if (userMessageCount <= 1) return;
     if (userMessageCount <= prev) return;
 
@@ -274,6 +277,7 @@ export function usePinToLastUserMessage(
     recalcSpacer,
     resetManualScroll,
     scrollToBottom,
+    isMessageGenerationActive,
     userMessageCount,
   ]);
 

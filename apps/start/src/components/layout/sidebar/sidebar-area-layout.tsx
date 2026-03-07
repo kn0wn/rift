@@ -43,7 +43,7 @@ export function SidebarAreaLayout({
       <div
         className={
           useConstrainedLayout
-            ? 'flex min-h-0 flex-1 flex-col gap-8 overflow-hidden'
+            ? 'flex min-h-0 flex-1 flex-col gap-8'
             : 'flex flex-col gap-8'
         }
       >
@@ -57,7 +57,7 @@ export function SidebarAreaLayout({
               key={sectionKey}
               className={
                 isScrollableSection
-                  ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
+                  ? 'flex min-h-0 flex-1 flex-col'
                   : 'flex flex-col gap-0.5'
               }
             >
@@ -67,7 +67,7 @@ export function SidebarAreaLayout({
                 </div>
               ) : null}
               {isScrollableSection ? (
-                <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+                <div className="min-h-0 flex-1 overflow-y-auto">
                   <div
                     className={cn(
                       'flex flex-col gap-0.5',
@@ -115,7 +115,7 @@ export function SidebarAreaLayout({
 
   if (useConstrainedLayout) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col">
         {content}
       </div>
     )

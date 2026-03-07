@@ -84,6 +84,34 @@ type ChatActionsContextValue = Pick<
   clear: () => void
 }
 
+type ChatComposerContextValue = Pick<
+  ChatActionsContextValue,
+  | 'status'
+  | 'error'
+  | 'sendMessage'
+  | 'activeThreadId'
+  | 'selectedModelId'
+  | 'selectedReasoningEffort'
+  | 'selectableModels'
+  | 'setSelectedModelId'
+  | 'setSelectedReasoningEffort'
+  | 'selectedModeId'
+  | 'isModeEnforced'
+  | 'setSelectedModeId'
+>
+
+type ChatMessageActionsContextValue = Pick<
+  ChatActionsContextValue,
+  | 'status'
+  | 'regenerate'
+  | 'regenerateMessage'
+  | 'editMessage'
+  | 'selectBranchVersion'
+  | 'setMessages'
+  | 'resumeStream'
+  | 'clear'
+>
+
 type BranchSelectorState = {
   readonly parentMessageId: string
   readonly optionMessageIds: readonly string[]
@@ -106,7 +134,9 @@ type ChatMessagesContextValue = {
 }
 
 const ChatMessagesContext = createContext<ChatMessagesContextValue | null>(null)
-const ChatActionsContext = createContext<ChatActionsContextValue | null>(null)
+const ChatComposerContext = createContext<ChatComposerContextValue | null>(null)
+const ChatMessageActionsContext =
+  createContext<ChatMessageActionsContextValue | null>(null)
 
 type PendingOptimisticAttachmentManifest = {
   readonly text: string
@@ -553,6 +583,7 @@ export function ChatProvider({
   const [selectedReasoningEffort, setSelectedReasoningEffort] = useState<
     AiReasoningEffort | undefined
   >(undefined)
+  const hydratedModelSelectionThreadIdRef = useRef<string | undefined>(undefined)
   const selectedModelIdRef = useRef(selectedModelId)
   const selectedReasoningEffortRef = useRef(selectedReasoningEffort)
   const branchVersionByThreadIdRef = useRef<Record<string, number>>({})
@@ -667,6 +698,22 @@ export function ChatProvider({
   })
   const sendAIMessageRef = useRef(sendAIMessage)
   sendAIMessageRef.current = sendAIMessage
+  const messagesRef = useRef(messages)
+  const statusRef = useRef(status)
+  const activeThreadIdRef = useRef(activeThreadId)
+  const storedMessagesRef = useRef(storedMessages)
+  const storedBranchSelectorsRef = useRef(storedBranchSelectorsByAnchorMessageId)
+  const threadRowRef = useRef(threadRow)
+  const regenerateRef = useRef(regenerate)
+  const setMessagesRef = useRef(setMessages)
+  messagesRef.current = messages
+  statusRef.current = status
+  activeThreadIdRef.current = activeThreadId
+  storedMessagesRef.current = storedMessages
+  storedBranchSelectorsRef.current = storedBranchSelectorsByAnchorMessageId
+  threadRowRef.current = threadRow
+  regenerateRef.current = regenerate
+  setMessagesRef.current = setMessages
 
   useEffect(() => {
     if (selectableModels.length === 0) return
@@ -677,6 +724,11 @@ export function ChatProvider({
   }, [selectableModels, selectedModelId])
 
   useEffect(() => {
+    if (!activeThreadId) {
+      hydratedModelSelectionThreadIdRef.current = undefined
+      return
+    }
+    if (hydratedModelSelectionThreadIdRef.current === activeThreadId) return
     if (
       !threadRow ||
       typeof threadRow !== 'object' ||
@@ -687,6 +739,7 @@ export function ChatProvider({
     }
     if (!selectableModels.some((model) => model.id === threadRow.model)) return
 
+    hydratedModelSelectionThreadIdRef.current = activeThreadId
     setSelectedModelId(threadRow.model)
     setSelectedReasoningEffort(
       'reasoningEffort' in threadRow &&
@@ -694,7 +747,7 @@ export function ChatProvider({
         ? (threadRow.reasoningEffort as AiReasoningEffort)
         : undefined,
     )
-  }, [threadRow, selectableModels])
+  }, [activeThreadId, threadRow, selectableModels])
 
   useEffect(() => {
     threadIdRef.current = activeThreadId
@@ -1020,28 +1073,41 @@ export function ChatProvider({
     ChatActionsContextValue['regenerateMessage']
   >(
     async (messageId) => {
-      if (!messageId || status === 'submitted' || status === 'streaming') return
-      if (!activeThreadId) return
+      const currentStatus = statusRef.current
+      const currentThreadId = activeThreadIdRef.current
+      const currentMessages = messagesRef.current
+      const currentStoredMessages = storedMessagesRef.current
+      const currentStoredBranchSelectors = storedBranchSelectorsRef.current
+      const currentThreadRow = threadRowRef.current
+
+      if (
+        !messageId ||
+        currentStatus === 'submitted' ||
+        currentStatus === 'streaming'
+      ) {
+        return
+      }
+      if (!currentThreadId) return
       const anchorMessageId = findRegenerationAnchorMessageId({
-        messages,
+        messages: currentMessages,
         targetMessageId: messageId,
       })
       if (!anchorMessageId) return
 
-      const targetMessage = messages.find((message) => message.id === messageId)
-      const existingSelector = storedBranchSelectorsByAnchorMessageId[anchorMessageId]
+      const targetMessage = currentMessages.find((message) => message.id === messageId)
+      const existingSelector = currentStoredBranchSelectors[anchorMessageId]
       const currentAssistantId = findCurrentAssistantForAnchor({
-        messages,
+        messages: currentMessages,
         anchorMessageId,
       })
       const selectedStoredAssistantId =
-        threadRow &&
-        threadRow.activeChildByParent &&
-        typeof threadRow.activeChildByParent === 'object' &&
-        typeof threadRow.activeChildByParent[anchorMessageId] === 'string'
-          ? threadRow.activeChildByParent[anchorMessageId]
+        currentThreadRow &&
+        currentThreadRow.activeChildByParent &&
+        typeof currentThreadRow.activeChildByParent === 'object' &&
+        typeof currentThreadRow.activeChildByParent[anchorMessageId] === 'string'
+          ? currentThreadRow.activeChildByParent[anchorMessageId]
           : undefined
-      const storedAssistantChildren = storedMessages
+      const storedAssistantChildren = currentStoredMessages
         .filter(
           (message) =>
             message.role === 'assistant' &&
@@ -1067,10 +1133,12 @@ export function ChatProvider({
         placeholderMessageId,
       ])
 
-      const anchorIndex = messages.findIndex(
+      const anchorIndex = currentMessages.findIndex(
         (message) => message.id === anchorMessageId,
       )
-      const targetIndex = messages.findIndex((message) => message.id === messageId)
+      const targetIndex = currentMessages.findIndex(
+        (message) => message.id === messageId,
+      )
       const truncateInclusiveIndex =
         targetMessage?.role === 'assistant' && targetIndex >= 0
           ? targetIndex
@@ -1079,7 +1147,9 @@ export function ChatProvider({
         // Regeneration forks from the anchor user, but the target message must
         // remain present for AI SDK regenerate(messageId) lookup. Keep the
         // target row (assistant/user) and prune only descendants.
-        setMessages(messages.slice(0, truncateInclusiveIndex + 1))
+        setMessagesRef.current(
+          currentMessages.slice(0, truncateInclusiveIndex + 1),
+        )
       }
 
       setPendingBranchSelector({
@@ -1094,37 +1164,42 @@ export function ChatProvider({
       allowShrinkOnNextBranchVersionRef.current = false
       setLocalError(null)
       try {
-        await regenerate({ messageId })
+        await regenerateRef.current({ messageId })
       } catch (regenerateError) {
         setPendingBranchSelector(null)
         throw regenerateError
       }
     },
-    [
-      activeThreadId,
-      messages,
-      regenerate,
-      status,
-      storedBranchSelectorsByAnchorMessageId,
-      storedMessages,
-      threadRow,
-    ],
+    [],
   )
 
   const editMessage = useCallback<ChatActionsContextValue['editMessage']>(
     async ({ messageId, editedText }) => {
-      if (!messageId || status === 'submitted' || status === 'streaming') return
-      if (!activeThreadId) return
+      const currentStatus = statusRef.current
+      const currentThreadId = activeThreadIdRef.current
+      const currentMessages = messagesRef.current
+      const currentStoredMessages = storedMessagesRef.current
+
+      if (
+        !messageId ||
+        currentStatus === 'submitted' ||
+        currentStatus === 'streaming'
+      ) {
+        return
+      }
+      if (!currentThreadId) return
 
       const normalizedText = editedText.trim()
       if (normalizedText.length === 0) {
         setLocalError(new Error('Message text cannot be empty.'))
         return
       }
-      const targetMessage = messages.find((message) => message.id === messageId)
+      const targetMessage = currentMessages.find(
+        (message) => message.id === messageId,
+      )
       if (!targetMessage || targetMessage.role !== 'user') return
 
-      const targetStoredRow = storedMessages.find(
+      const targetStoredRow = currentStoredMessages.find(
         (message) => message.messageId === messageId,
       )
       const parentMessageId =
@@ -1133,7 +1208,7 @@ export function ChatProvider({
         targetStoredRow.parentMessageId.trim().length > 0
           ? targetStoredRow.parentMessageId
           : ROOT_BRANCH_PARENT_KEY
-      const siblingUserIds = storedMessages
+      const siblingUserIds = currentStoredMessages
         .filter((message) => {
           if (message.role !== 'user') return false
           const candidateParentId =
@@ -1165,9 +1240,11 @@ export function ChatProvider({
         expectedOptionCount: pendingOptionIds.length,
       })
 
-      const targetIndex = messages.findIndex((message) => message.id === messageId)
+      const targetIndex = currentMessages.findIndex(
+        (message) => message.id === messageId,
+      )
       if (targetIndex >= 0) {
-        const truncatedMessages = messages.slice(0, targetIndex + 1)
+        const truncatedMessages = currentMessages.slice(0, targetIndex + 1)
         const target = truncatedMessages[targetIndex]
         if (target && target.role === 'user') {
           truncatedMessages[targetIndex] = {
@@ -1177,13 +1254,13 @@ export function ChatProvider({
             ),
           }
         }
-        setMessages(truncatedMessages)
+        setMessagesRef.current(truncatedMessages)
       }
 
       allowShrinkOnNextBranchVersionRef.current = false
       setLocalError(null)
       try {
-        await regenerate({
+        await regenerateRef.current({
           messageId,
           body: {
             trigger: 'edit-message',
@@ -1196,25 +1273,28 @@ export function ChatProvider({
         throw editError
       }
     },
-    [activeThreadId, messages, regenerate, setMessages, status, storedMessages],
+    [],
   )
 
   const selectBranchVersion = useCallback<
     ChatActionsContextValue['selectBranchVersion']
   >(
     async ({ parentMessageId, childMessageId }) => {
-      if (!activeThreadId) return
-      if (status === 'submitted' || status === 'streaming') return
+      const currentThreadId = activeThreadIdRef.current
+      const currentStatus = statusRef.current
+
+      if (!currentThreadId) return
+      if (currentStatus === 'submitted' || currentStatus === 'streaming') return
       if (!parentMessageId || !childMessageId) return
 
       // Explicit branch selection can legitimately switch to shorter history.
       allowShrinkOnNextBranchVersionRef.current = true
       const expectedBranchVersion =
-        branchVersionByThreadIdRef.current[activeThreadId] ?? 1
+        branchVersionByThreadIdRef.current[currentThreadId] ?? 1
       try {
         await z.mutate(
           mutators.threads.selectBranchChild({
-            threadId: activeThreadId,
+            threadId: currentThreadId,
             parentMessageId,
             childMessageId,
             expectedBranchVersion,
@@ -1222,7 +1302,7 @@ export function ChatProvider({
         ).client
         // Keep transport CAS version in sync immediately after local mutation,
         // even if query propagation to `threadRow` lags one render.
-        branchVersionByThreadIdRef.current[activeThreadId] =
+        branchVersionByThreadIdRef.current[currentThreadId] =
           expectedBranchVersion + 1
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
@@ -1241,7 +1321,7 @@ export function ChatProvider({
         )
       }
     },
-    [activeThreadId, status, z],
+    [z],
   )
 
   const clear = useCallback(() => setMessages([]), [setMessages])
@@ -1293,7 +1373,7 @@ export function ChatProvider({
     [messages, status, activeThreadId, branchSelectorsByAnchorMessageId],
   )
 
-  const actionsValue = useMemo<ChatActionsContextValue>(
+  const composerValue = useMemo<ChatComposerContextValue>(
     () => ({
       status,
       error: localError ?? error,
@@ -1307,13 +1387,6 @@ export function ChatProvider({
       setSelectedModelId: setModelSelection,
       setSelectedReasoningEffort: setReasoningSelection,
       setSelectedModeId: setModeSelection,
-      regenerate,
-      regenerateMessage,
-      editMessage,
-      selectBranchVersion,
-      setMessages,
-      resumeStream,
-      clear,
     }),
     [
       status,
@@ -1329,6 +1402,22 @@ export function ChatProvider({
       setModelSelection,
       setReasoningSelection,
       setModeSelection,
+    ],
+  )
+
+  const messageActionsValue = useMemo<ChatMessageActionsContextValue>(
+    () => ({
+      status,
+      regenerate,
+      regenerateMessage,
+      editMessage,
+      selectBranchVersion,
+      setMessages,
+      resumeStream,
+      clear,
+    }),
+    [
+      status,
       regenerate,
       regenerateMessage,
       editMessage,
@@ -1341,9 +1430,11 @@ export function ChatProvider({
 
   return (
     <ChatMessagesContext.Provider value={messagesValue}>
-      <ChatActionsContext.Provider value={actionsValue}>
-        {children}
-      </ChatActionsContext.Provider>
+      <ChatComposerContext.Provider value={composerValue}>
+        <ChatMessageActionsContext.Provider value={messageActionsValue}>
+          {children}
+        </ChatMessageActionsContext.Provider>
+      </ChatComposerContext.Provider>
     </ChatMessagesContext.Provider>
   )
 }
@@ -1356,12 +1447,27 @@ export function useChatMessages() {
   return ctx
 }
 
-export function useChatActions() {
-  const ctx = useContext(ChatActionsContext)
+export function useChatComposer() {
+  const ctx = useContext(ChatComposerContext)
   if (!ctx) {
-    throw new Error('useChatActions must be used within ChatProvider')
+    throw new Error('useChatComposer must be used within ChatProvider')
   }
   return ctx
+}
+
+export function useChatMessageActions() {
+  const ctx = useContext(ChatMessageActionsContext)
+  if (!ctx) {
+    throw new Error('useChatMessageActions must be used within ChatProvider')
+  }
+  return ctx
+}
+
+export function useChatActions() {
+  return {
+    ...useChatComposer(),
+    ...useChatMessageActions(),
+  }
 }
 
 export function useChat() {

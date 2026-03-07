@@ -22,6 +22,7 @@ export type ThreadServiceShape = {
     readonly requestId: string
     readonly modelId: string
     readonly modeId?: ChatModeId
+    readonly organizationId?: string
   }) => Effect.Effect<
     { readonly threadId: string; readonly createdAt: number },
     MessagePersistenceError
@@ -32,6 +33,7 @@ export type ThreadServiceShape = {
     readonly requestId: string
     readonly createIfMissing?: boolean
     readonly requestedModelId?: string
+    readonly organizationId?: string
   }) => Effect.Effect<
     {
       readonly dbId: string
@@ -99,11 +101,13 @@ export class ThreadService extends ServiceMap.Service<
           requestId,
           modelId,
           modeId,
+          organizationId,
         }: {
           readonly userId: string
           readonly requestId: string
           readonly modelId: string
           readonly modeId?: ChatModeId
+          readonly organizationId?: string
         }) =>
           Effect.gen(function* () {
             const db = yield* loadDb({ requestId, threadId: 'new-thread' })
@@ -132,6 +136,7 @@ export class ThreadService extends ServiceMap.Service<
                     allowAttachments: true,
                     activeChildByParent: {},
                     branchVersion: 1,
+                    ownerOrgId: organizationId,
                   })
                 })
               },
@@ -155,12 +160,14 @@ export class ThreadService extends ServiceMap.Service<
           requestId,
           createIfMissing,
           requestedModelId,
+          organizationId,
         }: {
           readonly userId: string
           readonly threadId: string
           readonly requestId: string
           readonly createIfMissing?: boolean
           readonly requestedModelId?: string
+          readonly organizationId?: string
         }) =>
           Effect.gen(function* () {
             const db = yield* loadDb({ requestId, threadId })
@@ -211,6 +218,7 @@ export class ThreadService extends ServiceMap.Service<
                         allowAttachments: true,
                         activeChildByParent: {},
                         branchVersion: 1,
+                        ownerOrgId: organizationId,
                       })
                     })
                   } catch {
@@ -492,10 +500,12 @@ User message: ${trimmedMessage}`,
         userId,
         modelId,
         modeId,
+        organizationId: _organizationId,
       }: {
         readonly userId: string
         readonly modelId: string
         readonly modeId?: ChatModeId
+        readonly organizationId?: string
       }) =>
         Effect.sync(() => {
           const now = Date.now()
@@ -519,12 +529,14 @@ User message: ${trimmedMessage}`,
         requestId,
         createIfMissing,
         requestedModelId,
+        organizationId: _organizationId,
       }: {
         readonly userId: string
         readonly threadId: string
         readonly requestId: string
         readonly createIfMissing?: boolean
         readonly requestedModelId?: string
+        readonly organizationId?: string
       }) {
         let thread = getMemoryState().threads.get(threadId)
         if (!thread) {
