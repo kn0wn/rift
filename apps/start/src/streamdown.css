@@ -168,10 +168,6 @@
   white-space: normal;
 }
 
-.dark .chat-streamdown [data-streamdown="table-header-cell"] {
-  color: var(--content-inverted);
-}
-
 .chat-streamdown [data-streamdown="table-cell"] {
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
