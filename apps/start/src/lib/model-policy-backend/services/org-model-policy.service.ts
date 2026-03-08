@@ -1,13 +1,23 @@
 import { Effect, Layer, ServiceMap } from 'effect'
 import { AI_CATALOG, AI_MODELS_BY_PROVIDER } from '@/lib/ai-catalog'
+import {
+  TOOL_CATALOG,
+  TOOL_CATALOG_BY_KEY,
+} from '@/lib/ai-catalog/tool-catalog'
 import { isChatModeId, type ChatModeId } from '@/lib/chat-modes'
 import { evaluateModelAvailability } from '@/lib/model-policy/policy-engine'
 import {
   getOrgAiPolicy,
   upsertOrgAiPolicy,
 } from '@/lib/model-policy/repository'
-import { EMPTY_ORG_PROVIDER_KEY_STATUS } from '@/lib/model-policy/types'
-import { OrgModelPolicyPersistenceError } from '../domain/errors'
+import {
+  DEFAULT_ORG_TOOL_POLICY,
+  EMPTY_ORG_PROVIDER_KEY_STATUS,
+} from '@/lib/model-policy/types'
+import {
+  OrgModelPolicyInvalidRequestError,
+  OrgModelPolicyPersistenceError,
+} from '../domain/errors'
 
 export type UpdateOrgModelPolicyAction =
   | {
@@ -29,6 +39,19 @@ export type UpdateOrgModelPolicyAction =
       readonly action: 'set_enforced_mode'
       readonly modeId: string | null
     }
+  | {
+      readonly action: 'toggle_provider_native_tools'
+      readonly enabled: boolean
+    }
+  | {
+      readonly action: 'toggle_external_tools'
+      readonly enabled: boolean
+    }
+  | {
+      readonly action: 'toggle_tool'
+      readonly toolKey: string
+      readonly disabled: boolean
+    }
 
 export type OrgModelPolicyPayload = {
   readonly organizationId: string
@@ -36,6 +59,11 @@ export type OrgModelPolicyPayload = {
     readonly disabledProviderIds: readonly string[]
     readonly disabledModelIds: readonly string[]
     readonly complianceFlags: Readonly<Record<string, boolean>>
+    readonly toolPolicy: {
+      readonly providerNativeToolsEnabled: boolean
+      readonly externalToolsEnabled: boolean
+      readonly disabledToolKeys: readonly string[]
+    }
     readonly enforcedModeId?: string
     readonly updatedAt?: number
   }
@@ -52,6 +80,15 @@ export type OrgModelPolicyPayload = {
     readonly disabled: boolean
     readonly deniedBy: readonly ('provider' | 'model' | 'compliance')[]
   }[]
+  readonly tools: readonly {
+    readonly key: string
+    readonly providerId: string
+    readonly displayName: string
+    readonly description: string
+    readonly advanced: boolean
+    readonly source: 'provider-native' | 'external'
+    readonly disabled: boolean
+  }[]
 }
 
 export type OrgModelPolicyServiceShape = {
@@ -63,7 +100,60 @@ export type OrgModelPolicyServiceShape = {
     readonly organizationId: string
     readonly requestId: string
     readonly action: UpdateOrgModelPolicyAction
-  }) => Effect.Effect<OrgModelPolicyPayload, OrgModelPolicyPersistenceError>
+  }) => Effect.Effect<
+    OrgModelPolicyPayload,
+    OrgModelPolicyInvalidRequestError | OrgModelPolicyPersistenceError
+  >
+}
+
+/**
+ * Validates catalog-backed update actions before persistence so every
+ * server-side write path enforces the same identifier constraints.
+ */
+export function validateUpdateOrgModelPolicyAction(input: {
+  readonly action: UpdateOrgModelPolicyAction
+  readonly requestId: string
+}): Effect.Effect<void, OrgModelPolicyInvalidRequestError> {
+  return Effect.try({
+    try: () => {
+      const action = input.action
+      switch (action.action) {
+        case 'toggle_provider':
+          if (!AI_MODELS_BY_PROVIDER.has(action.providerId)) {
+            throw new OrgModelPolicyInvalidRequestError({
+              message: `Unknown provider id: ${action.providerId}`,
+              requestId: input.requestId,
+            })
+          }
+          return
+        case 'toggle_model':
+          if (!AI_CATALOG.some((model) => model.id === action.modelId)) {
+            throw new OrgModelPolicyInvalidRequestError({
+              message: `Unknown model id: ${action.modelId}`,
+              requestId: input.requestId,
+            })
+          }
+          return
+        case 'toggle_tool':
+          if (!TOOL_CATALOG_BY_KEY.has(action.toolKey)) {
+            throw new OrgModelPolicyInvalidRequestError({
+              message: `Unknown tool key: ${action.toolKey}`,
+              requestId: input.requestId,
+            })
+          }
+          return
+        default:
+          return
+      }
+    },
+    catch: (error) =>
+      error instanceof OrgModelPolicyInvalidRequestError
+        ? error
+        : new OrgModelPolicyInvalidRequestError({
+            message: String(error),
+            requestId: input.requestId,
+          }),
+  })
 }
 
 export class OrgModelPolicyService extends ServiceMap.Service<
@@ -81,12 +171,22 @@ export class OrgModelPolicyService extends ServiceMap.Service<
     updatePolicy: Effect.fn('OrgModelPolicyService.updatePolicy')(
       ({ organizationId, requestId, action }) =>
         Effect.gen(function* () {
+          yield* validateUpdateOrgModelPolicyAction({ action, requestId })
           const existing = yield* loadPolicy({ organizationId, requestId })
 
           let disabledProviderIds = existing?.disabledProviderIds ?? []
           let disabledModelIds = existing?.disabledModelIds ?? []
           let complianceFlags: Record<string, boolean> = {
             ...(existing?.complianceFlags ?? {}),
+          }
+          let toolPolicy = {
+            ...(existing?.toolPolicy ?? DEFAULT_ORG_TOOL_POLICY),
+            disabledToolKeys: [
+              ...(
+                existing?.toolPolicy.disabledToolKeys ??
+                DEFAULT_ORG_TOOL_POLICY.disabledToolKeys
+              ),
+            ],
           }
           let enforcedModeId: ChatModeId | null | undefined = existing?.enforcedModeId
 
@@ -121,6 +221,29 @@ export class OrgModelPolicyService extends ServiceMap.Service<
             enforcedModeId = action.modeId
           }
 
+          if (action.action === 'toggle_provider_native_tools') {
+            toolPolicy = {
+              ...toolPolicy,
+              providerNativeToolsEnabled: action.enabled,
+            }
+          }
+
+          if (action.action === 'toggle_external_tools') {
+            toolPolicy = {
+              ...toolPolicy,
+              externalToolsEnabled: action.enabled,
+            }
+          }
+
+          if (action.action === 'toggle_tool') {
+            toolPolicy = {
+              ...toolPolicy,
+              disabledToolKeys: action.disabled
+                ? addToList(toolPolicy.disabledToolKeys, action.toolKey)
+                : removeFromList(toolPolicy.disabledToolKeys, action.toolKey),
+            }
+          }
+
           yield* Effect.tryPromise({
             try: () =>
               upsertOrgAiPolicy({
@@ -128,6 +251,7 @@ export class OrgModelPolicyService extends ServiceMap.Service<
                 disabledProviderIds,
                 disabledModelIds,
                 complianceFlags,
+                toolPolicy,
                 providerKeyStatus:
                   existing?.providerKeyStatus ?? EMPTY_ORG_PROVIDER_KEY_STATUS,
                 enforcedModeId,
@@ -203,10 +327,36 @@ function toOrgModelPolicyPayload(
       disabledProviderIds: policy?.disabledProviderIds ?? [],
       disabledModelIds: policy?.disabledModelIds ?? [],
       complianceFlags: policy?.complianceFlags ?? {},
+      toolPolicy: {
+        providerNativeToolsEnabled:
+          policy?.toolPolicy.providerNativeToolsEnabled ??
+          DEFAULT_ORG_TOOL_POLICY.providerNativeToolsEnabled,
+        externalToolsEnabled:
+          policy?.toolPolicy.externalToolsEnabled ??
+          DEFAULT_ORG_TOOL_POLICY.externalToolsEnabled,
+        disabledToolKeys:
+          policy?.toolPolicy.disabledToolKeys ??
+          DEFAULT_ORG_TOOL_POLICY.disabledToolKeys,
+      },
       enforcedModeId: policy?.enforcedModeId,
       updatedAt: policy?.updatedAt,
     },
     providers,
     models,
+    tools: TOOL_CATALOG.map((tool) => ({
+      key: tool.key,
+      providerId: tool.providerId,
+      displayName: tool.displayName,
+      description: tool.description,
+      advanced: tool.advanced,
+      source: tool.source,
+      disabled:
+        !(
+          tool.source === 'provider-native'
+            ? (policy?.toolPolicy.providerNativeToolsEnabled ?? true)
+            : (policy?.toolPolicy.externalToolsEnabled ?? true)
+        ) ||
+        (policy?.toolPolicy.disabledToolKeys.includes(tool.key) ?? false),
+    })),
   } satisfies OrgModelPolicyPayload
 }

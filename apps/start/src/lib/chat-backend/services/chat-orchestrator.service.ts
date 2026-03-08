@@ -21,6 +21,7 @@ import { ModelPolicyService } from './model-policy.service'
 import { RateLimitService } from './rate-limit.service'
 import { StreamResumeService } from './stream-resume.service'
 import { ThreadService } from './thread.service'
+import { ToolPolicyService } from './tool-policy.service'
 import { ToolRegistryService } from './tool-registry.service'
 import type { AssistantDeltaBuffer } from './chat-orchestrator/assistant-buffer'
 import {
@@ -61,6 +62,7 @@ export type ChatOrchestratorServiceShape = {
     readonly attachments?: readonly IncomingAttachment[]
     readonly modelId?: string
     readonly reasoningEffort?: string
+    readonly disabledToolKeys?: readonly string[]
     readonly createIfMissing?: boolean
     readonly route: string
   }) => Effect.Effect<Response, ChatDomainError>
@@ -80,6 +82,7 @@ export class ChatOrchestratorService extends ServiceMap.Service<
       const modelGateway = yield* ModelGatewayService
       const modelPolicy = yield* ModelPolicyService
       const streamResume = yield* StreamResumeService
+      const toolPolicy = yield* ToolPolicyService
       const tools = yield* ToolRegistryService
 
       const createThread: ChatOrchestratorServiceShape['createThread'] =
@@ -107,6 +110,7 @@ export class ChatOrchestratorService extends ServiceMap.Service<
         attachments,
         modelId,
         reasoningEffort,
+        disabledToolKeys,
         createIfMissing,
         route,
       }) => {
@@ -201,12 +205,42 @@ export class ChatOrchestratorService extends ServiceMap.Service<
             skipProviderKeyResolution,
             requestId,
           })
-          const toolRegistry = yield* tools.resolveForThread({
+          const requestedDisabledToolKeys =
+            disabledToolKeys ?? threadAccess.disabledToolKeys
+          const sanitizedDisabledToolKeys =
+            yield* toolPolicy.sanitizeThreadDisabledToolKeys({
+              modelId: modelResolution.modelId,
+              mode: effectiveMode,
+              orgPolicy,
+              disabledToolKeys: requestedDisabledToolKeys,
+            })
+          const shouldPersistDisabledToolKeys =
+            disabledToolKeys !== undefined &&
+            (sanitizedDisabledToolKeys.length !==
+              threadAccess.disabledToolKeys.length ||
+              sanitizedDisabledToolKeys.some(
+                (toolKey, index) => threadAccess.disabledToolKeys[index] !== toolKey,
+              ))
+          if (shouldPersistDisabledToolKeys) {
+            yield* threads.setThreadDisabledToolKeys({
+              userId,
+              threadId,
+              disabledToolKeys: sanitizedDisabledToolKeys,
+              requestId,
+            })
+          }
+          const resolvedToolPolicy = yield* toolPolicy.resolveForThread({
             threadId,
             userId,
             requestId,
             modelId: modelResolution.modelId,
             mode: effectiveMode,
+            orgPolicy,
+            threadDisabledToolKeys: sanitizedDisabledToolKeys,
+          })
+          const toolRegistry = yield* tools.resolveForModel({
+            modelId: modelResolution.modelId,
+            resolvedToolKeys: resolvedToolPolicy.activeToolKeys,
           })
 
           // Enforce one active stream per user/thread to avoid interleaved assistant writes.
@@ -634,6 +668,18 @@ export class ChatOrchestratorService extends ServiceMap.Service<
                     usage: totalUsage,
                     providerMetadata,
                     usedByok: Boolean(modelResolution.providerApiKeyOverride),
+                    generationMetadata: {
+                      activeToolKeys: resolvedToolPolicy.activeToolKeys,
+                      deniedToolKeysByReason: resolvedToolPolicy.toolEntries
+                        .filter((entry) => entry.reasons.length > 0)
+                        .map((entry) => ({
+                          key: entry.key,
+                          reasons: [...entry.reasons],
+                        })),
+                      orgProviderNativeToolsEnabled:
+                        orgPolicy?.toolPolicy.providerNativeToolsEnabled ?? true,
+                      threadDisabledToolKeys: sanitizedDisabledToolKeys,
+                    },
                   }),
                 )
                 .catch(() => undefined)

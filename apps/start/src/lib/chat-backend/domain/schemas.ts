@@ -46,6 +46,7 @@ export const ChatStreamRequest = Schema.Struct({
   createIfMissing: Schema.optional(Schema.Boolean),
   modelId: Schema.optional(Schema.String),
   reasoningEffort: Schema.optional(Schema.String),
+  disabledToolKeys: Schema.optional(Schema.Array(Schema.String)),
 })
 
 export type ChatStreamRequest = Schema.Schema.Type<typeof ChatStreamRequest>

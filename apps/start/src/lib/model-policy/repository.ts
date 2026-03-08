@@ -1,9 +1,11 @@
 import { getZeroDatabase, zql } from '@/lib/chat-backend/infra/zero/db'
 import { isChatModeId, type ChatModeId } from '@/lib/chat-modes'
 import {
+  DEFAULT_ORG_TOOL_POLICY,
   EMPTY_ORG_PROVIDER_KEY_STATUS,
   type OrgAiPolicy,
   type OrgProviderKeyStatusSnapshot,
+  type OrgToolPolicy,
 } from './types'
 
 /** Uses epoch milliseconds to align with existing Zero schema timestamp columns. */
@@ -20,6 +22,9 @@ function fromRow(row: {
   readonly disabledProviderIds?: readonly string[]
   readonly disabledModelIds?: readonly string[]
   readonly complianceFlags?: Record<string, boolean>
+  readonly providerNativeToolsEnabled?: boolean | null
+  readonly externalToolsEnabled?: boolean | null
+  readonly disabledToolKeys?: readonly string[]
   readonly providerKeyStatus?: OrgProviderKeyStatusSnapshot
   readonly enforcedModeId?: string | null
   readonly updatedAt?: number
@@ -32,20 +37,31 @@ function fromRow(row: {
 
   const providerKeyStatus = row.providerKeyStatus
     ? {
-      syncedAt: row.providerKeyStatus.syncedAt ?? 0,
-      hasAnyProviderKey: Boolean(row.providerKeyStatus.hasAnyProviderKey),
-      providers: {
-        openai: Boolean(row.providerKeyStatus.providers?.openai),
-        anthropic: Boolean(row.providerKeyStatus.providers?.anthropic),
-      },
-    }
+        syncedAt: row.providerKeyStatus.syncedAt ?? 0,
+        hasAnyProviderKey: Boolean(row.providerKeyStatus.hasAnyProviderKey),
+        providers: {
+          openai: Boolean(row.providerKeyStatus.providers?.openai),
+          anthropic: Boolean(row.providerKeyStatus.providers?.anthropic),
+        },
+      }
     : EMPTY_ORG_PROVIDER_KEY_STATUS
+
+  const toolPolicy: OrgToolPolicy = {
+    providerNativeToolsEnabled:
+      row.providerNativeToolsEnabled ??
+      DEFAULT_ORG_TOOL_POLICY.providerNativeToolsEnabled,
+    externalToolsEnabled:
+      row.externalToolsEnabled ?? DEFAULT_ORG_TOOL_POLICY.externalToolsEnabled,
+    disabledToolKeys:
+      row.disabledToolKeys ?? DEFAULT_ORG_TOOL_POLICY.disabledToolKeys,
+  }
 
   return {
     organizationId: row.organizationId,
     disabledProviderIds: row.disabledProviderIds ?? [],
     disabledModelIds: row.disabledModelIds ?? [],
     complianceFlags: row.complianceFlags ?? {},
+    toolPolicy,
     providerKeyStatus,
     enforcedModeId: normalizedModeId,
     updatedAt: row.updatedAt ?? now(),
@@ -77,6 +93,7 @@ export async function upsertOrgAiPolicy(input: {
   readonly disabledProviderIds: readonly string[]
   readonly disabledModelIds: readonly string[]
   readonly complianceFlags: Record<string, boolean>
+  readonly toolPolicy: OrgToolPolicy
   readonly providerKeyStatus: OrgProviderKeyStatusSnapshot
   readonly enforcedModeId?: ChatModeId | null
 }): Promise<OrgAiPolicy> {
@@ -100,6 +117,9 @@ export async function upsertOrgAiPolicy(input: {
         disabledProviderIds: [...input.disabledProviderIds],
         disabledModelIds: [...input.disabledModelIds],
         complianceFlags: input.complianceFlags,
+        providerNativeToolsEnabled: input.toolPolicy.providerNativeToolsEnabled,
+        externalToolsEnabled: input.toolPolicy.externalToolsEnabled,
+        disabledToolKeys: [...input.toolPolicy.disabledToolKeys],
         providerKeyStatus: input.providerKeyStatus,
         enforcedModeId: input.enforcedModeId ?? null,
         updatedAt,
@@ -111,6 +131,12 @@ export async function upsertOrgAiPolicy(input: {
       disabledProviderIds: [...input.disabledProviderIds],
       disabledModelIds: [...input.disabledModelIds],
       complianceFlags: input.complianceFlags,
+      toolPolicy: {
+        providerNativeToolsEnabled:
+          input.toolPolicy.providerNativeToolsEnabled,
+        externalToolsEnabled: input.toolPolicy.externalToolsEnabled,
+        disabledToolKeys: [...input.toolPolicy.disabledToolKeys],
+      },
       providerKeyStatus: input.providerKeyStatus,
       enforcedModeId: input.enforcedModeId ?? undefined,
       updatedAt,
@@ -123,6 +149,9 @@ export async function upsertOrgAiPolicy(input: {
       disabledProviderIds: [...input.disabledProviderIds],
       disabledModelIds: [...input.disabledModelIds],
       complianceFlags: input.complianceFlags,
+      providerNativeToolsEnabled: input.toolPolicy.providerNativeToolsEnabled,
+      externalToolsEnabled: input.toolPolicy.externalToolsEnabled,
+      disabledToolKeys: [...input.toolPolicy.disabledToolKeys],
       providerKeyStatus: input.providerKeyStatus,
       enforcedModeId: input.enforcedModeId ?? null,
       updatedAt,
@@ -134,6 +163,11 @@ export async function upsertOrgAiPolicy(input: {
     disabledProviderIds: [...input.disabledProviderIds],
     disabledModelIds: [...input.disabledModelIds],
     complianceFlags: input.complianceFlags,
+    toolPolicy: {
+      providerNativeToolsEnabled: input.toolPolicy.providerNativeToolsEnabled,
+      externalToolsEnabled: input.toolPolicy.externalToolsEnabled,
+      disabledToolKeys: [...input.toolPolicy.disabledToolKeys],
+    },
     providerKeyStatus: input.providerKeyStatus,
     enforcedModeId: input.enforcedModeId ?? undefined,
     updatedAt,

@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS threads (
   owner_org_id TEXT,
   custom_instruction_id TEXT,
   reasoning_effort TEXT,
-  mode_id TEXT
+  mode_id TEXT,
+  disabled_tool_keys JSONB NOT NULL DEFAULT '[]'::jsonb
 );
 ALTER TABLE threads
 ADD COLUMN IF NOT EXISTS active_child_by_parent JSONB NOT NULL DEFAULT '{}'::jsonb;
@@ -36,6 +37,8 @@ ALTER TABLE threads
 ADD COLUMN IF NOT EXISTS branch_version BIGINT NOT NULL DEFAULT 1;
 ALTER TABLE threads
 ADD COLUMN IF NOT EXISTS mode_id TEXT;
+ALTER TABLE threads
+ADD COLUMN IF NOT EXISTS disabled_tool_keys JSONB NOT NULL DEFAULT '[]'::jsonb;
 CREATE INDEX IF NOT EXISTS threads_user_id ON threads (user_id);
 CREATE INDEX IF NOT EXISTS threads_thread_id ON threads (thread_id);
 CREATE INDEX IF NOT EXISTS threads_user_updated ON threads (user_id, updated_at);
@@ -136,6 +139,9 @@ CREATE TABLE IF NOT EXISTS org_ai_policy (
   disabled_provider_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
   disabled_model_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
   compliance_flags JSONB NOT NULL DEFAULT '{}'::jsonb,
+  provider_native_tools_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  external_tools_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  disabled_tool_keys JSONB NOT NULL DEFAULT '[]'::jsonb,
   provider_key_status JSONB NOT NULL DEFAULT '{"syncedAt": 0, "hasAnyProviderKey": false, "providers": {"openai": false, "anthropic": false}}'::jsonb,
   enforced_mode_id TEXT,
   version BIGINT NOT NULL DEFAULT 1,
@@ -145,6 +151,12 @@ ALTER TABLE org_ai_policy
 ADD COLUMN IF NOT EXISTS provider_key_status JSONB NOT NULL DEFAULT '{"syncedAt": 0, "hasAnyProviderKey": false, "providers": {"openai": false, "anthropic": false}}'::jsonb;
 ALTER TABLE org_ai_policy
 ADD COLUMN IF NOT EXISTS enforced_mode_id TEXT;
+ALTER TABLE org_ai_policy
+ADD COLUMN IF NOT EXISTS provider_native_tools_enabled BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE org_ai_policy
+ADD COLUMN IF NOT EXISTS external_tools_enabled BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE org_ai_policy
+ADD COLUMN IF NOT EXISTS disabled_tool_keys JSONB NOT NULL DEFAULT '[]'::jsonb;
 CREATE INDEX IF NOT EXISTS org_ai_policy_organization_id ON org_ai_policy (organization_id);
 CREATE INDEX IF NOT EXISTS org_ai_policy_updated_at ON org_ai_policy (updated_at);
 

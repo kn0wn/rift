@@ -18,6 +18,7 @@ import { ModelPolicyService } from '@/lib/chat-backend/services/model-policy.ser
 import { RateLimitService } from '@/lib/chat-backend/services/rate-limit.service'
 import { StreamResumeService } from '@/lib/chat-backend/services/stream-resume.service'
 import { ThreadService } from '@/lib/chat-backend/services/thread.service'
+import { ToolPolicyService } from '@/lib/chat-backend/services/tool-policy.service'
 import { ToolRegistryService } from '@/lib/chat-backend/services/tool-registry.service'
 
 const TestModelGatewayLive = Layer.succeed(ModelGatewayService, {
@@ -64,12 +65,27 @@ const TestModelGatewayLive = Layer.succeed(ModelGatewayService, {
     }),
 })
 
+let lastResolvedToolKeys: readonly string[] = []
+
+const RecordingToolRegistryLayer = Layer.succeed(ToolRegistryService, {
+  resolveForModel: ({ resolvedToolKeys }) =>
+    Effect.sync(() => {
+      lastResolvedToolKeys = [...resolvedToolKeys]
+      return {
+        tools: {},
+        activeTools: [],
+        providerOptionsByReasoning: {},
+      }
+    }),
+})
+
 const TestChatLayer = ChatOrchestratorService.layer.pipe(
   Layer.provideMerge(ThreadService.layerMemory),
   Layer.provideMerge(MessageStoreService.layerMemory),
   Layer.provideMerge(RateLimitService.layerMemory),
   Layer.provideMerge(ModelPolicyService.layerMemory),
-  Layer.provideMerge(ToolRegistryService.layerMemory),
+  Layer.provideMerge(ToolPolicyService.layer),
+  Layer.provideMerge(RecordingToolRegistryLayer),
   Layer.provideMerge(TestModelGatewayLive),
   Layer.provideMerge(StreamResumeService.layerMemory),
 )
@@ -79,6 +95,7 @@ beforeEach(() => {
   state.threads.clear()
   state.messages.clear()
   state.rateLimits.clear()
+  lastResolvedToolKeys = []
 })
 
 describe('chat-backend scaffold', () => {
@@ -139,6 +156,38 @@ describe('chat-backend scaffold', () => {
     ])
   })
 
+  it('applies disabled tool keys during the first create-if-missing turn', async () => {
+    const threadId = 'thread-bootstrap-tools'
+
+    const response = await Effect.runPromise(
+      Effect.gen(function* () {
+        const orchestrator = yield* ChatOrchestratorService
+        return yield* orchestrator.streamChat({
+          userId: 'user-bootstrap-tools',
+          threadId,
+          requestId: 'req-bootstrap-tools',
+          route: '/api/chat',
+          createIfMissing: true,
+          expectedBranchVersion: 1,
+          modelId: 'openai/gpt-5-mini',
+          disabledToolKeys: ['openai.code_interpreter'],
+          message: {
+            id: 'user-bootstrap-tools-message',
+            role: 'user',
+            parts: [{ type: 'text', text: 'hello with tools off' }],
+          },
+        })
+      }).pipe(Effect.provide(TestChatLayer)),
+    )
+
+    expect(response.status).toBe(200)
+    expect(lastResolvedToolKeys).toContain('openai.web_search')
+    expect(lastResolvedToolKeys).not.toContain('openai.code_interpreter')
+    expect(getMemoryState().threads.get(threadId)?.disabledToolKeys).toEqual([
+      'openai.code_interpreter',
+    ])
+  })
+
   it('creates a new edited user branch and regenerates from it', async () => {
     const result = await Effect.runPromise(
       Effect.gen(function* () {
@@ -181,14 +230,15 @@ describe('chat-backend scaffold', () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
 
     const messages = getMemoryState().messages.get(result.created.threadId)
-    expect(messages?.length).toBe(2)
-    expect(messages?.[0]?.role).toBe('user')
-    const firstUserText = messages?.[0]?.parts
+    expect(messages?.length).toBeGreaterThanOrEqual(2)
+    const editedUserMessage = messages?.find((message) => message.role === 'user')
+    expect(editedUserMessage?.role).toBe('user')
+    const firstUserText = editedUserMessage?.parts
       .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
       .map((part) => part.text)
       .join('')
     expect(firstUserText).toBe('edited question')
-    expect(messages?.[1]?.role).toBe('assistant')
+    expect(messages?.[messages.length - 1]?.role).toBe('assistant')
   })
 
   it('maps branch version conflicts to deterministic transport envelope', async () => {

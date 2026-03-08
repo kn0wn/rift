@@ -10,6 +10,31 @@ import { OPENAI_MODELS } from './providers/openai'
 import { XAI_MODELS } from './providers/xai'
 import { ZAI_MODELS } from './providers/zai'
 import type { AiModelCatalogEntry } from './types'
+import type { CatalogProviderId, ProviderToolIdByProvider } from './provider-tools'
+
+const DEFAULT_PROVIDER_TOOL_IDS_BY_PROVIDER = {
+  openai: ['web_search', 'code_interpreter'],
+  anthropic: ['web_search_20250305'],
+  google: ['google_search', 'url_context', 'code_execution'],
+} as const satisfies Partial<{
+  [P in CatalogProviderId]: readonly ProviderToolIdByProvider[P][]
+}>
+
+function withDefaultProviderTools<
+  TProviderId extends CatalogProviderId,
+>(model: AiModelCatalogEntry<TProviderId>): AiModelCatalogEntry<TProviderId> {
+  const defaultToolIds = DEFAULT_PROVIDER_TOOL_IDS_BY_PROVIDER[
+    model.providerId as keyof typeof DEFAULT_PROVIDER_TOOL_IDS_BY_PROVIDER
+  ]
+  if (!defaultToolIds || model.providerToolIds.length > 0) {
+    return model
+  }
+
+  return {
+    ...model,
+    providerToolIds: [...defaultToolIds] as unknown as AiModelCatalogEntry<TProviderId>['providerToolIds'],
+  }
+}
 
 /**
  * Global model catalog. This is append-only in practice so policy/state can
@@ -27,7 +52,7 @@ export const AI_CATALOG: readonly AiModelCatalogEntry[] = [
   ...MOONSHOTAI_MODELS,
   ...XAI_MODELS,
   ...ZAI_MODELS,
-]
+].map((model) => withDefaultProviderTools(model as AiModelCatalogEntry))
 
 /** O(1) catalog lookup for request-path model resolution. */
 export const AI_CATALOG_BY_ID = new Map(AI_CATALOG.map((model) => [model.id, model]))

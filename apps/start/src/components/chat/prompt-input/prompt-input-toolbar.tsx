@@ -9,6 +9,7 @@ import { useRef } from 'react'
 import { PromptInputSubmit } from './prompt-input-submit'
 import { ACCEPTED_FILE_TYPES } from '../../../hooks/chat/upload'
 import { PromptInputActionsMenu } from './prompt-input-actions-menu'
+import type { ChatVisibleTool } from '../chat-context'
 
 /** Styling shared with toolbar ghost buttons for visual consistency. */
 const TOOLBAR_SELECT_CLASS =
@@ -73,6 +74,9 @@ export type PromptInputToolbarProps = HTMLAttributes<HTMLDivElement> & {
   activeThreadId: string | null
   modeLockedModelName: string
   onToggleStudyMode: () => void
+  visibleTools: readonly ChatVisibleTool[]
+  disabledToolKeys: readonly string[]
+  onToolDisabledKeysChange: (disabledToolKeys: readonly string[]) => void
   middle?: React.ReactNode
   /** Content rendered immediately after the attachment button (e.g. model selector). */
   afterAttach?: React.ReactNode
@@ -93,6 +97,9 @@ export function PromptInputToolbar({
   activeThreadId,
   modeLockedModelName,
   onToggleStudyMode,
+  visibleTools,
+  disabledToolKeys,
+  onToolDisabledKeysChange,
   middle,
   afterAttach,
   ...props
@@ -134,6 +141,9 @@ export function PromptInputToolbar({
         activeThreadId={activeThreadId}
         modeLockedModelName={modeLockedModelName}
         onToggleStudyMode={onToggleStudyMode}
+        visibleTools={visibleTools}
+        disabledToolKeys={disabledToolKeys}
+        onToolDisabledKeysChange={onToolDisabledKeysChange}
       />
 
       <div className="min-w-0 flex-1">

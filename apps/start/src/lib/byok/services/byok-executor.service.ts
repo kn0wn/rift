@@ -10,6 +10,7 @@ import {
   upsertOrgProviderApiKey,
 } from '@/lib/model-policy/provider-keys'
 import {
+  DEFAULT_ORG_TOOL_POLICY,
   EMPTY_ORG_PROVIDER_KEY_STATUS,
   toOrgProviderKeyStatusSnapshot,
 } from '@/lib/model-policy/types'
@@ -161,6 +162,7 @@ const runSet = (
               disabledProviderIds: existing?.disabledProviderIds ?? [],
               disabledModelIds: existing?.disabledModelIds ?? [],
               complianceFlags: existing?.complianceFlags ?? {},
+              toolPolicy: existing?.toolPolicy ?? DEFAULT_ORG_TOOL_POLICY,
               enforcedModeId: existing?.enforcedModeId,
               providerKeyStatus: toOrgProviderKeyStatusSnapshot({
                 ...baseline,
@@ -214,6 +216,7 @@ const runRemove = (
               disabledProviderIds: existing?.disabledProviderIds ?? [],
               disabledModelIds: existing?.disabledModelIds ?? [],
               complianceFlags: existing?.complianceFlags ?? {},
+              toolPolicy: existing?.toolPolicy ?? DEFAULT_ORG_TOOL_POLICY,
               enforcedModeId: existing?.enforcedModeId,
               providerKeyStatus: toOrgProviderKeyStatusSnapshot({
                 ...baseline,

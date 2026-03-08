@@ -42,6 +42,7 @@ export type ThreadServiceShape = {
       readonly model: string
       readonly reasoningEffort?: AiReasoningEffort
       readonly modeId?: ChatModeId
+      readonly disabledToolKeys: readonly string[]
       readonly generationStatus:
         | 'pending'
         | 'generation'
@@ -68,6 +69,15 @@ export type ThreadServiceShape = {
     readonly modeId?: ChatModeId
     readonly requestId: string
   }) => Effect.Effect<void, ThreadNotFoundError | ThreadForbiddenError | MessagePersistenceError>
+  readonly setThreadDisabledToolKeys: (input: {
+    readonly userId: string
+    readonly threadId: string
+    readonly disabledToolKeys: readonly string[]
+    readonly requestId: string
+  }) => Effect.Effect<
+    readonly string[],
+    ThreadNotFoundError | ThreadForbiddenError | MessagePersistenceError
+  >
 }
 
 export class ThreadService extends ServiceMap.Service<
@@ -137,6 +147,7 @@ export class ThreadService extends ServiceMap.Service<
                     activeChildByParent: {},
                     branchVersion: 1,
                     ownerOrgId: organizationId,
+                    disabledToolKeys: [],
                   })
                 })
               },
@@ -219,6 +230,7 @@ export class ThreadService extends ServiceMap.Service<
                         activeChildByParent: {},
                         branchVersion: 1,
                         ownerOrgId: organizationId,
+                        disabledToolKeys: [],
                       })
                     })
                   } catch {
@@ -269,6 +281,8 @@ export class ThreadService extends ServiceMap.Service<
                 thread.modeId && isChatModeId(thread.modeId)
                   ? thread.modeId
                   : undefined,
+              disabledToolKeys:
+                Array.isArray(thread.disabledToolKeys) ? thread.disabledToolKeys : [],
               generationStatus: thread.generationStatus,
               branchVersion: thread.branchVersion,
             }
@@ -481,12 +495,85 @@ User message: ${trimmedMessage}`,
           }),
       )
 
+      const setThreadDisabledToolKeys = Effect.fn(
+        'ThreadService.setThreadDisabledToolKeys',
+      )(
+        ({
+          userId,
+          threadId,
+          disabledToolKeys,
+          requestId,
+        }: {
+          readonly userId: string
+          readonly threadId: string
+          readonly disabledToolKeys: readonly string[]
+          readonly requestId: string
+        }) =>
+          Effect.gen(function* () {
+            const db = yield* loadDb({ requestId, threadId })
+            const thread = yield* Effect.tryPromise({
+              try: () => db.run(zql.thread.where('threadId', threadId).one()),
+              catch: (error) =>
+                new MessagePersistenceError({
+                  message: 'Failed to update thread tools',
+                  requestId,
+                  threadId,
+                  cause: String(error),
+                }),
+            })
+
+            if (!thread) {
+              return yield* Effect.fail(
+                new ThreadNotFoundError({
+                  message: 'Thread not found',
+                  requestId,
+                  threadId,
+                }),
+              )
+            }
+
+            if (thread.userId !== userId) {
+              return yield* Effect.fail(
+                new ThreadForbiddenError({
+                  message: 'Thread is not owned by user',
+                  requestId,
+                  threadId,
+                  userId,
+                }),
+              )
+            }
+
+            const normalizedDisabledToolKeys = [...new Set(disabledToolKeys)]
+            yield* Effect.tryPromise({
+              try: async () => {
+                await db.transaction(async (tx) => {
+                  await tx.mutate.thread.update({
+                    id: thread.id,
+                    disabledToolKeys: normalizedDisabledToolKeys,
+                    updatedAt: Date.now(),
+                  })
+                })
+              },
+              catch: (error) =>
+                new MessagePersistenceError({
+                  message: 'Failed to update thread tools',
+                  requestId,
+                  threadId,
+                  cause: String(error),
+                }),
+            })
+
+            return normalizedDisabledToolKeys
+          }),
+      )
+
       return {
         createThread,
         assertThreadAccess,
         autoGenerateTitle,
         markThreadGenerationFailed,
         setThreadMode,
+        setThreadDisabledToolKeys,
       }
     }),
   )
@@ -515,6 +602,7 @@ User message: ${trimmedMessage}`,
             updatedAt: now,
             modelId,
             modeId,
+            disabledToolKeys: [],
           })
           getMemoryState().messages.set(threadId, [])
           return { threadId, createdAt: now }
@@ -555,6 +643,7 @@ User message: ${trimmedMessage}`,
             updatedAt: now,
             modelId: requestedModelId?.trim() || '',
             modeId: undefined,
+            disabledToolKeys: [],
           }
           if (!created.modelId) {
             return yield* Effect.fail(
@@ -587,6 +676,7 @@ User message: ${trimmedMessage}`,
           model: thread.modelId,
           reasoningEffort: undefined,
           modeId: thread.modeId,
+          disabledToolKeys: thread.disabledToolKeys ?? [],
           generationStatus: 'completed' as const,
           branchVersion: 1,
         }
@@ -624,6 +714,35 @@ User message: ${trimmedMessage}`,
           thread.modeId = modeId
           thread.updatedAt = Date.now()
         }),
+    ),
+    setThreadDisabledToolKeys: Effect.fn(
+      'ThreadService.setThreadDisabledToolKeysMemory',
+    )(({ userId, threadId, disabledToolKeys, requestId }) =>
+      Effect.gen(function* () {
+        const thread = getMemoryState().threads.get(threadId)
+        if (!thread) {
+          return yield* Effect.fail(
+            new ThreadNotFoundError({
+              message: 'Thread not found',
+              requestId,
+              threadId,
+            }),
+          )
+        }
+        if (thread.userId !== userId) {
+          return yield* Effect.fail(
+            new ThreadForbiddenError({
+              message: 'Thread is not owned by user',
+              requestId,
+              threadId,
+              userId,
+            }),
+          )
+        }
+        thread.disabledToolKeys = [...new Set(disabledToolKeys)] as readonly string[]
+        thread.updatedAt = Date.now()
+        return thread.disabledToolKeys ?? []
+      }),
     ),
   })
 }

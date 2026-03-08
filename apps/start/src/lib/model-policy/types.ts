@@ -2,6 +2,18 @@ import type { AiReasoningEffort } from '@/lib/ai-catalog/types'
 import type { OrgComplianceFlags } from '@/lib/ai-catalog/compliance-map'
 import type { ChatModeId } from '@/lib/chat-modes'
 
+export type OrgToolPolicy = {
+  readonly providerNativeToolsEnabled: boolean
+  readonly externalToolsEnabled: boolean
+  readonly disabledToolKeys: readonly string[]
+}
+
+export const DEFAULT_ORG_TOOL_POLICY: OrgToolPolicy = {
+  providerNativeToolsEnabled: true,
+  externalToolsEnabled: true,
+  disabledToolKeys: [],
+}
+
 export type OrgProviderKeyStatusSnapshot = {
   readonly syncedAt: number
   readonly hasAnyProviderKey: boolean
@@ -43,6 +55,7 @@ export type OrgAiPolicy = {
   readonly disabledProviderIds: readonly string[]
   readonly disabledModelIds: readonly string[]
   readonly complianceFlags: OrgComplianceFlags
+  readonly toolPolicy: OrgToolPolicy
   readonly enforcedModeId?: ChatModeId
   /**
    * Optional provider-key presence snapshot used to short-circuit BYOK key

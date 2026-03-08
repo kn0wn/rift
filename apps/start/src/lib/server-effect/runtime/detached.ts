@@ -55,5 +55,5 @@ export function runDetachedUnsafe<TValue, TError>(input: {
       onTimeout: input.onTimeout,
       timeout: input.timeout,
     }),
-  )
+  ).catch(() => undefined)
 }

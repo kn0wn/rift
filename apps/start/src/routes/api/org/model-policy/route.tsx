@@ -38,12 +38,31 @@ const SetEnforcedModeBody = z.object({
   modeId: z.string().trim().min(1).nullable(),
 })
 
+const ToggleProviderNativeToolsBody = z.object({
+  action: z.literal('toggle_provider_native_tools'),
+  enabled: z.boolean(),
+})
+
+const ToggleExternalToolsBody = z.object({
+  action: z.literal('toggle_external_tools'),
+  enabled: z.boolean(),
+})
+
+const ToggleToolBody = z.object({
+  action: z.literal('toggle_tool'),
+  toolKey: z.string().trim().min(1),
+  disabled: z.boolean(),
+})
+
 /** Union for supported update actions handled by POST /api/org/model-policy. */
 const UpdatePolicyBody = z.discriminatedUnion('action', [
   ToggleProviderBody,
   ToggleModelBody,
   ToggleComplianceFlagBody,
   SetEnforcedModeBody,
+  ToggleProviderNativeToolsBody,
+  ToggleExternalToolsBody,
+  ToggleToolBody,
 ])
 
 /** Org-scoped API for model policy read/write operations. */

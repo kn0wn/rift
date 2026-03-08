@@ -25,6 +25,7 @@ export function buildPersistedGenerationAnalytics(input: {
   readonly usage?: LanguageModelUsage
   readonly providerMetadata?: unknown
   readonly usedByok: boolean
+  readonly generationMetadata?: Record<string, ReadonlyJSONValue | undefined>
 }): PersistedGenerationAnalytics {
   const providerMetadata = input.providerMetadata as ReadonlyJSONValue | undefined
   const usage = normalizeUsage(input.usage)
@@ -37,6 +38,7 @@ export function buildPersistedGenerationAnalytics(input: {
     routing: asJsonValue(gateway?.routing),
     openaiResponseId: asOptionalString(openai?.responseId),
     serviceTier: asOptionalString(openai?.serviceTier),
+    ...(input.generationMetadata ?? {}),
   })
 
   const rawCost = asOptionalNumber(gateway?.cost)

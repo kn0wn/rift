@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useQuery, useZero } from '@rocicorp/zero/react'
 import { AI_CATALOG, AI_MODELS_BY_PROVIDER } from '@/lib/ai-catalog'
+import { TOOL_CATALOG } from '@/lib/ai-catalog/tool-catalog'
 import { evaluateModelAvailability } from '@/lib/model-policy/policy-engine'
 import { mutators, queries } from '@/integrations/zero'
 import type { ProviderPolicyUpdateAction, PolicyPayload } from './types'
@@ -15,6 +16,9 @@ function buildPolicyPayload(input: {
     disabledProviderIds?: readonly string[]
     disabledModelIds?: readonly string[]
     complianceFlags?: Record<string, boolean>
+    providerNativeToolsEnabled?: boolean | null
+    externalToolsEnabled?: boolean | null
+    disabledToolKeys?: readonly string[]
     enforcedModeId?: string | null
     updatedAt?: number
   } | null
@@ -23,6 +27,11 @@ function buildPolicyPayload(input: {
     disabledProviderIds: [...(input.policyRow?.disabledProviderIds ?? [])],
     disabledModelIds: [...(input.policyRow?.disabledModelIds ?? [])],
     complianceFlags: { ...(input.policyRow?.complianceFlags ?? {}) },
+    toolPolicy: {
+      providerNativeToolsEnabled: input.policyRow?.providerNativeToolsEnabled ?? true,
+      externalToolsEnabled: input.policyRow?.externalToolsEnabled ?? true,
+      disabledToolKeys: [...(input.policyRow?.disabledToolKeys ?? [])],
+    },
     enforcedModeId: input.policyRow?.enforcedModeId ?? undefined,
     updatedAt: input.policyRow?.updatedAt,
   }
@@ -41,6 +50,7 @@ function buildPolicyPayload(input: {
           disabledProviderIds: policy.disabledProviderIds,
           disabledModelIds: policy.disabledModelIds,
           complianceFlags: policy.complianceFlags,
+          toolPolicy: policy.toolPolicy,
           updatedAt: policy.updatedAt ?? Date.now(),
         },
       })
@@ -54,6 +64,21 @@ function buildPolicyPayload(input: {
         deniedBy: [...decision.deniedBy],
       }
     }),
+    tools: TOOL_CATALOG.map((tool) => ({
+      key: tool.key,
+      providerId: tool.providerId,
+      displayName: tool.displayName,
+      description: tool.description,
+      advanced: tool.advanced,
+      source: tool.source,
+      disabled:
+        !(
+          tool.source === 'provider-native'
+            ? policy.toolPolicy.providerNativeToolsEnabled
+            : policy.toolPolicy.externalToolsEnabled
+        ) ||
+        policy.toolPolicy.disabledToolKeys.includes(tool.key),
+    })),
   }
 }
 
@@ -99,6 +124,28 @@ export function useProviderPolicy() {
           await z.mutate(
             mutators.orgPolicy.setEnforcedMode({
               modeId: body.modeId,
+            }),
+          ).client
+        }
+        if (body.action === 'toggle_provider_native_tools') {
+          await z.mutate(
+            mutators.orgPolicy.toggleProviderNativeTools({
+              enabled: body.enabled,
+            }),
+          ).client
+        }
+        if (body.action === 'toggle_external_tools') {
+          await z.mutate(
+            mutators.orgPolicy.toggleExternalTools({
+              enabled: body.enabled,
+            }),
+          ).client
+        }
+        if (body.action === 'toggle_tool') {
+          await z.mutate(
+            mutators.orgPolicy.toggleTool({
+              toolKey: body.toolKey,
+              disabled: body.disabled,
             }),
           ).client
         }

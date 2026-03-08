@@ -2,6 +2,13 @@ import {
   defineMutator,
 } from '@rocicorp/zero'
 import { z } from 'zod'
+import { sanitizeThreadDisabledToolKeys } from '@/lib/chat-backend/domain/tool-policy'
+import { isChatModeId, resolveEffectiveChatMode } from '@/lib/chat-modes'
+import {
+  DEFAULT_ORG_TOOL_POLICY,
+  EMPTY_ORG_PROVIDER_KEY_STATUS,
+  type OrgAiPolicy,
+} from '@/lib/model-policy/types'
 import { zql } from '../zql'
 import { ROOT_BRANCH_PARENT_KEY } from '@/lib/chat-branching/branch-resolver'
 
@@ -35,6 +42,60 @@ const setThreadModeArgs = z.object({
   threadId: z.string(),
   modeId: z.string().nullable(),
 })
+
+const setThreadDisabledToolKeysArgs = z.object({
+  threadId: z.string(),
+  disabledToolKeys: z.array(z.string()),
+})
+
+/**
+ * Builds the minimum org policy snapshot needed by tool-policy resolution from
+ * Zero rows available inside a mutator transaction.
+ */
+function buildOrgToolPolicy(input: {
+  organizationId?: string
+  policyRow?: {
+    organizationId?: string
+    disabledProviderIds?: readonly string[]
+    disabledModelIds?: readonly string[]
+    complianceFlags?: Record<string, boolean>
+    providerNativeToolsEnabled?: boolean | null
+    externalToolsEnabled?: boolean | null
+    disabledToolKeys?: readonly string[]
+    enforcedModeId?: string | null
+    updatedAt?: number
+  } | null
+}): OrgAiPolicy | undefined {
+  const organizationId =
+    input.organizationId?.trim() ??
+    input.policyRow?.organizationId?.trim()
+  if (!organizationId) return undefined
+
+  return {
+    organizationId,
+    disabledProviderIds: input.policyRow?.disabledProviderIds ?? [],
+    disabledModelIds: input.policyRow?.disabledModelIds ?? [],
+    complianceFlags: input.policyRow?.complianceFlags ?? {},
+    toolPolicy: {
+      providerNativeToolsEnabled:
+        input.policyRow?.providerNativeToolsEnabled ??
+        DEFAULT_ORG_TOOL_POLICY.providerNativeToolsEnabled,
+      externalToolsEnabled:
+        input.policyRow?.externalToolsEnabled ??
+        DEFAULT_ORG_TOOL_POLICY.externalToolsEnabled,
+      disabledToolKeys:
+        input.policyRow?.disabledToolKeys ??
+        DEFAULT_ORG_TOOL_POLICY.disabledToolKeys,
+    },
+    enforcedModeId:
+      input.policyRow?.enforcedModeId &&
+      isChatModeId(input.policyRow.enforcedModeId)
+        ? input.policyRow.enforcedModeId
+        : undefined,
+    providerKeyStatus: EMPTY_ORG_PROVIDER_KEY_STATUS,
+    updatedAt: input.policyRow?.updatedAt ?? Date.now(),
+  }
+}
 
 export const chatMutatorDefinitions = {
   threads: {
@@ -165,6 +226,58 @@ export const chatMutatorDefinitions = {
         modeId: nextModeId,
       })
     }),
+
+    /**
+     * Thread-local provider tool preferences are stored as disabled tool keys.
+     * The mutator computes the canonical server-side value from the current
+     * thread model/mode plus org policy so clients cannot bypass policy rules.
+     */
+    setDisabledToolKeys: defineMutator(
+      setThreadDisabledToolKeysArgs,
+      async ({ tx, args, ctx }) => {
+        const thread = await tx.run(zql.thread.where('threadId', args.threadId).one())
+        if (!thread || thread.userId !== ctx.userID) {
+          return
+        }
+
+        const orgPolicyRow = ctx.organizationId
+          ? await tx.run(
+              zql.orgAiPolicy.where('organizationId', ctx.organizationId).one(),
+            )
+          : undefined
+        const orgPolicy = buildOrgToolPolicy({
+          organizationId: ctx.organizationId,
+          policyRow: orgPolicyRow,
+        })
+        const mode = resolveEffectiveChatMode({
+          orgEnforcedModeId: orgPolicy?.enforcedModeId,
+          threadModeId: typeof thread.modeId === 'string' ? thread.modeId : undefined,
+        })
+        const nextDisabledToolKeys = sanitizeThreadDisabledToolKeys({
+          modelId: thread.model,
+          mode,
+          orgPolicy,
+          disabledToolKeys: args.disabledToolKeys,
+        })
+
+        const currentDisabledToolKeys = Array.isArray(thread.disabledToolKeys)
+          ? thread.disabledToolKeys
+          : []
+        const same =
+          currentDisabledToolKeys.length === nextDisabledToolKeys.length &&
+          currentDisabledToolKeys.every(
+            (value, index) => value === nextDisabledToolKeys[index],
+          )
+        if (same) {
+          return
+        }
+
+        await tx.mutate.thread.update({
+          id: thread.id,
+          disabledToolKeys: nextDisabledToolKeys,
+        })
+      },
+    ),
   },
 
   /**

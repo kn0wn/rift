@@ -9,6 +9,7 @@ type ThreadRecord = {
   modelId: string
   updatedAt: number
   modeId?: ChatModeId
+  disabledToolKeys?: readonly string[]
 }
 
 type RateLimitBucket = {

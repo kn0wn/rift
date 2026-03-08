@@ -1,9 +1,7 @@
 import type { ToolSet } from 'ai'
 import { Effect, Layer, ServiceMap } from 'effect'
 import { AI_CATALOG_BY_ID } from '@/lib/ai-catalog'
-import type { ResolvedChatMode } from '@/lib/chat-modes'
-import { getProviderToolDefinition } from '@/lib/ai-catalog/provider-tools'
-import { canUseAdvancedProviderTools } from '@/utils/app-feature-flags'
+import { TOOL_CATALOG_BY_KEY } from '@/lib/ai-catalog/tool-catalog'
 import type { AiReasoningEffort } from '@/lib/ai-catalog/types'
 import { resolveProviderToolSet } from '../provider-tools'
 
@@ -21,12 +19,9 @@ export type ToolRegistryResult = {
 
 /** Service contract for resolving per-request tool availability. */
 export type ToolRegistryServiceShape = {
-  readonly resolveForThread: (input: {
-    readonly threadId: string
-    readonly userId: string
-    readonly requestId: string
+  readonly resolveForModel: (input: {
     readonly modelId: string
-    readonly mode?: ResolvedChatMode
+    readonly resolvedToolKeys: readonly string[]
   }) => Effect.Effect<ToolRegistryResult>
 }
 
@@ -45,33 +40,31 @@ export class ToolRegistryService extends ServiceMap.Service<
 >()('chat-backend/ToolRegistryService') {
   /** Live tool registry resolving provider-specific tool capabilities. */
   static readonly layer = Layer.succeed(this, {
-    resolveForThread: Effect.fn('ToolRegistryService.resolveForThread')(
+    resolveForModel: Effect.fn('ToolRegistryService.resolveForModel')(
       ({
         modelId,
-        mode,
+        resolvedToolKeys,
       }: {
         readonly modelId: string
-        readonly mode?: ResolvedChatMode
+        readonly resolvedToolKeys: readonly string[]
       }) => {
         const model = AI_CATALOG_BY_ID.get(modelId)
         if (!model) {
           return Effect.succeed(emptyToolRegistryResult())
         }
-        const modeAllowlist =
-          mode?.definition.providerToolAllowlistByProvider?.[model.providerId]
-        const candidateProviderToolIds = modeAllowlist
-          ? model.providerToolIds.filter((toolId) =>
-              modeAllowlist.includes(toolId),
-            )
-          : model.providerToolIds
-        const enabledProviderTools =
-          candidateProviderToolIds.filter((toolId) => {
-            const definition = getProviderToolDefinition(model.providerId, toolId)
-            if (!definition) return false
-            return canUseAdvancedProviderTools() || !definition.advanced
-          })
+
+        const enabledProviderTools = resolvedToolKeys
+          .map((toolKey) => TOOL_CATALOG_BY_KEY.get(toolKey))
+          .filter(
+            (entry): entry is NonNullable<typeof entry> =>
+              !!entry && entry.providerId === model.providerId,
+          )
+          .map(
+            (entry) =>
+              entry.providerToolId as (typeof model.providerToolIds)[number],
+          )
         const tools =
-          model && enabledProviderTools.length > 0
+          enabledProviderTools.length > 0
             ? resolveProviderToolSet({
                 providerId: model.providerId,
                 providerToolIds: enabledProviderTools,
@@ -92,7 +85,7 @@ export class ToolRegistryService extends ServiceMap.Service<
 
   /** Memory adapter for tests/local runs. */
   static readonly layerMemory = Layer.succeed(this, {
-    resolveForThread: Effect.fn('ToolRegistryService.resolveForThreadMemory')(
+    resolveForModel: Effect.fn('ToolRegistryService.resolveForModelMemory')(
       () => Effect.succeed(emptyToolRegistryResult()),
     ),
   })

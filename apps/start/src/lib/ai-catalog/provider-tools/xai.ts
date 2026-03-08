@@ -31,18 +31,6 @@ export const XAI_PROVIDER_TOOLS = [
     description: 'Views and analyzes videos linked from X.',
     advanced: true,
   },
-  {
-    id: 'file_search',
-    name: 'File Search',
-    description: 'Searches xAI vector stores (collections).',
-    advanced: true,
-  },
-  {
-    id: 'mcp_server',
-    name: 'MCP Server',
-    description: 'Connects to remote MCP servers.',
-    advanced: true,
-  },
 ] as const satisfies readonly ProviderToolDefinition[]
 
 export type XaiProviderToolId = (typeof XAI_PROVIDER_TOOLS)[number]['id']

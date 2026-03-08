@@ -8,12 +8,6 @@ export const OPENAI_PROVIDER_TOOLS = [
     advanced: false,
   },
   {
-    id: 'file_search',
-    name: 'File Search',
-    description: 'Searches indexed documents and files.',
-    advanced: false,
-  },
-  {
     id: 'code_interpreter',
     name: 'Code Interpreter',
     description: 'Runs code and returns computed outputs.',

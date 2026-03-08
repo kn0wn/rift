@@ -7,6 +7,11 @@ export type PolicyPayload = {
     disabledProviderIds: string[]
     disabledModelIds: string[]
     complianceFlags: Record<string, boolean>
+    toolPolicy: {
+      providerNativeToolsEnabled: boolean
+      externalToolsEnabled: boolean
+      disabledToolKeys: string[]
+    }
     enforcedModeId?: string
     updatedAt?: number
   }
@@ -19,6 +24,15 @@ export type PolicyPayload = {
     zeroDataRetention: boolean
     disabled: boolean
     deniedBy: Array<'provider' | 'model' | 'compliance'>
+  }>
+  tools: Array<{
+    key: string
+    providerId: string
+    displayName: string
+    description: string
+    advanced: boolean
+    source: 'provider-native' | 'external'
+    disabled: boolean
   }>
 }
 
@@ -41,4 +55,17 @@ export type ProviderPolicyUpdateAction =
   | {
       action: 'set_enforced_mode'
       modeId: string | null
+    }
+  | {
+      action: 'toggle_provider_native_tools'
+      enabled: boolean
+    }
+  | {
+      action: 'toggle_external_tools'
+      enabled: boolean
+    }
+  | {
+      action: 'toggle_tool'
+      toolKey: string
+      disabled: boolean
     }

@@ -10,6 +10,7 @@ import { AttachmentRagService, OrgKnowledgeRagService } from '../services/rag'
 import { StreamResumeService } from '../services/stream-resume.service'
 import { ThreadService } from '../services/thread.service'
 import { ToolRegistryService } from '../services/tool-registry.service'
+import { ToolPolicyService } from '../services/tool-policy.service'
 
 /**
  * Dependency graph for chat runtime.
@@ -21,6 +22,7 @@ const dependencyLayer = Layer.mergeAll(
   MessageStoreService.layer,
   RateLimitService.layerMemory,
   ModelPolicyService.layer,
+  ToolPolicyService.layer,
   ToolRegistryService.layer,
   ModelGatewayService.layer,
   StreamResumeService.layer,

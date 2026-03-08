@@ -23,13 +23,25 @@ import { flushSync } from 'react-dom'
 import { mutators, queries } from '@/integrations/zero'
 import { CACHE_CHAT_NAV } from '@/integrations/zero/query-cache-policy'
 import { AI_CATALOG } from '@/lib/ai-catalog'
-import { getProviderToolDefinition } from '@/lib/ai-catalog/provider-tools'
 import {
-  canUseAdvancedProviderTools,
+  getLocalizedToolCopy,
+  getToolDisplayLabel,
+} from '@/lib/ai-catalog/tool-ui'
+import {
   canUseReasoningControls,
 } from '@/utils/app-feature-flags'
-import { isChatModeId, type ChatModeId } from '@/lib/chat-modes'
+import {
+  isChatModeId,
+  resolveEffectiveChatMode,
+  type ChatModeId,
+} from '@/lib/chat-modes'
+import { resolveToolPolicy } from '@/lib/chat-backend/domain/tool-policy'
 import { evaluateModelAvailability } from '@/lib/model-policy/policy-engine'
+import {
+  DEFAULT_ORG_TOOL_POLICY,
+  EMPTY_ORG_PROVIDER_KEY_STATUS,
+  type OrgAiPolicy,
+} from '@/lib/model-policy/types'
 import type {
   ChatAttachment,
   ChatAttachmentInput,
@@ -55,7 +67,15 @@ type ChatModelOption = {
   readonly name: string
   readonly reasoningEfforts: readonly AiReasoningEffort[]
   readonly defaultReasoningEffort?: AiReasoningEffort
-  readonly visibleTools: readonly string[]
+}
+
+export type ChatVisibleTool = {
+  readonly key: string
+  readonly label: string
+  readonly description: string
+  readonly enabled: boolean
+  readonly disabled: boolean
+  readonly advanced: boolean
 }
 
 type ChatActionsContextValue = Pick<
@@ -76,6 +96,9 @@ type ChatActionsContextValue = Pick<
   selectedModeId?: ChatModeId
   isModeEnforced: boolean
   setSelectedModeId: (modeId?: ChatModeId) => Promise<void>
+  visibleTools: readonly ChatVisibleTool[]
+  disabledToolKeys: readonly string[]
+  setThreadDisabledToolKeys: (disabledToolKeys: readonly string[]) => Promise<void>
   regenerateMessage: (messageId: string) => Promise<void>
   editMessage: (input: { messageId: string; editedText: string }) => Promise<void>
   selectBranchVersion: (input: {
@@ -99,6 +122,9 @@ type ChatComposerContextValue = Pick<
   | 'selectedModeId'
   | 'isModeEnforced'
   | 'setSelectedModeId'
+  | 'visibleTools'
+  | 'disabledToolKeys'
+  | 'setThreadDisabledToolKeys'
 >
 
 type ChatMessageActionsContextValue = Pick<
@@ -145,6 +171,91 @@ const ChatMessageActionsContext =
 type PendingOptimisticAttachmentManifest = {
   readonly text: string
   readonly attachments: readonly ChatAttachment[]
+}
+
+/**
+ * Zero query rows are structurally typed. Normalizing them once keeps the chat
+ * surface aligned with the server-side policy shape and avoids repeating
+ * defensive property checks across model/tool selectors.
+ */
+function toOrgAiPolicy(
+  row: unknown,
+): OrgAiPolicy | undefined {
+  if (!row || typeof row !== 'object') return undefined
+  if (!('organizationId' in row) || typeof row.organizationId !== 'string') {
+    return undefined
+  }
+
+  const enforcedModeId =
+    'enforcedModeId' in row && typeof row.enforcedModeId === 'string'
+      ? row.enforcedModeId
+      : undefined
+
+  return {
+    organizationId: row.organizationId,
+    disabledProviderIds:
+      'disabledProviderIds' in row && Array.isArray(row.disabledProviderIds)
+        ? row.disabledProviderIds
+        : [],
+    disabledModelIds:
+      'disabledModelIds' in row && Array.isArray(row.disabledModelIds)
+        ? row.disabledModelIds
+        : [],
+    complianceFlags:
+      'complianceFlags' in row &&
+      typeof row.complianceFlags === 'object' &&
+      row.complianceFlags
+        ? (row.complianceFlags as Record<string, boolean>)
+        : {},
+    toolPolicy: {
+      providerNativeToolsEnabled:
+        'providerNativeToolsEnabled' in row &&
+        typeof row.providerNativeToolsEnabled === 'boolean'
+          ? row.providerNativeToolsEnabled
+          : DEFAULT_ORG_TOOL_POLICY.providerNativeToolsEnabled,
+      externalToolsEnabled:
+        'externalToolsEnabled' in row &&
+        typeof row.externalToolsEnabled === 'boolean'
+          ? row.externalToolsEnabled
+          : DEFAULT_ORG_TOOL_POLICY.externalToolsEnabled,
+      disabledToolKeys:
+        'disabledToolKeys' in row && Array.isArray(row.disabledToolKeys)
+          ? row.disabledToolKeys
+          : DEFAULT_ORG_TOOL_POLICY.disabledToolKeys,
+    },
+    providerKeyStatus:
+      'providerKeyStatus' in row &&
+      typeof row.providerKeyStatus === 'object' &&
+      row.providerKeyStatus &&
+      'providers' in row.providerKeyStatus &&
+      typeof row.providerKeyStatus.providers === 'object' &&
+      row.providerKeyStatus.providers &&
+      'openai' in row.providerKeyStatus.providers &&
+      'anthropic' in row.providerKeyStatus.providers
+        ? {
+            syncedAt:
+              'syncedAt' in row.providerKeyStatus &&
+              typeof row.providerKeyStatus.syncedAt === 'number'
+                ? row.providerKeyStatus.syncedAt
+                : EMPTY_ORG_PROVIDER_KEY_STATUS.syncedAt,
+            hasAnyProviderKey:
+              Boolean(row.providerKeyStatus.providers.openai) ||
+              Boolean(row.providerKeyStatus.providers.anthropic),
+            providers: {
+              openai: Boolean(row.providerKeyStatus.providers.openai),
+              anthropic: Boolean(row.providerKeyStatus.providers.anthropic),
+            },
+          }
+        : undefined,
+    enforcedModeId:
+      enforcedModeId && isChatModeId(enforcedModeId)
+        ? enforcedModeId
+        : undefined,
+    updatedAt:
+      'updatedAt' in row && typeof row.updatedAt === 'number'
+        ? row.updatedAt
+        : Date.now(),
+  }
 }
 
 function toUIMessageFromStoredMessage(message: {
@@ -566,78 +677,20 @@ export function ChatProvider({
     () => buildBranchCost(canonicalStoredMessages),
     [canonicalStoredMessages],
   )
+  const orgPolicy = useMemo(() => toOrgAiPolicy(orgPolicyRow), [orgPolicyRow])
   const selectableModels = useMemo<readonly ChatModelOption[]>(() => {
-    const hasPolicyRow =
-      !!orgPolicyRow &&
-      typeof orgPolicyRow === 'object' &&
-      'organizationId' in orgPolicyRow &&
-      typeof orgPolicyRow.organizationId === 'string'
-    const policy = hasPolicyRow
-      ? {
-          organizationId: orgPolicyRow.organizationId,
-          disabledProviderIds:
-            'disabledProviderIds' in orgPolicyRow &&
-            Array.isArray(orgPolicyRow.disabledProviderIds)
-              ? orgPolicyRow.disabledProviderIds
-              : [],
-          disabledModelIds:
-            'disabledModelIds' in orgPolicyRow &&
-            Array.isArray(orgPolicyRow.disabledModelIds)
-              ? orgPolicyRow.disabledModelIds
-              : [],
-          complianceFlags:
-            'complianceFlags' in orgPolicyRow &&
-            typeof orgPolicyRow.complianceFlags === 'object' &&
-            orgPolicyRow.complianceFlags
-              ? (orgPolicyRow.complianceFlags as Record<string, boolean>)
-              : {},
-          providerKeyStatus:
-            'providerKeyStatus' in orgPolicyRow &&
-            typeof orgPolicyRow.providerKeyStatus === 'object' &&
-            orgPolicyRow.providerKeyStatus &&
-            'providers' in orgPolicyRow.providerKeyStatus &&
-            typeof orgPolicyRow.providerKeyStatus.providers === 'object' &&
-            'openai' in orgPolicyRow.providerKeyStatus.providers &&
-            'anthropic' in orgPolicyRow.providerKeyStatus.providers
-              ? {
-                  syncedAt:
-                    'syncedAt' in orgPolicyRow.providerKeyStatus &&
-                    typeof orgPolicyRow.providerKeyStatus.syncedAt === 'number'
-                      ? orgPolicyRow.providerKeyStatus.syncedAt
-                      : 0,
-                  providers: {
-                    openai: Boolean(
-                      orgPolicyRow.providerKeyStatus.providers.openai,
-                    ),
-                    anthropic: Boolean(
-                      orgPolicyRow.providerKeyStatus.providers.anthropic,
-                    ),
-                  },
-                  hasAnyProviderKey:
-                    Boolean(orgPolicyRow.providerKeyStatus.providers.openai) ||
-                    Boolean(orgPolicyRow.providerKeyStatus.providers.anthropic),
-                }
-              : undefined,
-          updatedAt:
-            'updatedAt' in orgPolicyRow &&
-            typeof orgPolicyRow.updatedAt === 'number'
-              ? orgPolicyRow.updatedAt
-              : Date.now(),
-        }
-      : undefined
-
     return AI_CATALOG.filter(
       (model) =>
         evaluateModelAvailability({
           model,
-          policy,
+          policy: orgPolicy,
         }).allowed,
     )
       .filter((model) => {
-        if (!policy?.complianceFlags?.require_org_provider_key) return true
+        if (!orgPolicy?.complianceFlags?.require_org_provider_key) return true
         return hasActiveOrgKeyForModel({
           providers: model.providers,
-          providerKeyStatus: policy.providerKeyStatus,
+          providerKeyStatus: orgPolicy.providerKeyStatus,
         })
       })
       .map((model) => ({
@@ -649,23 +702,11 @@ export function ChatProvider({
         defaultReasoningEffort: canUseReasoningControls()
           ? model.defaultReasoningEffort
           : undefined,
-        visibleTools: model.providerToolIds
-          .map((toolId) => getProviderToolDefinition(model.providerId, toolId))
-          .filter((tool) =>
-            tool ? canUseAdvancedProviderTools() || !tool.advanced : false,
-          )
-          .map((tool) => tool!.name),
       }))
-  }, [orgPolicyRow])
+  }, [orgPolicy])
   const orgEnforcedModeId = useMemo<ChatModeId | undefined>(() => {
-    if (!orgPolicyRow || typeof orgPolicyRow !== 'object') return undefined
-    const candidate =
-      'enforcedModeId' in orgPolicyRow &&
-      typeof orgPolicyRow.enforcedModeId === 'string'
-        ? orgPolicyRow.enforcedModeId
-        : undefined
-    return candidate && isChatModeId(candidate) ? candidate : undefined
-  }, [orgPolicyRow])
+    return orgPolicy?.enforcedModeId
+  }, [orgPolicy])
   const threadModeId = useMemo<ChatModeId | undefined>(() => {
     if (!threadRow || typeof threadRow !== 'object') return undefined
     const candidate =
@@ -682,6 +723,12 @@ export function ChatProvider({
   const [selectedReasoningEffort, setSelectedReasoningEffort] = useState<
     AiReasoningEffort | undefined
   >(undefined)
+  const [threadDisabledToolKeysById, setThreadDisabledToolKeysById] = useState<
+    Record<string, readonly string[]>
+  >({})
+  const [draftDisabledToolKeys, setDraftDisabledToolKeys] = useState<
+    readonly string[]
+  >([])
   const hydratedModelSelectionThreadIdRef = useRef<string | undefined>(undefined)
   const selectedModelIdRef = useRef(selectedModelId)
   const selectedReasoningEffortRef = useRef(selectedReasoningEffort)
@@ -694,8 +741,68 @@ export function ChatProvider({
   const pendingOptimisticAttachmentManifestsRef = useRef<
     PendingOptimisticAttachmentManifest[]
   >([])
+  const persistedThreadDisabledToolKeys =
+    threadRow &&
+    'disabledToolKeys' in threadRow &&
+    Array.isArray(threadRow.disabledToolKeys)
+      ? threadRow.disabledToolKeys
+      : undefined
+  const threadDisabledToolKeys = activeThreadId
+    ? threadDisabledToolKeysById[activeThreadId] ??
+      persistedThreadDisabledToolKeys ??
+      []
+    : draftDisabledToolKeys
+  const visibleTools = useMemo<readonly ChatVisibleTool[]>(() => {
+    const resolvedMode = resolveEffectiveChatMode({
+      orgEnforcedModeId: orgPolicy?.enforcedModeId,
+      threadModeId,
+    })
+    const toolPolicy = resolveToolPolicy({
+      modelId:
+        resolvedMode?.modeId === 'study'
+          ? resolvedMode.definition.fixedModelId
+          : selectedModelId,
+      mode: resolvedMode,
+      orgPolicy,
+      threadDisabledToolKeys,
+    })
+    const duplicateLabels = new Set(
+      Object.entries(
+        toolPolicy.toolEntries.reduce<Record<string, number>>((acc, entry) => {
+          const label = getLocalizedToolCopy(entry.key).label
+          acc[label] = (acc[label] ?? 0) + 1
+          return acc
+        }, {}),
+      )
+        .filter(([, count]) => count > 1)
+        .map(([label]) => label),
+    )
+
+    return toolPolicy.toolEntries.map(({ key, entry, enabled, reasons }) => ({
+      key,
+      label: getToolDisplayLabel({
+        toolKey: key,
+        providerId: entry.providerId,
+        duplicateLabels,
+      }),
+      description: getLocalizedToolCopy(key).description,
+      enabled,
+      disabled:
+        reasons.includes('blocked_by_org_master_switch') ||
+        reasons.includes('blocked_by_org_policy') ||
+        reasons.includes('blocked_by_external_tools_switch'),
+      advanced: entry.advanced,
+    }))
+  }, [
+    orgPolicy,
+    selectedModelId,
+    threadModeId,
+    threadDisabledToolKeys,
+  ])
   selectedModelIdRef.current = selectedModelId
   selectedReasoningEffortRef.current = selectedReasoningEffort
+  const disabledToolKeysRef = useRef(threadDisabledToolKeys)
+  disabledToolKeysRef.current = threadDisabledToolKeys
   if (
     activeThreadId &&
     threadRow &&
@@ -773,6 +880,7 @@ export function ChatProvider({
               createIfMissing: createIfMissingRef.current,
               modelId: selectedModelIdRef.current,
               reasoningEffort: selectedReasoningEffortRef.current,
+              disabledToolKeys: disabledToolKeysRef.current,
             },
           }
         },
@@ -849,9 +957,26 @@ export function ChatProvider({
     setSelectedReasoningEffort(
       threadEffort && model.reasoningEfforts.includes(threadEffort)
         ? threadEffort
-        : model.defaultReasoningEffort,
+      : model.defaultReasoningEffort,
     )
   }, [activeThreadId, threadRow, selectableModels])
+
+  useEffect(() => {
+    if (!activeThreadId) return
+    const persistedDisabledToolKeys = persistedThreadDisabledToolKeys ?? []
+
+    setThreadDisabledToolKeysById((current) => {
+      const existing = current[activeThreadId] ?? []
+      const same =
+        existing.length === persistedDisabledToolKeys.length &&
+        existing.every((value, index) => value === persistedDisabledToolKeys[index])
+      if (same) return current
+      return {
+        ...current,
+        [activeThreadId]: persistedDisabledToolKeys,
+      }
+    })
+  }, [activeThreadId, persistedThreadDisabledToolKeys])
 
   useEffect(() => {
     threadIdRef.current = activeThreadId
@@ -1099,6 +1224,10 @@ export function ChatProvider({
               const newThreadId = crypto.randomUUID()
               emitOptimisticThreadCreated(newThreadId)
               branchVersionByThreadIdRef.current[newThreadId] = 1
+              setThreadDisabledToolKeysById((current) => ({
+                ...current,
+                [newThreadId]: draftDisabledToolKeys,
+              }))
 
               // Server can still create the same thread during first send if this
               // request has not yet created it in upstream Postgres.
@@ -1131,6 +1260,7 @@ export function ChatProvider({
       }
 
       try {
+        const creatingThread = createIfMissingRef.current
         const optimisticManifestEntry =
           attachmentManifest && attachmentManifest.length > 0
             ? {
@@ -1148,6 +1278,9 @@ export function ChatProvider({
         pendingAttachmentsRef.current = attachments
         await sendAIMessageRef.current({ text })
         createIfMissingRef.current = false
+        if (creatingThread) {
+          setDraftDisabledToolKeys([])
+        }
         setLocalError(null)
         return
       } catch (sendError) {
@@ -1170,7 +1303,7 @@ export function ChatProvider({
         throw sendError
       }
     },
-    [navigate],
+    [draftDisabledToolKeys, navigate],
   )
 
   const regenerateMessage = useCallback<
@@ -1428,7 +1561,10 @@ export function ChatProvider({
     [z],
   )
 
-  const clear = useCallback(() => setMessages([]), [setMessages])
+  const clear = useCallback(() => {
+    setDraftDisabledToolKeys([])
+    setMessages([])
+  }, [setMessages])
   const setModelSelection = useCallback(
     (modelId: string) => {
       const nextModel = selectableModels.find((model) => model.id === modelId)
@@ -1466,6 +1602,46 @@ export function ChatProvider({
     },
     [activeThreadId, orgEnforcedModeId, z],
   )
+  const setThreadDisabledToolKeys = useCallback(
+    async (nextDisabledToolKeys: readonly string[]) => {
+      const normalizedDisabledToolKeys = [...new Set(nextDisabledToolKeys)]
+      if (!activeThreadId) {
+        setDraftDisabledToolKeys(normalizedDisabledToolKeys)
+        return
+      }
+      setThreadDisabledToolKeysById((current) => ({
+        ...current,
+        [activeThreadId]: normalizedDisabledToolKeys,
+      }))
+
+      try {
+        await z.mutate(
+          mutators.threads.setDisabledToolKeys({
+            threadId: activeThreadId,
+            disabledToolKeys: normalizedDisabledToolKeys,
+          }),
+        ).client
+      } catch (toolError) {
+        const fallbackDisabledToolKeys =
+          threadRowRef.current &&
+          typeof threadRowRef.current === 'object' &&
+          'disabledToolKeys' in threadRowRef.current &&
+          Array.isArray(threadRowRef.current.disabledToolKeys)
+            ? threadRowRef.current.disabledToolKeys
+            : []
+        setThreadDisabledToolKeysById((current) => ({
+          ...current,
+          [activeThreadId]: fallbackDisabledToolKeys,
+        }))
+        setLocalError(
+          toolError instanceof Error
+            ? toolError
+            : new Error('Failed to update thread tools'),
+        )
+      }
+    },
+    [activeThreadId, z],
+  )
 
   const messagesValue = useMemo<ChatMessagesContextValue>(
     () => ({
@@ -1502,6 +1678,9 @@ export function ChatProvider({
       setSelectedModelId: setModelSelection,
       setSelectedReasoningEffort: setReasoningSelection,
       setSelectedModeId: setModeSelection,
+      visibleTools,
+      disabledToolKeys: threadDisabledToolKeys,
+      setThreadDisabledToolKeys,
     }),
     [
       status,
@@ -1517,6 +1696,9 @@ export function ChatProvider({
       setModelSelection,
       setReasoningSelection,
       setModeSelection,
+      visibleTools,
+      threadDisabledToolKeys,
+      setThreadDisabledToolKeys,
     ],
   )
 

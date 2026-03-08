@@ -66,6 +66,12 @@ const orgAiPolicy = table('orgAiPolicy')
       .from('disabled_provider_ids'),
     disabledModelIds: json<readonly string[]>().from('disabled_model_ids'),
     complianceFlags: json<Record<string, boolean>>().from('compliance_flags'),
+    providerNativeToolsEnabled: boolean()
+      .from('provider_native_tools_enabled')
+      .optional(),
+    externalToolsEnabled: boolean().from('external_tools_enabled').optional(),
+    disabledToolKeys: json<readonly string[]>()
+      .from('disabled_tool_keys'),
     providerKeyStatus: json<{
       syncedAt: number
       hasAnyProviderKey: boolean
@@ -121,6 +127,9 @@ const thread = table('thread')
     ownerOrgId: string().from('owner_org_id').optional(),
     customInstructionId: string().from('custom_instruction_id').optional(),
     modeId: string().from('mode_id').optional(),
+    disabledToolKeys: json<readonly string[]>()
+      .from('disabled_tool_keys')
+      .optional(),
   })
   .primaryKey('id')
 

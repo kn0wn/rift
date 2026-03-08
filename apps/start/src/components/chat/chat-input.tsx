@@ -56,6 +56,9 @@ export function ChatInput() {
     selectedModeId,
     isModeEnforced,
     setSelectedModeId,
+    visibleTools,
+    disabledToolKeys,
+    setThreadDisabledToolKeys,
   } = useChatComposer()
 
   const [errorDismissed, setErrorDismissed] = useState(false)
@@ -271,6 +274,9 @@ export function ChatInput() {
         activeThreadId={activeThreadId ?? null}
         modeLockedModelName={modeLockedModelName}
         setSelectedModeId={setSelectedModeId}
+        visibleTools={visibleTools}
+        disabledToolKeys={disabledToolKeys}
+        setThreadDisabledToolKeys={setThreadDisabledToolKeys}
       />
     </PromptInputRoot>
   )
@@ -300,6 +306,9 @@ const ComposerToolbar = memo(function ComposerToolbar({
   activeThreadId,
   modeLockedModelName,
   setSelectedModeId,
+  visibleTools,
+  disabledToolKeys,
+  setThreadDisabledToolKeys,
 }: {
   canAddMore: boolean
   onFileSelect: (event: React.ChangeEvent<HTMLInputElement>) => void
@@ -310,6 +319,9 @@ const ComposerToolbar = memo(function ComposerToolbar({
   activeThreadId: string | null
   modeLockedModelName: string
   setSelectedModeId: ReturnType<typeof useChatComposer>['setSelectedModeId']
+  visibleTools: ReturnType<typeof useChatComposer>['visibleTools']
+  disabledToolKeys: ReturnType<typeof useChatComposer>['disabledToolKeys']
+  setThreadDisabledToolKeys: ReturnType<typeof useChatComposer>['setThreadDisabledToolKeys']
 }) {
   const composerInput = useComposerDraftValue()
   const isEmpty = !composerInput.trim()
@@ -327,6 +339,11 @@ const ComposerToolbar = memo(function ComposerToolbar({
       modeLockedModelName={modeLockedModelName}
       onToggleStudyMode={() =>
         void setSelectedModeId(isStudyModeEnabled ? undefined : 'study')}
+      visibleTools={visibleTools}
+      disabledToolKeys={disabledToolKeys}
+      onToolDisabledKeysChange={(nextDisabledToolKeys) =>
+        void setThreadDisabledToolKeys(nextDisabledToolKeys)
+      }
       middle={<ComposerTextarea />}
     />
   )

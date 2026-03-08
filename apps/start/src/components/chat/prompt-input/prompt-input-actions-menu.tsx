@@ -5,11 +5,15 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@rift/ui/dropdown-menu'
 import { Plus } from 'lucide-react'
 import { m } from '@/paraglide/messages.js'
+import type { ChatVisibleTool } from '../chat-context'
 
 export type PromptInputActionsMenuProps = {
   canAddMore: boolean
@@ -19,6 +23,9 @@ export type PromptInputActionsMenuProps = {
   activeThreadId: string | null
   modeLockedModelName: string
   onToggleStudyMode: () => void
+  visibleTools: readonly ChatVisibleTool[]
+  disabledToolKeys: readonly string[]
+  onToolDisabledKeysChange: (disabledToolKeys: readonly string[]) => void
 }
 
 /**
@@ -32,6 +39,9 @@ export function PromptInputActionsMenu({
   activeThreadId,
   modeLockedModelName,
   onToggleStudyMode,
+  visibleTools,
+  disabledToolKeys,
+  onToolDisabledKeysChange,
 }: PromptInputActionsMenuProps) {
   return (
     <DropdownMenu>
@@ -80,6 +90,31 @@ export function PromptInputActionsMenu({
         >
           {m.chat_mode_study_label()}
         </DropdownMenuCheckboxItem>
+        {visibleTools.length > 0 ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>{m.chat_prompt_actions_tools_label()}</DropdownMenuLabel>
+              {visibleTools.map((tool) => (
+                <DropdownMenuCheckboxItem
+                  key={tool.key}
+                  className="min-h-9 rounded-lg px-2 py-2 text-sm font-medium text-content-default focus:bg-bg-inverted/8"
+                  checked={!disabledToolKeys.includes(tool.key)}
+                  disabled={tool.disabled}
+                  onCheckedChange={(checked) => {
+                    const nextDisabledToolKeys = checked
+                      ? disabledToolKeys.filter((toolKey) => toolKey !== tool.key)
+                      : [...disabledToolKeys, tool.key]
+                    onToolDisabledKeysChange(nextDisabledToolKeys)
+                  }}
+                  title={tool.description}
+                >
+                  <span className="line-clamp-2">{tool.label}</span>
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuGroup>
+          </>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   )

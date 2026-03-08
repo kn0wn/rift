@@ -91,13 +91,19 @@ function batchSseStream(
   const { maxChars, maxDelayMs } = options
 
   let reader: ReadableStreamDefaultReader<string> | undefined
+  let timer: ReturnType<typeof setTimeout> | undefined
+
+  const clearTimer = () => {
+    if (!timer) return
+    clearTimeout(timer)
+    timer = undefined
+  }
 
   return new ReadableStream<string>({
     start(controller) {
       reader = stream.getReader()
       const currentReader = reader
       let buffer = ''
-      let timer: ReturnType<typeof setTimeout> | undefined
 
       const flush = () => {
         if (!buffer) return
@@ -111,12 +117,6 @@ function batchSseStream(
           timer = undefined
           flush()
         }, maxDelayMs)
-      }
-
-      const clearTimer = () => {
-        if (!timer) return
-        clearTimeout(timer)
-        timer = undefined
       }
 
       const pump = async () => {
@@ -146,6 +146,7 @@ function batchSseStream(
       void pump()
     },
     cancel() {
+      clearTimer()
       return reader?.cancel().catch(() => undefined)
     },
   })
@@ -424,7 +425,7 @@ export class StreamResumeService extends ServiceMap.Service<
               abortController.signal.addEventListener(
                 'abort',
                 () => {
-                  void unsubscribe()
+                  void unsubscribe().catch(() => undefined)
                   runtime.localHandles.delete(streamId)
                   const local = runtime.localStreams.get(streamId)
                   if (local) {
@@ -495,6 +496,18 @@ export class StreamResumeService extends ServiceMap.Service<
                         }
                       }
                     }
+                  } catch {
+                    if (!local.released) {
+                      for (const listener of Array.from(local.listeners)) {
+                        try {
+                          listener.error(
+                            new Error('Local replay stream failed unexpectedly'),
+                          )
+                        } catch {
+                          // ignore
+                        }
+                      }
+                    }
                   } finally {
                     local.done = true
                     if (local.released) {
@@ -512,7 +525,7 @@ export class StreamResumeService extends ServiceMap.Service<
                     }
                     localReader.releaseLock()
                   }
-                })()
+                })().catch(() => undefined)
               }
 
               const resumableStream =
@@ -525,9 +538,13 @@ export class StreamResumeService extends ServiceMap.Service<
 
               // Drain the internal stream so the resumable context never stalls on backpressure.
               const reader = resumableStream.getReader()
-              for (;;) {
-                const { done } = await reader.read()
-                if (done) break
+              try {
+                for (;;) {
+                  const { done } = await reader.read()
+                  if (done) break
+                }
+              } finally {
+                reader.releaseLock()
               }
             },
             catch: (error) =>

@@ -3,6 +3,7 @@ import {
 } from '@rocicorp/zero'
 import { z } from 'zod'
 import { AI_CATALOG_BY_ID, AI_MODELS_BY_PROVIDER } from '@/lib/ai-catalog'
+import { TOOL_CATALOG_BY_KEY } from '@/lib/ai-catalog/tool-catalog'
 import { isChatModeId } from '@/lib/chat-modes'
 import { zql } from '../zql'
 
@@ -25,12 +26,28 @@ const setEnforcedModeArgs = z.object({
   modeId: z.string().min(1).nullable(),
 })
 
+const toggleProviderNativeToolsArgs = z.object({
+  enabled: z.boolean(),
+})
+
+const toggleExternalToolsArgs = z.object({
+  enabled: z.boolean(),
+})
+
+const toggleToolArgs = z.object({
+  toolKey: z.string().min(1),
+  disabled: z.boolean(),
+})
+
 type OrgPolicyRow = {
   id: string
   organizationId: string
   disabledProviderIds: readonly string[]
   disabledModelIds: readonly string[]
   complianceFlags: Record<string, boolean>
+  providerNativeToolsEnabled?: boolean | null
+  externalToolsEnabled?: boolean | null
+  disabledToolKeys?: readonly string[]
   providerKeyStatus: {
     syncedAt: number
     hasAnyProviderKey: boolean
@@ -46,6 +63,9 @@ type OrgPolicySnapshot = {
   disabledProviderIds: readonly string[]
   disabledModelIds: readonly string[]
   complianceFlags: Record<string, boolean>
+  providerNativeToolsEnabled: boolean
+  externalToolsEnabled: boolean
+  disabledToolKeys: readonly string[]
   providerKeyStatus: {
     syncedAt: number
     hasAnyProviderKey: boolean
@@ -87,6 +107,9 @@ function toSnapshot(row?: OrgPolicyRow): OrgPolicySnapshot {
     disabledProviderIds: row?.disabledProviderIds ?? [],
     disabledModelIds: row?.disabledModelIds ?? [],
     complianceFlags: { ...(row?.complianceFlags ?? {}) },
+    providerNativeToolsEnabled: row?.providerNativeToolsEnabled ?? true,
+    externalToolsEnabled: row?.externalToolsEnabled ?? true,
+    disabledToolKeys: row?.disabledToolKeys ?? [],
     providerKeyStatus: row?.providerKeyStatus ?? {
       syncedAt: 0,
       hasAnyProviderKey: false,
@@ -116,6 +139,9 @@ async function persistOrgPolicy(args: {
           disabledProviderIds: readonly string[]
           disabledModelIds: readonly string[]
           complianceFlags: Record<string, boolean>
+          providerNativeToolsEnabled: boolean
+          externalToolsEnabled: boolean
+          disabledToolKeys: readonly string[]
           providerKeyStatus: {
             syncedAt: number
             hasAnyProviderKey: boolean
@@ -132,6 +158,9 @@ async function persistOrgPolicy(args: {
           disabledProviderIds: readonly string[]
           disabledModelIds: readonly string[]
           complianceFlags: Record<string, boolean>
+          providerNativeToolsEnabled: boolean
+          externalToolsEnabled: boolean
+          disabledToolKeys: readonly string[]
           providerKeyStatus: {
             syncedAt: number
             hasAnyProviderKey: boolean
@@ -159,6 +188,9 @@ async function persistOrgPolicy(args: {
       disabledProviderIds: args.next.disabledProviderIds,
       disabledModelIds: args.next.disabledModelIds,
       complianceFlags: args.next.complianceFlags,
+      providerNativeToolsEnabled: args.next.providerNativeToolsEnabled,
+      externalToolsEnabled: args.next.externalToolsEnabled,
+      disabledToolKeys: args.next.disabledToolKeys,
       providerKeyStatus: args.next.providerKeyStatus,
       enforcedModeId: args.next.enforcedModeId ?? null,
       updatedAt,
@@ -171,6 +203,9 @@ async function persistOrgPolicy(args: {
     disabledProviderIds: args.next.disabledProviderIds,
     disabledModelIds: args.next.disabledModelIds,
     complianceFlags: args.next.complianceFlags,
+    providerNativeToolsEnabled: args.next.providerNativeToolsEnabled,
+    externalToolsEnabled: args.next.externalToolsEnabled,
+    disabledToolKeys: args.next.disabledToolKeys,
     providerKeyStatus: args.next.providerKeyStatus,
     enforcedModeId: args.next.enforcedModeId ?? null,
     updatedAt,
@@ -271,6 +306,72 @@ export const orgPolicyMutatorDefinitions = {
       const next: OrgPolicySnapshot = {
         ...snapshot,
         enforcedModeId: args.modeId,
+      }
+
+      await persistOrgPolicy({
+        tx,
+        organizationId,
+        existing,
+        next,
+      })
+    }),
+    toggleProviderNativeTools: defineMutator(
+      toggleProviderNativeToolsArgs,
+      async ({ tx, args, ctx }) => {
+        const organizationId = requireOrgWorkosId(ctx)
+        const existing = await tx.run(
+          zql.orgAiPolicy.where('organizationId', organizationId).one(),
+        )
+        const snapshot = toSnapshot(existing)
+        const next: OrgPolicySnapshot = {
+          ...snapshot,
+          providerNativeToolsEnabled: args.enabled,
+        }
+
+        await persistOrgPolicy({
+          tx,
+          organizationId,
+          existing,
+          next,
+        })
+      },
+    ),
+    toggleExternalTools: defineMutator(
+      toggleExternalToolsArgs,
+      async ({ tx, args, ctx }) => {
+        const organizationId = requireOrgWorkosId(ctx)
+        const existing = await tx.run(
+          zql.orgAiPolicy.where('organizationId', organizationId).one(),
+        )
+        const snapshot = toSnapshot(existing)
+        const next: OrgPolicySnapshot = {
+          ...snapshot,
+          externalToolsEnabled: args.enabled,
+        }
+
+        await persistOrgPolicy({
+          tx,
+          organizationId,
+          existing,
+          next,
+        })
+      },
+    ),
+    toggleTool: defineMutator(toggleToolArgs, async ({ tx, args, ctx }) => {
+      const organizationId = requireOrgWorkosId(ctx)
+      if (!TOOL_CATALOG_BY_KEY.has(args.toolKey)) {
+        throw new Error(`Unknown tool key: ${args.toolKey}`)
+      }
+
+      const existing = await tx.run(
+        zql.orgAiPolicy.where('organizationId', organizationId).one(),
+      )
+      const snapshot = toSnapshot(existing)
+      const next: OrgPolicySnapshot = {
+        ...snapshot,
+        disabledToolKeys: args.disabled
+          ? add(snapshot.disabledToolKeys, args.toolKey)
+          : remove(snapshot.disabledToolKeys, args.toolKey),
       }
 
       await persistOrgPolicy({
