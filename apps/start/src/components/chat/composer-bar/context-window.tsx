@@ -12,7 +12,6 @@ import {
 import { Progress } from '@rift/ui/progress'
 import { cn } from '@rift/utils'
 import { createContext, isValidElement, useContext, useMemo } from 'react'
-import { getUsage } from 'tokenlens'
 
 const PERCENT_MAX = 100
 const ICON_RADIUS = 10
@@ -27,6 +26,8 @@ interface ContextSchema {
   maxTokens: number
   usage?: LanguageModelUsage
   modelId?: ModelId
+  totalCost?: number
+  showCost: boolean
 }
 
 const ContextContext = createContext<ContextSchema | null>(null)
@@ -48,11 +49,13 @@ export const Context = ({
   maxTokens,
   usage,
   modelId,
+  totalCost,
+  showCost,
   ...props
 }: ContextProps) => {
   const contextValue = useMemo(
-    () => ({ maxTokens, modelId, usage, usedTokens }),
-    [maxTokens, modelId, usage, usedTokens],
+    () => ({ maxTokens, modelId, totalCost, showCost, usage, usedTokens }),
+    [maxTokens, modelId, totalCost, showCost, usage, usedTokens],
   )
 
   return (
@@ -200,20 +203,12 @@ export const ContextContentFooter = ({
   className,
   ...props
 }: ContextContentFooterProps) => {
-  const { modelId, usage } = useContextValue()
-  const costUSD = modelId
-    ? getUsage({
-        modelId,
-        usage: {
-          input: usage?.inputTokens ?? 0,
-          output: usage?.outputTokens ?? 0,
-        },
-      }).costUSD?.totalUSD
-    : undefined
-  const totalCost = new Intl.NumberFormat('en-US', {
-    currency: 'USD',
-    style: 'currency',
-  }).format(costUSD ?? 0)
+  const { showCost, totalCost } = useContextValue()
+  if (!children && (!showCost || totalCost == null)) {
+    return null
+  }
+
+  const formattedTotalCost = formatUsdCost(totalCost ?? 0)
 
   return (
     <div
@@ -226,7 +221,7 @@ export const ContextContentFooter = ({
       {children ?? (
         <>
           <span className="text-content-muted">Total cost</span>
-          <span className="text-content-emphasis">{totalCost}</span>
+          <span className="text-content-emphasis">{formattedTotalCost}</span>
         </>
       )}
     </div>
@@ -240,7 +235,7 @@ export const ContextInputUsage = ({
   children,
   ...props
 }: ContextInputUsageProps) => {
-  const { usage, modelId } = useContextValue()
+  const { usage } = useContextValue()
   const inputTokens = usage?.inputTokens ?? 0
 
   if (children) {
@@ -251,24 +246,13 @@ export const ContextInputUsage = ({
     return null
   }
 
-  const inputCost = modelId
-    ? getUsage({
-        modelId,
-        usage: { input: inputTokens, output: 0 },
-      }).costUSD?.totalUSD
-    : undefined
-  const inputCostText = new Intl.NumberFormat('en-US', {
-    currency: 'USD',
-    style: 'currency',
-  }).format(inputCost ?? 0)
-
   return (
     <div
       className={cn('flex items-center justify-between text-xs', className)}
       {...props}
     >
       <span className="text-content-muted">Input</span>
-      <TokensWithCost costText={inputCostText} tokens={inputTokens} />
+      <TokensWithCost tokens={inputTokens} />
     </div>
   )
 }
@@ -280,7 +264,7 @@ export const ContextOutputUsage = ({
   children,
   ...props
 }: ContextOutputUsageProps) => {
-  const { usage, modelId } = useContextValue()
+  const { usage } = useContextValue()
   const outputTokens = usage?.outputTokens ?? 0
 
   if (children) {
@@ -291,24 +275,13 @@ export const ContextOutputUsage = ({
     return null
   }
 
-  const outputCost = modelId
-    ? getUsage({
-        modelId,
-        usage: { input: 0, output: outputTokens },
-      }).costUSD?.totalUSD
-    : undefined
-  const outputCostText = new Intl.NumberFormat('en-US', {
-    currency: 'USD',
-    style: 'currency',
-  }).format(outputCost ?? 0)
-
   return (
     <div
       className={cn('flex items-center justify-between text-xs', className)}
       {...props}
     >
       <span className="text-content-muted">Output</span>
-      <TokensWithCost costText={outputCostText} tokens={outputTokens} />
+      <TokensWithCost tokens={outputTokens} />
     </div>
   )
 }
@@ -320,7 +293,7 @@ export const ContextReasoningUsage = ({
   children,
   ...props
 }: ContextReasoningUsageProps) => {
-  const { usage, modelId } = useContextValue()
+  const { usage } = useContextValue()
   const reasoningTokens = usage?.outputTokenDetails.reasoningTokens ?? 0
 
   if (children) {
@@ -331,24 +304,13 @@ export const ContextReasoningUsage = ({
     return null
   }
 
-  const reasoningCost = modelId
-    ? getUsage({
-        modelId,
-        usage: { reasoningTokens },
-      }).costUSD?.totalUSD
-    : undefined
-  const reasoningCostText = new Intl.NumberFormat('en-US', {
-    currency: 'USD',
-    style: 'currency',
-  }).format(reasoningCost ?? 0)
-
   return (
     <div
       className={cn('flex items-center justify-between text-xs', className)}
       {...props}
     >
       <span className="text-content-muted">Reasoning</span>
-      <TokensWithCost costText={reasoningCostText} tokens={reasoningTokens} />
+      <TokensWithCost tokens={reasoningTokens} />
     </div>
   )
 }
@@ -360,54 +322,58 @@ export const ContextCacheUsage = ({
   children,
   ...props
 }: ContextCacheUsageProps) => {
-  const { usage, modelId } = useContextValue()
-  const cacheTokens = usage?.inputTokenDetails.cacheReadTokens ?? 0
+  const { usage } = useContextValue()
+  const cacheReadTokens = usage?.inputTokenDetails.cacheReadTokens ?? 0
+  const cacheWriteTokens = usage?.inputTokenDetails.cacheWriteTokens ?? 0
 
   if (children) {
     return children
   }
 
-  if (!cacheTokens) {
+  if (!cacheReadTokens && !cacheWriteTokens) {
     return null
   }
 
-  const cacheCost = modelId
-    ? getUsage({
-        modelId,
-        usage: { cacheReads: cacheTokens, input: 0, output: 0 },
-      }).costUSD?.totalUSD
-    : undefined
-  const cacheCostText = new Intl.NumberFormat('en-US', {
-    currency: 'USD',
-    style: 'currency',
-  }).format(cacheCost ?? 0)
-
   return (
-    <div
-      className={cn('flex items-center justify-between text-xs', className)}
-      {...props}
-    >
-      <span className="text-content-muted">Cache</span>
-      <TokensWithCost costText={cacheCostText} tokens={cacheTokens} />
+    <div className={cn('space-y-2', className)} {...props}>
+      {cacheReadTokens > 0 ? (
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-content-muted">Cache read</span>
+          <TokensWithCost tokens={cacheReadTokens} />
+        </div>
+      ) : null}
+      {cacheWriteTokens > 0 ? (
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-content-muted">Cache write</span>
+          <TokensWithCost tokens={cacheWriteTokens} />
+        </div>
+      ) : null}
     </div>
   )
 }
 
-const TokensWithCost = ({
-  tokens,
-  costText,
-}: {
-  tokens?: number
-  costText?: string
-}) => (
+const TokensWithCost = ({ tokens }: { tokens?: number }) => (
   <span className="text-content-emphasis">
     {tokens === undefined
       ? '—'
       : new Intl.NumberFormat('en-US', {
           notation: 'compact',
         }).format(tokens)}
-    {costText ? (
-      <span className="ml-2 text-content-muted">• {costText}</span>
-    ) : null}
   </span>
 )
+
+/**
+ * Costs below one cent are common in chat, so the formatter keeps four
+ * decimals in that range.
+ */
+function formatUsdCost(value: number): string {
+  const absoluteValue = Math.abs(value)
+  const minimumFractionDigits = absoluteValue > 0 && absoluteValue < 0.01 ? 4 : 2
+
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits,
+    maximumFractionDigits: 4,
+  }).format(value)
+}

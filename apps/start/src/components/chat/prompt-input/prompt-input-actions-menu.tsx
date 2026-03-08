@@ -15,7 +15,6 @@ export type PromptInputActionsMenuProps = {
   canAddMore: boolean
   onOpenFilePicker: () => void
   isStudyModeEnabled: boolean
-  isBusy: boolean
   isModeEnforced: boolean
   activeThreadId: string | null
   modeLockedModelName: string
@@ -29,7 +28,6 @@ export function PromptInputActionsMenu({
   canAddMore,
   onOpenFilePicker,
   isStudyModeEnabled,
-  isBusy,
   isModeEnforced,
   activeThreadId,
   modeLockedModelName,
@@ -68,7 +66,7 @@ export function PromptInputActionsMenu({
         <DropdownMenuCheckboxItem
           className="h-9 rounded-lg px-2 text-sm font-medium text-content-default focus:bg-bg-inverted/8"
           checked={isStudyModeEnabled}
-          disabled={isBusy || isModeEnforced || !activeThreadId}
+          disabled={isModeEnforced || !activeThreadId}
           onCheckedChange={onToggleStudyMode}
           title={
             isModeEnforced

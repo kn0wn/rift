@@ -26,7 +26,6 @@ import {
   ContextTrigger,
 } from './composer-bar'
 import { getCatalogModel } from '@/lib/ai-catalog'
-import { useContextUsage } from '../../hooks/chat/use-context-usage'
 import { useFileAttachments } from '../../hooks/chat/upload'
 import { parseChatApiError } from './chat-error-messages'
 import { getChatModeDefinition } from '@/lib/chat-modes'
@@ -43,7 +42,7 @@ import type {
 } from '@/lib/chat-contracts/attachments'
 
 export function ChatInput() {
-  const { messages } = useChatMessages()
+  const { branchCost, branchUsage, showBranchCost } = useChatMessages()
   const {
     sendMessage,
     status,
@@ -178,7 +177,7 @@ export function ChatInput() {
     isStudyModeEnabled ? studyModeDefinition.fixedModelId : selectedModelId
   const catalogModel = getCatalogModel(effectiveModelId)
   const maxTokens = catalogModel?.contextWindow ?? 128_000
-  const { usedTokens } = useContextUsage(messages)
+  const usedTokens = branchUsage?.totalTokens ?? 0
   const selectorTriggerClassName =
     'h-8 rounded-full border border-transparent bg-transparent px-3 ltr:pr-7 rtl:pl-7 text-sm leading-[21px] font-medium text-content-emphasis transition-colors hover:bg-bg-inverted/5 active:bg-bg-inverted/10 focus-visible:border-border-emphasis focus-visible:ring-2 focus-visible:ring-border-emphasis/40'
 
@@ -196,7 +195,6 @@ export function ChatInput() {
           value={modeLockedModelId}
           onValueChange={setSelectedModelId}
           options={selectableModels.map((m) => ({ id: m.id, name: m.name }))}
-          disabled={isBusy}
           className={selectorTriggerClassName}
         />
       )}
@@ -206,7 +204,6 @@ export function ChatInput() {
           onValueChange={setSelectedReasoningEffort}
           options={reasoningOptions}
           defaultReasoningEffort={selectedModel?.defaultReasoningEffort}
-          disabled={isBusy}
           className={selectorTriggerClassName}
         />
       )}
@@ -220,6 +217,9 @@ export function ChatInput() {
         maxTokens={maxTokens}
         modelId={effectiveModelId}
         usedTokens={usedTokens}
+        usage={branchUsage}
+        totalCost={branchCost}
+        showCost={showBranchCost}
       >
         <ContextTrigger />
         <ContextContent>

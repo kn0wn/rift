@@ -14,6 +14,7 @@ import {
 import type { ReactNode } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useChat as useAIChat } from '@ai-sdk/react'
+import type { LanguageModelUsage } from 'ai'
 import { useQuery } from '@rocicorp/zero/react'
 import { useZero } from '@rocicorp/zero/react'
 import { DefaultChatTransport } from 'ai'
@@ -131,6 +132,9 @@ type ChatMessagesContextValue = {
   status: ReturnType<typeof useAIChat<ChatUIMessage>>['status']
   activeThreadId?: string
   branchSelectorsByAnchorMessageId: Record<string, BranchSelectorState>
+  branchUsage?: LanguageModelUsage
+  branchCost?: number
+  showBranchCost: boolean
 }
 
 const ChatMessagesContext = createContext<ChatMessagesContextValue | null>(null)
@@ -259,6 +263,93 @@ function mergeStoredMessagesWithLocal(
 
     return storedMessage
   })
+}
+
+function addDefined(
+  left: number | undefined,
+  right: number | undefined,
+): number | undefined {
+  return left == null && right == null ? undefined : (left ?? 0) + (right ?? 0)
+}
+
+function buildBranchUsage(messages: readonly {
+  readonly role: 'user' | 'assistant' | 'system'
+  readonly inputTokens?: number | null
+  readonly outputTokens?: number | null
+  readonly totalTokens?: number | null
+  readonly reasoningTokens?: number | null
+  readonly textTokens?: number | null
+  readonly cacheReadTokens?: number | null
+  readonly cacheWriteTokens?: number | null
+  readonly noCacheTokens?: number | null
+}[]): LanguageModelUsage | undefined {
+  const assistantMessages = messages.filter((message) => message.role === 'assistant')
+  if (assistantMessages.length === 0) return undefined
+
+  let inputTokens = 0
+  let outputTokens = 0
+  let totalTokens = 0
+  let reasoningTokens = 0
+  let textTokens = 0
+  let cacheReadTokens = 0
+  let cacheWriteTokens = 0
+  let noCacheTokens = 0
+  let hasAnyUsage = false
+
+  for (const message of assistantMessages) {
+    inputTokens += message.inputTokens ?? 0
+    outputTokens += message.outputTokens ?? 0
+    totalTokens += message.totalTokens ?? 0
+    reasoningTokens += message.reasoningTokens ?? 0
+    textTokens += message.textTokens ?? 0
+    cacheReadTokens += message.cacheReadTokens ?? 0
+    cacheWriteTokens += message.cacheWriteTokens ?? 0
+    noCacheTokens += message.noCacheTokens ?? 0
+    hasAnyUsage =
+      hasAnyUsage ||
+      message.inputTokens != null ||
+      message.outputTokens != null ||
+      message.totalTokens != null
+  }
+
+  if (!hasAnyUsage) return undefined
+
+  return {
+    inputTokens,
+    inputTokenDetails: {
+      noCacheTokens,
+      cacheReadTokens,
+      cacheWriteTokens,
+    },
+    outputTokens,
+    outputTokenDetails: {
+      textTokens,
+      reasoningTokens,
+    },
+    totalTokens:
+      totalTokens > 0 ? totalTokens : addDefined(inputTokens, outputTokens),
+    reasoningTokens,
+    cachedInputTokens: cacheReadTokens,
+  }
+}
+
+function buildBranchCost(messages: readonly {
+  readonly role: 'user' | 'assistant' | 'system'
+  readonly publicCost?: number | null
+}[]): { branchCost?: number; showBranchCost: boolean } {
+  let branchCost = 0
+  let hasVisibleCost = false
+
+  for (const message of messages) {
+    if (message.role !== 'assistant' || message.publicCost == null) continue
+    branchCost += message.publicCost
+    hasVisibleCost = true
+  }
+
+  return {
+    branchCost: hasVisibleCost ? Number(branchCost.toFixed(12)) : undefined,
+    showBranchCost: hasVisibleCost,
+  }
 }
 
 const DEFAULT_THREAD_TITLE = 'Nuevo Chat'
@@ -467,6 +558,14 @@ export function ChatProvider({
       },
     }
   }, [pendingBranchSelector, storedBranchSelectorsByAnchorMessageId])
+  const branchUsage = useMemo(
+    () => buildBranchUsage(canonicalStoredMessages),
+    [canonicalStoredMessages],
+  )
+  const { branchCost, showBranchCost } = useMemo(
+    () => buildBranchCost(canonicalStoredMessages),
+    [canonicalStoredMessages],
+  )
   const selectableModels = useMemo<readonly ChatModelOption[]>(() => {
     const hasPolicyRow =
       !!orgPolicyRow &&
@@ -1374,8 +1473,19 @@ export function ChatProvider({
       status,
       activeThreadId,
       branchSelectorsByAnchorMessageId,
+      branchUsage,
+      branchCost,
+      showBranchCost,
     }),
-    [messages, status, activeThreadId, branchSelectorsByAnchorMessageId],
+    [
+      messages,
+      status,
+      activeThreadId,
+      branchSelectorsByAnchorMessageId,
+      branchUsage,
+      branchCost,
+      showBranchCost,
+    ],
   )
 
   const composerValue = useMemo<ChatComposerContextValue>(

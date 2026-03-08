@@ -430,38 +430,58 @@ export class ChatOrchestratorService extends ServiceMap.Service<
                 })
                 .pipe(
                   Effect.catch((error) =>
-                    emitWideErrorEvent({
-                      eventName: 'chat.stream.persist.failed',
-                      route,
-                      requestId,
-                      userId,
-                      threadId,
-                      model: modelResolution.modelId,
-                      errorCode: chatErrorCodeFromTag(error._tag),
-                      errorTag: error._tag,
-                      message: error.message,
-                      latencyMs: Date.now() - startedAt,
-                      cause: input.ok
-                        ? 'assistant_finalize_success'
-                        : 'assistant_finalize_error',
-                    }),
+                    Effect.flatMap(
+                      threads
+                        .markThreadGenerationFailed({
+                          userId,
+                          threadId,
+                          requestId,
+                        })
+                        .pipe(Effect.catch(() => Effect.void)),
+                      () =>
+                        emitWideErrorEvent({
+                          eventName: 'chat.stream.persist.failed',
+                          route,
+                          requestId,
+                          userId,
+                          threadId,
+                          model: modelResolution.modelId,
+                          errorCode: chatErrorCodeFromTag(error._tag),
+                          errorTag: error._tag,
+                          message: error.message,
+                          latencyMs: Date.now() - startedAt,
+                          cause: input.ok
+                            ? 'assistant_finalize_success'
+                            : 'assistant_finalize_error',
+                        }),
+                    ),
                   ),
                 ),
               onFailure: () => Effect.void,
-              onTimeout: emitWideErrorEvent({
-                eventName: 'chat.stream.persist.timed_out',
-                route,
-                requestId,
-                userId,
-                threadId,
-                model: modelResolution.modelId,
-                errorTag: 'DetachedTimeout',
-                message: 'Detached assistant finalization timed out',
-                latencyMs: Date.now() - startedAt,
-                cause: input.ok
-                  ? 'assistant_finalize_success'
-                  : 'assistant_finalize_error',
-              }),
+              onTimeout: Effect.flatMap(
+                threads
+                  .markThreadGenerationFailed({
+                    userId,
+                    threadId,
+                    requestId,
+                  })
+                  .pipe(Effect.catch(() => Effect.void)),
+                () =>
+                  emitWideErrorEvent({
+                    eventName: 'chat.stream.persist.timed_out',
+                    route,
+                    requestId,
+                    userId,
+                    threadId,
+                    model: modelResolution.modelId,
+                    errorTag: 'DetachedTimeout',
+                    message: 'Detached assistant finalization timed out',
+                    latencyMs: Date.now() - startedAt,
+                    cause: input.ok
+                      ? 'assistant_finalize_success'
+                      : 'assistant_finalize_error',
+                  }),
+              ),
             })
           }
 
@@ -613,6 +633,7 @@ export class ChatOrchestratorService extends ServiceMap.Service<
                   buildPersistedGenerationAnalytics({
                     usage: totalUsage,
                     providerMetadata,
+                    usedByok: Boolean(modelResolution.providerApiKeyOverride),
                   }),
                 )
                 .catch(() => undefined)

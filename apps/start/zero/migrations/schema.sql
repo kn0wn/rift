@@ -66,6 +66,8 @@ CREATE TABLE IF NOT EXISTS messages (
   provider_metadata JSONB,
   generation_metadata JSONB,
   ai_cost DOUBLE PRECISION,
+  public_cost DOUBLE PRECISION,
+  used_byok BOOLEAN,
   input_tokens BIGINT,
   output_tokens BIGINT,
   total_tokens BIGINT,
@@ -97,6 +99,10 @@ ADD COLUMN IF NOT EXISTS generation_metadata JSONB;
 ALTER TABLE messages
 ADD COLUMN IF NOT EXISTS ai_cost DOUBLE PRECISION;
 ALTER TABLE messages
+ADD COLUMN IF NOT EXISTS public_cost DOUBLE PRECISION;
+ALTER TABLE messages
+ADD COLUMN IF NOT EXISTS used_byok BOOLEAN;
+ALTER TABLE messages
 ADD COLUMN IF NOT EXISTS input_tokens BIGINT;
 ALTER TABLE messages
 ADD COLUMN IF NOT EXISTS output_tokens BIGINT;
@@ -120,6 +126,7 @@ CREATE INDEX IF NOT EXISTS messages_user ON messages (user_id);
 CREATE INDEX IF NOT EXISTS messages_thread_created ON messages (thread_id, created_at);
 CREATE INDEX IF NOT EXISTS messages_thread_parent ON messages (thread_id, parent_message_id);
 CREATE INDEX IF NOT EXISTS messages_user_ai_cost ON messages (user_id, ai_cost);
+CREATE INDEX IF NOT EXISTS messages_user_public_cost ON messages (user_id, public_cost);
 CREATE INDEX IF NOT EXISTS messages_user_total_tokens ON messages (user_id, total_tokens);
 
 -- org_ai_policy

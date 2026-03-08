@@ -10,6 +10,7 @@ type AppFeatureFlags = {
   readonly enableReasoningControls: boolean
   readonly enableAdvancedProviderTools: boolean
   readonly enableOrganizationProviderKeys: boolean
+  readonly exposeUserCost: boolean
 }
 
 /**
@@ -32,6 +33,10 @@ const APP_FEATURE_FLAGS: AppFeatureFlags = Object.freeze({
     'VITE_ENABLE_ORGANIZATION_PROVIDER_KEYS',
     false,
   ),
+  exposeUserCost:
+    typeof process !== 'undefined'
+      ? process.env.ALLOW_USER_COST_DISPLAY === 'true'
+      : false,
 })
 
 export function getAppFeatureFlags(): AppFeatureFlags {
@@ -52,4 +57,8 @@ export function canUseAdvancedProviderTools(): boolean {
 
 export function canUseOrganizationProviderKeys(): boolean {
   return APP_FEATURE_FLAGS.enableOrganizationProviderKeys
+}
+
+export function canExposeUserCost(): boolean {
+  return APP_FEATURE_FLAGS.exposeUserCost
 }

@@ -129,9 +129,7 @@ export class MessageStoreService extends ServiceMap.Service<
       }),
       prepareRegeneration: makePrepareRegenerationOperation({ zeroDatabase }),
       prepareEdit: makePrepareEditOperation({ zeroDatabase }),
-      finalizeAssistantMessage: makeFinalizeAssistantMessageOperation({
-        zeroDatabase,
-      }),
+      finalizeAssistantMessage: makeFinalizeAssistantMessageOperation(),
     }
   }),
   )

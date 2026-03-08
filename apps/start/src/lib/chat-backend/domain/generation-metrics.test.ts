@@ -4,6 +4,7 @@ import { buildPersistedGenerationAnalytics } from './generation-metrics'
 describe('buildPersistedGenerationAnalytics', () => {
   it('extracts dedicated analytics columns plus generic metadata', () => {
     const analytics = buildPersistedGenerationAnalytics({
+      usedByok: false,
       usage: {
         inputTokens: 120,
         inputTokenDetails: {
@@ -36,6 +37,8 @@ describe('buildPersistedGenerationAnalytics', () => {
     })
 
     expect(analytics.aiCost).toBe(0.0013025)
+    expect(analytics.publicCost).toBeUndefined()
+    expect(analytics.usedByok).toBe(false)
     expect(analytics.inputTokens).toBe(120)
     expect(analytics.outputTokens).toBe(30)
     expect(analytics.totalTokens).toBe(150)
@@ -58,6 +61,7 @@ describe('buildPersistedGenerationAnalytics', () => {
 
   it('falls back to summed totals when totalTokens is absent', () => {
     const analytics = buildPersistedGenerationAnalytics({
+      usedByok: true,
       usage: {
         inputTokens: 220,
         inputTokenDetails: {
@@ -79,7 +83,9 @@ describe('buildPersistedGenerationAnalytics', () => {
       },
     })
 
-    expect(analytics.aiCost).toBe(0.0021)
+    expect(analytics.aiCost).toBeUndefined()
+    expect(analytics.publicCost).toBe(0.0021)
+    expect(analytics.usedByok).toBe(true)
     expect(analytics.totalTokens).toBe(275)
     expect(analytics.cacheWriteTokens).toBeUndefined()
   })

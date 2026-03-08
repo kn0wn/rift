@@ -1,5 +1,6 @@
 import type { LanguageModelUsage } from 'ai'
 import type { ReadonlyJSONValue } from '@rocicorp/zero'
+import { canExposeUserCost } from '@/utils/app-feature-flags'
 
 type UnknownRecord = Record<string, unknown>
 
@@ -7,6 +8,8 @@ export type PersistedGenerationAnalytics = {
   readonly providerMetadata?: ReadonlyJSONValue
   readonly generationMetadata?: ReadonlyJSONValue
   readonly aiCost?: number
+  readonly publicCost?: number
+  readonly usedByok: boolean
   readonly inputTokens?: number
   readonly outputTokens?: number
   readonly totalTokens?: number
@@ -21,6 +24,7 @@ export type PersistedGenerationAnalytics = {
 export function buildPersistedGenerationAnalytics(input: {
   readonly usage?: LanguageModelUsage
   readonly providerMetadata?: unknown
+  readonly usedByok: boolean
 }): PersistedGenerationAnalytics {
   const providerMetadata = input.providerMetadata as ReadonlyJSONValue | undefined
   const usage = normalizeUsage(input.usage)
@@ -35,10 +39,15 @@ export function buildPersistedGenerationAnalytics(input: {
     serviceTier: asOptionalString(openai?.serviceTier),
   })
 
+  const rawCost = asOptionalNumber(gateway?.cost)
+  const shouldExposeCost = input.usedByok || canExposeUserCost()
+
   return {
     providerMetadata,
     generationMetadata,
-    aiCost: asOptionalNumber(gateway?.cost),
+    aiCost: shouldExposeCost ? undefined : rawCost,
+    publicCost: shouldExposeCost ? rawCost : undefined,
+    usedByok: input.usedByok,
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens,
     totalTokens: usage.totalTokens,

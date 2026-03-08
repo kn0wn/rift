@@ -130,7 +130,6 @@ export function PromptInputToolbar({
         canAddMore={canAddMore}
         onOpenFilePicker={handleOpenFilePicker}
         isStudyModeEnabled={isStudyModeEnabled}
-        isBusy={isBusy}
         isModeEnforced={isModeEnforced}
         activeThreadId={activeThreadId}
         modeLockedModelName={modeLockedModelName}

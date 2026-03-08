@@ -180,7 +180,7 @@ const message = table('message')
       .optional(),
     providerMetadata: json().from('provider_metadata').optional(),
     generationMetadata: json().from('generation_metadata').optional(),
-    aiCost: number().from('ai_cost').optional(),
+    publicCost: number().from('public_cost').optional(),
     inputTokens: number().from('input_tokens').optional(),
     outputTokens: number().from('output_tokens').optional(),
     totalTokens: number().from('total_tokens').optional(),
