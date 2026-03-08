@@ -3,7 +3,10 @@
 import * as React from 'react'
 import { Form } from '@rift/ui/form'
 import { getProviderIcon } from '@/lib/ai-catalog'
-import { getLocalizedToolCopy } from '@/lib/ai-catalog/tool-ui'
+import {
+  getLocalizedToolCopy,
+  getToolUiGroupKey,
+} from '@/lib/ai-catalog/tool-ui'
 import type { CatalogProviderId } from '@/lib/ai-catalog/provider-tools'
 import { PROVIDER_NAMES } from '@/components/organization/settings/model-policy/provider-constants'
 import { m } from '@/paraglide/messages.js'
@@ -16,6 +19,48 @@ type ProviderToolsSectionProps = {
   update: ReturnType<typeof useProviderPolicy>['update']
 }
 
+type ToolSettingsGroup = {
+  readonly id: string
+  readonly label: string
+  readonly description: string
+  readonly tools: PolicyPayload['tools']
+}
+
+/**
+ * The settings UI intentionally groups exact provider tool ids when they map
+ * to the same user-facing capability. This lets Anthropic expose multiple
+ * code-execution revisions in the catalog while still presenting one toggle
+ * for "Code Execution", and separate toggles only when the UI copy explicitly
+ * differentiates a variant such as "Dynamic Filtering".
+ */
+function groupToolsForDisplay(
+  tools: ReadonlyArray<PolicyPayload['tools'][number]>,
+): ReadonlyMap<string, readonly ToolSettingsGroup[]> {
+  const groupsByProvider = new Map<string, ToolSettingsGroup[]>()
+
+  for (const tool of tools) {
+    const localizedCopy = getLocalizedToolCopy(tool.key)
+    const providerGroups = groupsByProvider.get(tool.providerId) ?? []
+    const groupId = `${tool.providerId}:${getToolUiGroupKey(tool.key)}`
+    const existingGroup = providerGroups.find((group) => group.id === groupId)
+
+    if (existingGroup) {
+      existingGroup.tools.push(tool)
+      continue
+    }
+
+    providerGroups.push({
+      id: groupId,
+      label: localizedCopy.label,
+      description: localizedCopy.description,
+      tools: [tool],
+    })
+    groupsByProvider.set(tool.providerId, providerGroups)
+  }
+
+  return groupsByProvider
+}
+
 /**
  * Exact provider-tool controls. Tools are grouped by provider with subsection
  * headers (provider name + icon). Each row shows tool name and toggle; no per-row icon.
@@ -25,15 +70,10 @@ export function ProviderToolsSection({
   updating,
   update,
 }: ProviderToolsSectionProps) {
-  const groupedTools = React.useMemo(() => {
-    const groups = new Map<string, PolicyPayload['tools']>()
-    for (const tool of payload.tools) {
-      const current = groups.get(tool.providerId) ?? []
-      current.push(tool)
-      groups.set(tool.providerId, current)
-    }
-    return [...groups.entries()]
-  }, [payload.tools])
+  const groupedTools = React.useMemo(
+    () => [...groupToolsForDisplay(payload.tools).entries()],
+    [payload.tools],
+  )
 
   const subsections = React.useMemo(
     () =>
@@ -47,26 +87,33 @@ export function ProviderToolsSection({
           ) : (
             <div className="size-5 rounded-full bg-bg-inverted" />
           ),
-          items: tools.map((tool) => {
-            const localizedCopy = getLocalizedToolCopy(tool.key)
-            return {
-              id: tool.key,
-              title: localizedCopy.label,
-              description: localizedCopy.description,
-              checked: !tool.disabled,
-              onCheckedChange: (enabled: boolean) =>
-                void update({
-                  action: 'toggle_tool',
-                  toolKey: tool.key,
-                  disabled: !enabled,
-                }),
-              disabled:
-                updating ||
+          items: tools.map((toolGroup) => {
+            const groupEnabled = toolGroup.tools.some((tool) => !tool.disabled)
+            const toggleDisabled = toolGroup.tools.every(
+              (tool) =>
                 !(
                   tool.source === 'provider-native'
                     ? payload.policy.toolPolicy.providerNativeToolsEnabled
                     : payload.policy.toolPolicy.externalToolsEnabled
                 ),
+            )
+
+            return {
+              id: toolGroup.id,
+              title: toolGroup.label,
+              description: toolGroup.description,
+              checked: groupEnabled,
+              onCheckedChange: (enabled: boolean) =>
+                void Promise.all(
+                  toolGroup.tools.map((tool) =>
+                    update({
+                      action: 'toggle_tool',
+                      toolKey: tool.key,
+                      disabled: !enabled,
+                    }),
+                  ),
+                ),
+              disabled: updating || toggleDisabled,
             }
           }),
         }

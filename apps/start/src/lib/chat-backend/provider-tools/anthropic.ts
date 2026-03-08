@@ -30,6 +30,13 @@ function getAnthropicToolFactory(
     return () => fn({}) as ReturnType<ProviderToolFactory>
   }
 
+  if (toolId.startsWith('code_execution_')) {
+    const version = toolId.slice('code_execution_'.length)
+    const fn = tools[`codeExecution_${version}`]
+    if (!fn) return undefined
+    return () => fn({}) as ReturnType<ProviderToolFactory>
+  }
+
   if (toolId.startsWith('computer_')) {
     const version = toolId.slice('computer_'.length)
     const fn = tools[`computer_${version}`]

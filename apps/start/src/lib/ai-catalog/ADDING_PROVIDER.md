@@ -28,7 +28,7 @@ If network is unavailable, use local provider docs in `node_modules/@ai-sdk/<pro
 Create `apps/start/src/lib/ai-catalog/provider-tools/<provider>.ts` with:
 
 - Tool IDs (as `as const` union)
-- `ProviderToolDefinition[]` metadata (`name`, `description`, `advanced`)
+- `ProviderToolDefinition[]` metadata (`id`, `advanced`)
 
 Then update:
 

@@ -83,8 +83,6 @@ export type OrgModelPolicyPayload = {
   readonly tools: readonly {
     readonly key: string
     readonly providerId: string
-    readonly displayName: string
-    readonly description: string
     readonly advanced: boolean
     readonly source: 'provider-native' | 'external'
     readonly disabled: boolean
@@ -346,8 +344,6 @@ function toOrgModelPolicyPayload(
     tools: TOOL_CATALOG.map((tool) => ({
       key: tool.key,
       providerId: tool.providerId,
-      displayName: tool.displayName,
-      description: tool.description,
       advanced: tool.advanced,
       source: tool.source,
       disabled:

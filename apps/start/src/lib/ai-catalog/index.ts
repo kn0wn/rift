@@ -14,7 +14,7 @@ import type { CatalogProviderId, ProviderToolIdByProvider } from './provider-too
 
 const DEFAULT_PROVIDER_TOOL_IDS_BY_PROVIDER = {
   openai: ['web_search', 'code_interpreter'],
-  anthropic: ['web_search_20250305'],
+  anthropic: ['web_search_20250305', 'web_fetch_20250910'],
   google: ['google_search', 'url_context', 'code_execution'],
 } as const satisfies Partial<{
   [P in CatalogProviderId]: readonly ProviderToolIdByProvider[P][]
@@ -26,7 +26,11 @@ function withDefaultProviderTools<
   const defaultToolIds = DEFAULT_PROVIDER_TOOL_IDS_BY_PROVIDER[
     model.providerId as keyof typeof DEFAULT_PROVIDER_TOOL_IDS_BY_PROVIDER
   ]
-  if (!defaultToolIds || model.providerToolIds.length > 0) {
+  if (
+    !defaultToolIds ||
+    model.providerToolIds.length > 0 ||
+    model.skipDefaultProviderTools
+  ) {
     return model
   }
 

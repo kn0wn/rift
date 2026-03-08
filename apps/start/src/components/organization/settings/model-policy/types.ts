@@ -28,8 +28,6 @@ export type PolicyPayload = {
   tools: Array<{
     key: string
     providerId: string
-    displayName: string
-    description: string
     advanced: boolean
     source: 'provider-native' | 'external'
     disabled: boolean

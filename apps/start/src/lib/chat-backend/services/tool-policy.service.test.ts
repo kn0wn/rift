@@ -80,4 +80,62 @@ describe('ToolPolicyService', () => {
       ),
     ).toBe(true)
   })
+
+  it('keeps Anthropic web search enabled when org policy disables code execution', async () => {
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const service = yield* ToolPolicyService
+        return yield* service.resolveForThread({
+          threadId: 'thread-anthropic-org-fallback',
+          userId: 'user-anthropic-org-fallback',
+          requestId: 'req-anthropic-org-fallback',
+          modelId: 'anthropic/claude-sonnet-4.6',
+          orgPolicy: {
+            organizationId: 'org-3',
+            disabledProviderIds: [],
+            disabledModelIds: [],
+            complianceFlags: {},
+            toolPolicy: {
+              ...DEFAULT_ORG_TOOL_POLICY,
+              disabledToolKeys: ['anthropic.code_execution_20260120'],
+            },
+            updatedAt: Date.now(),
+          },
+        })
+      }).pipe(Effect.provide(ToolPolicyService.layer)),
+    )
+
+    expect(result.activeToolKeys).toContain('anthropic.web_search_20260209')
+    expect(result.activeToolKeys).not.toContain('anthropic.code_execution_20260120')
+  })
+
+  it('blocks Anthropic code execution under ZDR', async () => {
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const service = yield* ToolPolicyService
+        return yield* service.resolveForThread({
+          threadId: 'thread-anthropic-zdr',
+          userId: 'user-anthropic-zdr',
+          requestId: 'req-anthropic-zdr',
+          modelId: 'anthropic/claude-opus-4.6',
+          orgPolicy: {
+            organizationId: 'org-4',
+            disabledProviderIds: [],
+            disabledModelIds: [],
+            complianceFlags: { require_zdr: true },
+            toolPolicy: DEFAULT_ORG_TOOL_POLICY,
+            updatedAt: Date.now(),
+          },
+        })
+      }).pipe(Effect.provide(ToolPolicyService.layer)),
+    )
+
+    expect(result.activeToolKeys).toContain('anthropic.web_search_20260209')
+    expect(result.activeToolKeys).not.toContain('anthropic.code_execution_20260120')
+    expect(
+      result.toolEntries.find(
+        (entry) => entry.key === 'anthropic.code_execution_20260120',
+      )?.reasons,
+    ).toContain('blocked_by_compliance')
+  })
 })

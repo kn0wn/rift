@@ -1,6 +1,10 @@
 import type { ToolSet } from 'ai'
 import { Effect, Layer, ServiceMap } from 'effect'
 import { AI_CATALOG_BY_ID } from '@/lib/ai-catalog'
+import {
+  resolveAnthropicRuntimeToolIds,
+  type AnthropicProviderToolId,
+} from '@/lib/ai-catalog/provider-tools/anthropic'
 import { TOOL_CATALOG_BY_KEY } from '@/lib/ai-catalog/tool-catalog'
 import type { AiReasoningEffort } from '@/lib/ai-catalog/types'
 import { resolveProviderToolSet } from '../provider-tools'
@@ -33,6 +37,25 @@ function emptyToolRegistryResult(): ToolRegistryResult {
   }
 }
 
+/**
+ * Runtime provider adapters can have stricter dependency requirements than the
+ * visible catalog. Anthropic's dynamic web-search/web-fetch tools are one
+ * example: they must be downgraded to the legacy runtime versions when code
+ * execution is not active.
+ */
+function resolveRuntimeProviderToolIds(input: {
+  readonly providerId: string
+  readonly providerToolIds: readonly string[]
+}): readonly string[] {
+  if (input.providerId !== 'anthropic') {
+    return input.providerToolIds
+  }
+
+  return resolveAnthropicRuntimeToolIds(
+    input.providerToolIds as readonly AnthropicProviderToolId[],
+  )
+}
+
 /** Injectable tool registry token. */
 export class ToolRegistryService extends ServiceMap.Service<
   ToolRegistryService,
@@ -63,11 +86,15 @@ export class ToolRegistryService extends ServiceMap.Service<
             (entry) =>
               entry.providerToolId as (typeof model.providerToolIds)[number],
           )
+        const runtimeProviderToolIds = resolveRuntimeProviderToolIds({
+          providerId: model.providerId,
+          providerToolIds: enabledProviderTools,
+        }) as (typeof model.providerToolIds)[number][]
         const tools =
-          enabledProviderTools.length > 0
+          runtimeProviderToolIds.length > 0
             ? resolveProviderToolSet({
                 providerId: model.providerId,
-                providerToolIds: enabledProviderTools,
+                providerToolIds: runtimeProviderToolIds,
                 context: { modelId: model.id },
               })
             : {}

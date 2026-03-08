@@ -8,8 +8,6 @@ export type ToolCatalogEntry = {
   readonly key: string
   readonly providerId: CatalogProviderId
   readonly providerToolId: string
-  readonly displayName: string
-  readonly description: string
   readonly advanced: boolean
   readonly category:
     | 'search'
@@ -26,9 +24,8 @@ export type ToolCatalogEntry = {
 
 function getCategory(input: {
   readonly providerToolId: string
-  readonly displayName: string
 }): ToolCatalogEntry['category'] {
-  const text = `${input.providerToolId} ${input.displayName}`.toLowerCase()
+  const text = input.providerToolId.toLowerCase()
   if (text.includes('search')) return 'search'
   if (text.includes('file')) return 'files'
   if (text.includes('code') || text.includes('interpreter')) return 'code'
@@ -59,12 +56,9 @@ function buildToolCatalog(): readonly ToolCatalogEntry[] {
         key,
         providerId: model.providerId,
         providerToolId,
-        displayName: definition.name,
-        description: definition.description,
         advanced: definition.advanced,
         category: getCategory({
           providerToolId,
-          displayName: definition.name,
         }),
         source: 'provider-native',
         sortOrder: entries.length + 1,

@@ -20,6 +20,37 @@ type ToolUiCopy = {
 }
 
 /**
+ * UI grouping is intentionally semantic rather than tied to exact provider
+ * tool ids. Anthropic exposes multiple revisions for the same capability, and
+ * settings pages should collapse only the revisions that are indistinguishable
+ * to the user.
+ */
+export function getToolUiGroupKey(toolKey: string): string {
+  switch (toolKey) {
+    case 'anthropic.web_search_20250305':
+      return 'anthropic.web_search'
+    case 'anthropic.web_search_20260209':
+      return 'anthropic.web_search.dynamic'
+    case 'anthropic.web_fetch_20250910':
+      return 'anthropic.web_fetch'
+    case 'anthropic.web_fetch_20260209':
+      return 'anthropic.web_fetch.dynamic'
+    case 'anthropic.code_execution_20250825':
+    case 'anthropic.code_execution_20260120':
+      return 'anthropic.code_execution'
+    default:
+      return toolKey
+  }
+}
+
+function withVariant(label: string, variant: string): string {
+  return m.tool_label_with_variant({
+    label,
+    variant,
+  })
+}
+
+/**
  * Maps canonical provider-tool keys to localized UI copy. The catalog remains
  * the source of truth for policy/runtime identifiers; this helper exists only
  * for human-facing names and descriptions.
@@ -27,11 +58,36 @@ type ToolUiCopy = {
 export function getLocalizedToolCopy(toolKey: string): ToolUiCopy {
   switch (toolKey) {
     case 'openai.web_search':
-    case 'anthropic.web_search_20250305':
     case 'xai.web_search':
       return {
         label: m.tool_label_web_search(),
         description: m.tool_description_web_search(),
+      }
+    case 'anthropic.web_search_20250305':
+      return {
+        label: m.tool_label_web_search(),
+        description: m.tool_description_web_search(),
+      }
+    case 'anthropic.web_search_20260209':
+      return {
+        label: withVariant(
+          m.tool_label_web_search(),
+          m.tool_variant_dynamic_filtering(),
+        ),
+        description: m.tool_description_web_search_dynamic(),
+      }
+    case 'anthropic.web_fetch_20250910':
+      return {
+        label: m.tool_label_web_fetch(),
+        description: m.tool_description_web_fetch(),
+      }
+    case 'anthropic.web_fetch_20260209':
+      return {
+        label: withVariant(
+          m.tool_label_web_fetch(),
+          m.tool_variant_dynamic_filtering(),
+        ),
+        description: m.tool_description_web_fetch_dynamic(),
       }
     case 'xai.x_search':
       return {
@@ -54,6 +110,8 @@ export function getLocalizedToolCopy(toolKey: string): ToolUiCopy {
         description: m.tool_description_url_context(),
       }
     case 'google.code_execution':
+    case 'anthropic.code_execution_20260120':
+    case 'anthropic.code_execution_20250825':
     case 'xai.code_execution':
       return {
         label: m.tool_label_code_execution(),

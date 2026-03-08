@@ -93,6 +93,11 @@ export type AiModelCatalogEntry<
   /** Provider-specific tools explicitly enabled for this model. */
   readonly providerToolIds: readonly ProviderToolIdByProvider[TProviderId][]
   /**
+   * When true and providerToolIds is empty, do not apply default provider tools.
+   * Use for models that do not support native tools (e.g. Claude 3 Haiku).
+   */
+  readonly skipDefaultProviderTools?: boolean
+  /**
    * Reasoning settings are model-specific to prevent invalid combinations.
    * An empty list means the model should be treated as non-reasoning.
    */

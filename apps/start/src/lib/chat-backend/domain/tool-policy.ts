@@ -1,3 +1,4 @@
+import { isAnthropicCodeExecutionToolId } from '@/lib/ai-catalog/provider-tools/anthropic'
 import {
   TOOL_CATALOG_BY_KEY,
   TOOL_KEYS_BY_MODEL_ID,
@@ -10,6 +11,7 @@ import { canUseAdvancedProviderTools } from '@/utils/app-feature-flags'
 export type ToolAvailabilityReason =
   | 'blocked_by_mode'
   | 'blocked_by_org_master_switch'
+  | 'blocked_by_compliance'
   | 'blocked_by_org_policy'
   | 'blocked_by_thread_preference'
   | 'blocked_by_feature_flag'
@@ -76,6 +78,7 @@ export function resolveToolPolicy(input: {
   )
   const toolEntries: ResolvedToolAvailability[] = []
   const activeToolKeys: string[] = []
+  const requiresZdr = Boolean(input.orgPolicy?.complianceFlags.require_zdr)
 
   for (const toolKey of modelToolKeys) {
     const entry = TOOL_CATALOG_BY_KEY.get(toolKey)
@@ -105,6 +108,13 @@ export function resolveToolPolicy(input: {
     }
     if (normalizedThreadDisabled.includes(toolKey)) {
       reasons.push('blocked_by_thread_preference')
+    }
+    if (
+      requiresZdr &&
+      entry.providerId === 'anthropic' &&
+      isAnthropicCodeExecutionToolId(entry.providerToolId)
+    ) {
+      reasons.push('blocked_by_compliance')
     }
     if (entry.advanced && !canUseAdvancedProviderTools()) {
       reasons.push('blocked_by_feature_flag')
@@ -153,6 +163,7 @@ export function sanitizeThreadDisabledToolKeys(input: {
       (entry) =>
         entry.key === toolKey &&
         !entry.reasons.includes('blocked_by_org_master_switch') &&
+        !entry.reasons.includes('blocked_by_compliance') &&
         !entry.reasons.includes('blocked_by_org_policy') &&
         !entry.reasons.includes('blocked_by_external_tools_switch'),
     ),

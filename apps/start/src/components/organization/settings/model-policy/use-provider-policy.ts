@@ -67,8 +67,6 @@ function buildPolicyPayload(input: {
     tools: TOOL_CATALOG.map((tool) => ({
       key: tool.key,
       providerId: tool.providerId,
-      displayName: tool.displayName,
-      description: tool.description,
       advanced: tool.advanced,
       source: tool.source,
       disabled:

@@ -3,14 +3,10 @@ import type { ProviderToolDefinition } from './types'
 export const OPENAI_PROVIDER_TOOLS = [
   {
     id: 'web_search',
-    name: 'Web Search',
-    description: 'Searches the web for up-to-date sources.',
     advanced: false,
   },
   {
     id: 'code_interpreter',
-    name: 'Code Interpreter',
-    description: 'Runs code and returns computed outputs.',
     advanced: true,
   },
 ] as const satisfies readonly ProviderToolDefinition[]

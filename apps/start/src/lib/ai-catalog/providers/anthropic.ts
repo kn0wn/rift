@@ -40,6 +40,12 @@ function anthropicDefaultProviderOptions(): Record<string, unknown> {
 
 /**
  * Anthropic model catalog.
+ *
+ * Native tool support is pinned per model because Anthropic's newer web-search
+ * version depends on code execution and needs a runtime fallback when org
+ * policy or thread settings disable execution. We also pin code-execution
+ * versions per model family because Anthropic's current support matrix differs
+ * between the 20260120 and 20250825 tool revisions.
  */
 export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
   {
@@ -60,7 +66,11 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
       supportsFileInput: true,
       supportsPdfInput: true,
     },
-    providerToolIds: [],
+    providerToolIds: [
+      'web_search_20260209',
+      'web_fetch_20260209',
+      'code_execution_20260120',
+    ],
     reasoningEfforts: ['low', 'medium', 'high', 'max'],
     defaultReasoningEffort: 'medium',
     providerOptionsByReasoning: {
@@ -113,7 +123,11 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
       supportsFileInput: true,
       supportsPdfInput: true,
     },
-    providerToolIds: [],
+    providerToolIds: [
+      'web_search_20260209',
+      'web_fetch_20260209',
+      'code_execution_20260120',
+    ],
     reasoningEfforts: ['low', 'medium', 'high'],
     defaultReasoningEffort: 'medium',
     providerOptionsByReasoning: {
@@ -148,7 +162,11 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
       supportsFileInput: true,
       supportsPdfInput: true,
     },
-    providerToolIds: [],
+    providerToolIds: [
+      'web_search_20260209',
+      'web_fetch_20260209',
+      'code_execution_20260120',
+    ],
     reasoningEfforts: ['low', 'medium', 'high'],
     defaultReasoningEffort: 'medium',
     providerOptionsByReasoning: {
@@ -200,7 +218,11 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
       supportsFileInput: true,
       supportsPdfInput: true,
     },
-    providerToolIds: [],
+    providerToolIds: [
+      'web_search_20260209',
+      'web_fetch_20260209',
+      'code_execution_20260120',
+    ],
     reasoningEfforts: ['low', 'medium', 'high'],
     defaultReasoningEffort: 'medium',
     providerOptionsByReasoning: {
@@ -252,7 +274,11 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
       supportsFileInput: true,
       supportsPdfInput: true,
     },
-    providerToolIds: [],
+    providerToolIds: [
+      'web_search_20250305',
+      'web_fetch_20250910',
+      'code_execution_20250825',
+    ],
     reasoningEfforts: ['low', 'medium', 'high'],
     defaultReasoningEffort: 'medium',
     providerOptionsByReasoning: {
@@ -296,7 +322,7 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
       supportsFileInput: true,
       supportsPdfInput: true,
     },
-    providerToolIds: [],
+    providerToolIds: ['web_search_20250305', 'web_fetch_20250910'],
     reasoningEfforts: ['low', 'medium', 'high'],
     defaultReasoningEffort: 'medium',
     providerOptionsByReasoning: {
@@ -332,7 +358,11 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
       supportsFileInput: true,
       supportsPdfInput: true,
     },
-    providerToolIds: [],
+    providerToolIds: [
+      'web_search_20250305',
+      'web_fetch_20250910',
+      'code_execution_20250825',
+    ],
     reasoningEfforts: ['low', 'medium', 'high'],
     defaultReasoningEffort: 'medium',
     providerOptionsByReasoning: {
@@ -367,7 +397,7 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
       supportsFileInput: true,
       supportsPdfInput: true,
     },
-    providerToolIds: [],
+    providerToolIds: ['web_search_20250305', 'web_fetch_20250910'],
     reasoningEfforts: [],
     defaultProviderOptions: anthropicDefaultProviderOptions(),
     defaultMaxOutputTokens: 8192,
@@ -396,7 +426,11 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
       supportsFileInput: true,
       supportsPdfInput: true,
     },
-    providerToolIds: [],
+    providerToolIds: [
+      'web_search_20250305',
+      'web_fetch_20250910',
+      'code_execution_20250825',
+    ],
     reasoningEfforts: [],
     defaultProviderOptions: anthropicDefaultProviderOptions(),
     defaultMaxOutputTokens: 8192,
@@ -425,7 +459,9 @@ export const ANTHROPIC_MODELS: readonly AiModelCatalogEntry<'anthropic'>[] = [
       supportsFileInput: true,
       supportsPdfInput: true,
     },
+    /** Claude 3 Haiku does not support web search or web fetch per Anthropic docs. */
     providerToolIds: [],
+    skipDefaultProviderTools: true,
     reasoningEfforts: [],
     defaultProviderOptions: anthropicDefaultProviderOptions(),
     defaultMaxOutputTokens: 4096,
