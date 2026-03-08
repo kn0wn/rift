@@ -77,7 +77,7 @@ export function ConnectedLoginMethods({
       providerId: 'github',
       providerLabel: m.settings_security_login_methods_provider_github(),
       connectedMethod: githubMethod,
-      icon: <GitHubIcon className="size-5" />,
+      icon: <GitHubIcon className="size-5 text-content-default" />,
     },
     {
       providerId: 'microsoft',

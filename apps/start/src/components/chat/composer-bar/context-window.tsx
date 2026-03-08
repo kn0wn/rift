@@ -3,6 +3,7 @@
 import type { LanguageModelUsage } from 'ai'
 import type { ComponentProps } from 'react'
 
+import { m } from '@/paraglide/messages.js'
 import { Button } from '@rift/ui/button'
 import {
   HoverCard,
@@ -120,8 +121,10 @@ export const ContextTrigger = ({ children, ...props }: ContextTriggerProps) => {
     children
   ) : (
     <Button type="button" variant="ghost" {...props}>
-      <span className="font-medium text-content-muted">{renderedPercent}</span>
-      <ContextIcon />
+      <span className="inline-flex items-center gap-2 text-start">
+        <span className="font-medium text-content-muted">{renderedPercent}</span>
+        <ContextIcon />
+      </span>
     </Button>
   )
 
@@ -138,7 +141,7 @@ export const ContextContent = ({
 }: ContextContentProps) => (
   <HoverCardContent
     className={cn(
-      'min-w-60 divide-y divide-border-default overflow-hidden p-0',
+      'min-w-60 divide-y divide-border-default overflow-hidden p-0 text-start',
       className,
     )}
     {...props}
@@ -166,7 +169,10 @@ export const ContextContentHeader = ({
   }).format(maxTokens)
 
   return (
-    <div className={cn('w-full space-y-2 px-4 py-3', className)} {...props}>
+    <div
+      className={cn('w-full space-y-2 ps-4 pe-4 py-3 text-start', className)}
+      {...props}
+    >
       {children ?? (
         <>
           <div className="flex items-center justify-between gap-3 text-xs">
@@ -191,7 +197,7 @@ export const ContextContentBody = ({
   className,
   ...props
 }: ContextContentBodyProps) => (
-  <div className={cn('w-full px-4 py-3', className)} {...props}>
+  <div className={cn('w-full ps-4 pe-4 py-3 text-start', className)} {...props}>
     {children}
   </div>
 )
@@ -213,14 +219,14 @@ export const ContextContentFooter = ({
   return (
     <div
       className={cn(
-        'flex w-full items-center justify-between gap-3 border-t border-border-subtle bg-bg-emphasis/50 px-4 py-3 text-xs',
+        'flex w-full items-center justify-between gap-3 border-t border-border-subtle bg-bg-emphasis/50 ps-4 pe-4 py-3 text-xs text-start',
         className,
       )}
       {...props}
     >
       {children ?? (
         <>
-          <span className="text-content-muted">Total cost</span>
+          <span className="text-content-muted">{m.chat_context_total_cost()}</span>
           <span className="text-content-emphasis">{formattedTotalCost}</span>
         </>
       )}
@@ -248,10 +254,13 @@ export const ContextInputUsage = ({
 
   return (
     <div
-      className={cn('flex items-center justify-between text-xs', className)}
+      className={cn(
+        'flex items-center justify-between gap-3 text-xs text-start',
+        className,
+      )}
       {...props}
     >
-      <span className="text-content-muted">Input</span>
+      <span className="text-content-muted">{m.chat_context_input()}</span>
       <TokensWithCost tokens={inputTokens} />
     </div>
   )
@@ -277,10 +286,13 @@ export const ContextOutputUsage = ({
 
   return (
     <div
-      className={cn('flex items-center justify-between text-xs', className)}
+      className={cn(
+        'flex items-center justify-between gap-3 text-xs text-start',
+        className,
+      )}
       {...props}
     >
-      <span className="text-content-muted">Output</span>
+      <span className="text-content-muted">{m.chat_context_output()}</span>
       <TokensWithCost tokens={outputTokens} />
     </div>
   )
@@ -306,10 +318,13 @@ export const ContextReasoningUsage = ({
 
   return (
     <div
-      className={cn('flex items-center justify-between text-xs', className)}
+      className={cn(
+        'flex items-center justify-between gap-3 text-xs text-start',
+        className,
+      )}
       {...props}
     >
-      <span className="text-content-muted">Reasoning</span>
+      <span className="text-content-muted">{m.chat_context_reasoning()}</span>
       <TokensWithCost tokens={reasoningTokens} />
     </div>
   )
@@ -335,16 +350,16 @@ export const ContextCacheUsage = ({
   }
 
   return (
-    <div className={cn('space-y-2', className)} {...props}>
+    <div className={cn('space-y-2 text-start', className)} {...props}>
       {cacheReadTokens > 0 ? (
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-content-muted">Cache read</span>
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <span className="text-content-muted">{m.chat_context_cache_read()}</span>
           <TokensWithCost tokens={cacheReadTokens} />
         </div>
       ) : null}
       {cacheWriteTokens > 0 ? (
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-content-muted">Cache write</span>
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <span className="text-content-muted">{m.chat_context_cache_write()}</span>
           <TokensWithCost tokens={cacheWriteTokens} />
         </div>
       ) : null}

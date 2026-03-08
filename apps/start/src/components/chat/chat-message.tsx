@@ -1,6 +1,7 @@
 // Single chat message renderer (user/assistant).
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { UIMessage } from 'ai'
+import { useDirection } from '@rift/ui/direction'
 import type { ChatMessageMetadata } from '@/lib/chat-contracts/message-metadata'
 import type { ChatAttachment } from '@/lib/chat-contracts/attachments'
 import {
@@ -102,6 +103,7 @@ export function ChatMessage({
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const editTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const isUser = message.role === 'user'
+  const direction = useDirection()
   const metadata = message.metadata as ChatMessageMetadata | undefined
   const attachmentManifest = (isUser ? metadata?.attachments ?? [] : []).filter(
     (attachment): attachment is ChatAttachment =>
@@ -139,8 +141,8 @@ export function ChatMessage({
       >
         <div className="flex max-w-[80%] flex-col items-end gap-2">
           <div
-            dir="auto"
-            className="relative flex min-h-7 w-fit max-w-full self-end flex-col gap-3 overflow-hidden rounded-3xl rounded-br-lg border border-border-default bg-bg-subtle px-4 py-1.5 text-md"
+            dir={direction}
+            className="relative flex min-h-7 w-fit max-w-full self-end flex-col gap-3 overflow-hidden rounded-3xl ltr:rounded-br-lg rtl:rounded-bl-lg border border-border-default bg-bg-subtle px-4 py-1.5 text-md"
           >
             <div className="space-y-4 size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
               <div className="whitespace-pre-wrap break-words text-md leading-7">
@@ -177,6 +179,7 @@ export function ChatMessage({
                           setIsSavingEdit(false)
                         })
                       }}
+                      dir="auto"
                       className="absolute inset-0 w-full resize-none overflow-hidden border-0 bg-transparent p-0 text-md leading-7 outline-none"
                       style={{ font: 'inherit' }}
                       disabled={isSavingEdit}
@@ -252,7 +255,7 @@ export function ChatMessage({
       data-role={message.role}
     >
       <div
-        dir="auto"
+        dir={direction}
         className="flex w-full flex-col gap-3 overflow-hidden text-content-emphasis leading-[21px]"
       >
         <AssistantMessageContent parts={message.parts} isAnimating={isAnimating} />

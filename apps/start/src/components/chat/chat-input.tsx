@@ -216,28 +216,30 @@ export function ChatInput() {
   const bottomSlot = (
     <div className="flex items-center justify-between gap-2 px-1 p-1.5">
       {modelAndReasoningSelectors}
-      <Context
-        maxTokens={maxTokens}
-        modelId={effectiveModelId}
-        usedTokens={usedTokens}
-        usage={branchUsage}
-        totalCost={branchCost}
-        showCost={showBranchCost}
-      >
-        <ContextTrigger />
-        <ContextContent>
-          <ContextContentHeader />
-          <ContextContentBody>
-            <div className="space-y-2">
-              <ContextInputUsage />
-              <ContextOutputUsage />
-              <ContextReasoningUsage />
-              <ContextCacheUsage />
-            </div>
-          </ContextContentBody>
-          <ContextContentFooter />
-        </ContextContent>
-      </Context>
+      {activeThreadId ? (
+        <Context
+          maxTokens={maxTokens}
+          modelId={effectiveModelId}
+          usedTokens={usedTokens}
+          usage={branchUsage}
+          totalCost={branchCost}
+          showCost={showBranchCost}
+        >
+          <ContextTrigger />
+          <ContextContent>
+            <ContextContentHeader />
+            <ContextContentBody>
+              <div className="space-y-2">
+                <ContextInputUsage />
+                <ContextOutputUsage />
+                <ContextReasoningUsage />
+                <ContextCacheUsage />
+              </div>
+            </ContextContentBody>
+            <ContextContentFooter />
+          </ContextContent>
+        </Context>
+      ) : null}
     </div>
   )
 

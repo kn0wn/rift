@@ -2,17 +2,17 @@
 
 import { Button } from '@rift/ui/button'
 import { cn } from '@rift/utils'
-import { ReasoningIcon } from '@rift/ui/icons/svg-icons'
 import { X } from 'lucide-react'
 import {
   forwardRef,
   memo,
   useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
   type HTMLAttributes,
-  type MutableRefObject,
+  type RefObject,
 } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Streamdown } from 'streamdown'
@@ -28,6 +28,12 @@ type ReasoningTriggerProps = {
   isStreaming: boolean
 }
 
+type ReasoningPanelProps = {
+  textRef: RefObject<string>
+  isStreamingRef: RefObject<boolean>
+  onClose: () => void
+}
+
 const circleA =
   'M 12 8 C 14.21 8 16 9.79 16 12 C 16 14.21 14.21 16 12 16 C 9.79 16 8 14.21 8 12 C 8 9.79 9.79 8 12 8 Z'
 
@@ -39,6 +45,9 @@ const circleB =
 
 const fontWeights = { medium: "'wght' 500" } as const
 
+/** Icon mask dimensions. The label uses normal DOM text so browser bidi/layout rules apply. */
+const SHIMMER_ICON_MASK_SIZE = 36
+
 /**
  * Matches the markdown rendering stack used for assistant text parts so reasoning
  * content in the sidebar supports code fences, tables, math, and Mermaid diagrams.
@@ -49,21 +58,34 @@ const fontWeights = { medium: "'wght' 500" } as const
  * Renders title, close button, and scrollable reasoning text. Owned by the chat feature.
  */
 function ReasoningPanel({
-  text,
-  isStreaming,
+  textRef,
+  isStreamingRef,
   onClose,
-}: {
-  text: string
-  isStreaming: boolean
-  onClose: () => void
-}) {
+}: ReasoningPanelProps) {
+  const [text, setText] = useState(textRef.current)
+  const [isStreaming, setIsStreaming] = useState(isStreamingRef.current)
+
+  useEffect(() => {
+    // Sidebar content is stored as a ReactNode snapshot in context, so this panel
+    // mirrors the latest refs while open instead of requiring the user to reopen it.
+    const sync = () => {
+      setText(textRef.current)
+      setIsStreaming(isStreamingRef.current)
+    }
+
+    sync()
+    const interval = window.setInterval(sync, 120)
+    return () => window.clearInterval(interval)
+  }, [isStreamingRef, textRef])
+
   return (
     <>
       <div className="mb-2 flex shrink-0 items-center justify-between gap-2 border-b border-border-muted px-3 py-2">
-        <span className="inline-flex items-center gap-2 text-lg font-semibold text-content-emphasis">
-          <ReasoningIcon className="size-4 shrink-0" />
-          {m.chat_reasoning_label()}
-        </span>
+        <ThinkingIndicator
+          isStreaming={isStreaming}
+          finishedLabel={m.chat_reasoning_label()}
+          className="min-w-0 shrink p-0 text-content-emphasis"
+        />
         <Button
           variant="ghost"
           size="icon"
@@ -75,7 +97,7 @@ function ReasoningPanel({
         </Button>
       </div>
       <div
-        className="mt-3 min-h-0 flex-1 overflow-y-auto text-content-emphasis"
+        className="mt-3 min-h-0 flex-1 overflow-y-auto text-content-default ltr:-mr-3 rtl:-ml-3"
         aria-live={isStreaming ? 'polite' : 'off'}
       >
         <Streamdown
@@ -86,7 +108,7 @@ function ReasoningPanel({
               ? streamdownStreamingComponents
               : streamdownStaticComponents
           }
-          className="chat-streamdown min-w-0 max-w-full break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+          className="min-w-0 max-w-full break-words text-[14px] ltr:pr-3 rtl:pl-3 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
         >
           {text || '\u00a0'}
         </Streamdown>
@@ -97,11 +119,17 @@ function ReasoningPanel({
 
 /**
  * Thinking indicator UI shown in assistant rows where reasoning content exists.
+ * When cycling, uses a single gradient that flows right-to-left across both
+ * the icon and text, resetting at the left edge of the icon.
  */
 const ThinkingIndicatorBase = forwardRef<
   HTMLDivElement,
-  HTMLAttributes<HTMLDivElement> & { isStreaming: boolean }
->(({ className, isStreaming, ...props }, ref) => {
+  HTMLAttributes<HTMLDivElement> & {
+    isStreaming: boolean
+    finishedLabel?: string
+  }
+>(({ className, isStreaming, finishedLabel, ...props }, ref) => {
+  const maskId = useId()
   const [index, setIndex] = useState(0)
   const words = [
     m.chat_reasoning_thinking_word_1(),
@@ -109,95 +137,159 @@ const ThinkingIndicatorBase = forwardRef<
     m.chat_reasoning_thinking_word_3(),
     m.chat_reasoning_thinking_word_4(),
   ]
-  const finishedWord = m.chat_reasoning_finished()
+  const finishedWord = finishedLabel ?? m.chat_reasoning_finished()
 
   useEffect(() => {
+    if (!isStreaming) return
     const interval = setInterval(() => {
       setIndex((i) => (i + 1) % words.length)
     }, 4000)
     return () => clearInterval(interval)
-  }, [])
+  }, [isStreaming])
 
   return (
     <div
       ref={ref}
       role="status"
-      className={cn('flex items-center gap-2 px-3 py-2', className)}
+      className={cn('relative px-3 py-2', className)}
       {...props}
     >
-      <motion.svg
-        aria-hidden
-        width={20}
-        height={20}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="shrink-0 text-muted-foreground"
+      <svg aria-hidden className="absolute size-0 overflow-hidden">
+        <defs>
+          <mask
+            id={maskId}
+            maskUnits="userSpaceOnUse"
+            x={0}
+            y={0}
+            width={SHIMMER_ICON_MASK_SIZE}
+            height={SHIMMER_ICON_MASK_SIZE}
+          >
+            <motion.path
+              d={isStreaming ? undefined : circleA}
+              animate={
+                isStreaming
+                  ? {
+                      d: [circleA, infinity, circleB, infinity, circleA],
+                    }
+                  : undefined
+              }
+              transition={
+                isStreaming
+                  ? {
+                      d: {
+                        duration: 6,
+                        ease: 'easeInOut',
+                        repeat: Infinity,
+                        times: [0, 0.25, 0.5, 0.75, 1.0],
+                      },
+                    }
+                  : undefined
+              }
+              fill="none"
+              stroke="white"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              transform="scale(1.5)"
+            />
+          </mask>
+        </defs>
+      </svg>
+
+      <div
+        className="relative flex items-center gap-2"
       >
-        <motion.path
-          d={isStreaming ? undefined : circleA}
-          animate={
-            isStreaming
-              ? {
-                  d: [circleA, infinity, circleB, infinity, circleA],
-                }
-              : undefined
-          }
-          transition={
-            isStreaming
-              ? {
-                  d: {
-                    duration: 6,
-                    ease: 'easeInOut',
-                    repeat: Infinity,
-                    times: [0, 0.25, 0.5, 0.75, 1.0],
-                  },
-                }
-              : undefined
-          }
-        />
-      </motion.svg>
-      <span
-        className="inline-grid overflow-hidden text-[13px]"
-        style={{ fontVariationSettings: fontWeights.medium }}
-      >
-        <span
-          className="shimmer-text invisible col-start-1 row-start-1"
-          aria-hidden="true"
-        >
-          {isStreaming
-            ? words.reduce((a, b) => (a.length >= b.length ? a : b))
-            : finishedWord}
+        <span className="relative size-9 shrink-0" aria-hidden="true">
+          {/* The icon keeps its real slot and receives shimmer through its own mask. */}
+          <motion.svg
+            width={36}
+            height={36}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={cn('text-content-muted', isStreaming && 'invisible')}
+          >
+            <motion.path
+              d={isStreaming ? undefined : circleA}
+              animate={
+                isStreaming
+                  ? {
+                      d: [circleA, infinity, circleB, infinity, circleA],
+                    }
+                  : undefined
+              }
+              transition={
+                isStreaming
+                  ? {
+                      d: {
+                        duration: 6,
+                        ease: 'easeInOut',
+                        repeat: Infinity,
+                        times: [0, 0.25, 0.5, 0.75, 1.0],
+                      },
+                    }
+                  : undefined
+              }
+            />
+          </motion.svg>
+          {isStreaming && (
+            <div
+              className="absolute inset-0 shimmer-unified"
+              style={{
+                mask: `url(#${maskId})`,
+                maskSize: '36px 36px',
+                maskRepeat: 'no-repeat',
+                maskPosition: '0 0',
+                WebkitMask: `url(#${maskId})`,
+                WebkitMaskSize: '36px 36px',
+                WebkitMaskRepeat: 'no-repeat',
+                WebkitMaskPosition: '0 0',
+              }}
+            />
+          )}
         </span>
-        {isStreaming ? (
-          <AnimatePresence mode="popLayout" initial={false}>
-            <motion.span
-              key={words[index]}
-              className="shimmer-text col-start-1 row-start-1"
-              initial={{ y: '80%', opacity: 0 }}
-              animate={{
-                y: 0,
-                opacity: 1,
-                transition: { duration: 0.24, ease: [0.4, 0, 0.2, 1] },
-              }}
-              exit={{
-                y: '-80%',
-                opacity: 0,
-                transition: { duration: 0.16, ease: [0.4, 0, 0.2, 1] },
-              }}
-            >
-              {words[index]}
-            </motion.span>
-          </AnimatePresence>
-        ) : (
-          <span className="col-start-1 row-start-1 text-muted-foreground">
-            {finishedWord}
+        <span
+          className="inline-grid overflow-hidden text-[16px] text-start"
+          style={{ fontVariationSettings: fontWeights.medium }}
+        >
+          <span
+            className="invisible col-start-1 row-start-1 whitespace-pre"
+            aria-hidden="true"
+          >
+            {isStreaming
+              ? words.reduce((a, b) => (a.length >= b.length ? a : b))
+              : finishedWord}
           </span>
-        )}
-      </span>
+          {isStreaming ? (
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span
+                key={words[index]}
+                className="col-start-1 row-start-1 block whitespace-pre thinking-shimmer-text"
+                initial={{ y: '80%', opacity: 0 }}
+                animate={{
+                  y: 0,
+                  opacity: 1,
+                  transition: { duration: 0.24, ease: [0.4, 0, 0.2, 1] },
+                }}
+                exit={{
+                  y: '-80%',
+                  opacity: 0,
+                  transition: { duration: 0.16, ease: [0.4, 0, 0.2, 1] },
+                }}
+              >
+                {words[index]}
+              </motion.span>
+            </AnimatePresence>
+          ) : (
+            <span className="col-start-1 row-start-1 text-content-muted">
+              {finishedWord}
+            </span>
+          )}
+        </span>
+      </div>
     </div>
   )
 })
@@ -208,11 +300,12 @@ const ThinkingIndicator = memo(
   ThinkingIndicatorBase,
   (previous, next) =>
     previous.isStreaming === next.isStreaming &&
-    previous.className === next.className,
+    previous.className === next.className &&
+    previous.finishedLabel === next.finishedLabel,
 )
 
 type ReasoningTriggerButtonProps = {
-  reasoningTextRef: MutableRefObject<string>
+  reasoningTextRef: RefObject<string>
   isStreaming: boolean
 }
 
@@ -221,6 +314,8 @@ const ReasoningTriggerButton = memo(function ReasoningTriggerButton({
   isStreaming,
 }: ReasoningTriggerButtonProps) {
   const { open, close } = useRightSidebar()
+  const isStreamingRef = useRef(isStreaming)
+  isStreamingRef.current = isStreaming
   const ariaLabel = isStreaming
     ? m.chat_reasoning_show_streaming_aria_label()
     : m.chat_reasoning_show_aria_label()
@@ -231,12 +326,12 @@ const ReasoningTriggerButton = memo(function ReasoningTriggerButton({
 
     open(
       <ReasoningPanel
-        text={reasoningTextRef.current}
-        isStreaming={isStreaming}
+        textRef={reasoningTextRef}
+        isStreamingRef={isStreamingRef}
         onClose={close}
       />,
     )
-  }, [close, isStreaming, open, reasoningTextRef])
+  }, [close, open, reasoningTextRef, isStreamingRef])
 
   return (
     <button

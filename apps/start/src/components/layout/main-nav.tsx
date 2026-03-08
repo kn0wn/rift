@@ -16,10 +16,7 @@ import { cn } from '@rift/utils'
 import { directionClass, useDirection } from '@rift/ui/direction'
 import { useMediaQuery } from '@rift/ui/hooks/useMediaQuery'
 
-import {
-  AppRightSidebar,
-  RIGHT_SIDEBAR_WIDTH,
-} from '@/components/layout/app-right-sidebar'
+import { AppRightSidebar } from '@/components/layout/app-right-sidebar'
 import { useRightSidebar } from '@/components/layout/right-sidebar-context'
 
 type SideNavContextValue = {
@@ -114,7 +111,9 @@ export function MainNav({ children, sidebar: Sidebar }: MainNavProps) {
           'transition-[width,padding] duration-220 motion-reduce:transition-none',
           showRightSidebar ? 'ease-out' : 'ease-in',
         )}
-        style={{ width: showRightSidebar ? `${RIGHT_SIDEBAR_WIDTH}px` : '0px' }}
+        style={{
+          width: showRightSidebar ? 'var(--right-sidebar-width)' : '0px',
+        }}
         aria-hidden={!showRightSidebar}
       >
         <AppRightSidebar isOpen={showRightSidebar}>
