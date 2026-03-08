@@ -4,10 +4,7 @@ import { ContentPage } from '@/components/layout'
 import { m } from '@/paraglide/messages.js'
 import { ComplianceFlagsSection } from './compliance-flags-section'
 import { ModelControlsSection } from './model-controls-section'
-import { BuiltInToolsSection } from './built-in-tools-section'
-import { ExternalToolsSection } from './external-tools-section'
 import { ProviderControlsSection } from './provider-controls-section'
-import { ProviderToolsSection } from './provider-tools-section'
 import { useProviderPolicy } from './use-provider-policy'
 
 /**
@@ -41,9 +38,6 @@ export function ProviderPolicyPage() {
         updating={busy}
         update={update}
       />
-      <BuiltInToolsSection payload={payload} updating={busy} update={update} />
-      <ExternalToolsSection payload={payload} updating={busy} update={update} />
-      <ProviderToolsSection payload={payload} updating={busy} update={update} />
       <ProviderControlsSection
         payload={payload}
         updating={busy}

@@ -35,6 +35,7 @@ import { Route as appLayoutSettingsDebugAuthRouteRouteImport } from './routes/(a
 import { Route as appLayoutOrganizationSettingsRouteRouteImport } from './routes/(app)/_layout/organization/settings/route'
 import { Route as appLayoutChatThreadIdRouteRouteImport } from './routes/(app)/_layout/chat/$threadId/route'
 import { Route as appLayoutOrganizationSettingsIndexRouteImport } from './routes/(app)/_layout/organization/settings/index'
+import { Route as appLayoutOrganizationSettingsToolsRouteRouteImport } from './routes/(app)/_layout/organization/settings/tools/route'
 import { Route as appLayoutOrganizationSettingsSecurityRouteRouteImport } from './routes/(app)/_layout/organization/settings/security/route'
 import { Route as appLayoutOrganizationSettingsProviderPolicyRouteRouteImport } from './routes/(app)/_layout/organization/settings/provider-policy/route'
 import { Route as appLayoutOrganizationSettingsModelsRouteRouteImport } from './routes/(app)/_layout/organization/settings/models/route'
@@ -181,6 +182,12 @@ const appLayoutOrganizationSettingsIndexRoute =
     path: '/',
     getParentRoute: () => appLayoutOrganizationSettingsRouteRoute,
   } as any)
+const appLayoutOrganizationSettingsToolsRouteRoute =
+  appLayoutOrganizationSettingsToolsRouteRouteImport.update({
+    id: '/tools',
+    path: '/tools',
+    getParentRoute: () => appLayoutOrganizationSettingsRouteRoute,
+  } as any)
 const appLayoutOrganizationSettingsSecurityRouteRoute =
   appLayoutOrganizationSettingsSecurityRouteRouteImport.update({
     id: '/security',
@@ -268,6 +275,7 @@ export interface FileRoutesByFullPath {
   '/organization/settings/models': typeof appLayoutOrganizationSettingsModelsRouteRouteWithChildren
   '/organization/settings/provider-policy': typeof appLayoutOrganizationSettingsProviderPolicyRouteRoute
   '/organization/settings/security': typeof appLayoutOrganizationSettingsSecurityRouteRoute
+  '/organization/settings/tools': typeof appLayoutOrganizationSettingsToolsRouteRoute
   '/organization/settings/': typeof appLayoutOrganizationSettingsIndexRoute
   '/organization/settings/models/$providerId': typeof appLayoutOrganizationSettingsModelsProviderIdRouteRoute
   '/organization/settings/models/': typeof appLayoutOrganizationSettingsModelsIndexRoute
@@ -300,6 +308,7 @@ export interface FileRoutesByTo {
   '/organization/settings/members': typeof appLayoutOrganizationSettingsMembersRouteRoute
   '/organization/settings/provider-policy': typeof appLayoutOrganizationSettingsProviderPolicyRouteRoute
   '/organization/settings/security': typeof appLayoutOrganizationSettingsSecurityRouteRoute
+  '/organization/settings/tools': typeof appLayoutOrganizationSettingsToolsRouteRoute
   '/organization/settings': typeof appLayoutOrganizationSettingsIndexRoute
   '/organization/settings/models/$providerId': typeof appLayoutOrganizationSettingsModelsProviderIdRouteRoute
   '/organization/settings/models': typeof appLayoutOrganizationSettingsModelsIndexRoute
@@ -338,6 +347,7 @@ export interface FileRoutesById {
   '/(app)/_layout/organization/settings/models': typeof appLayoutOrganizationSettingsModelsRouteRouteWithChildren
   '/(app)/_layout/organization/settings/provider-policy': typeof appLayoutOrganizationSettingsProviderPolicyRouteRoute
   '/(app)/_layout/organization/settings/security': typeof appLayoutOrganizationSettingsSecurityRouteRoute
+  '/(app)/_layout/organization/settings/tools': typeof appLayoutOrganizationSettingsToolsRouteRoute
   '/(app)/_layout/organization/settings/': typeof appLayoutOrganizationSettingsIndexRoute
   '/(app)/_layout/organization/settings/models/$providerId': typeof appLayoutOrganizationSettingsModelsProviderIdRouteRoute
   '/(app)/_layout/organization/settings/models/': typeof appLayoutOrganizationSettingsModelsIndexRoute
@@ -376,6 +386,7 @@ export interface FileRouteTypes {
     | '/organization/settings/models'
     | '/organization/settings/provider-policy'
     | '/organization/settings/security'
+    | '/organization/settings/tools'
     | '/organization/settings/'
     | '/organization/settings/models/$providerId'
     | '/organization/settings/models/'
@@ -408,6 +419,7 @@ export interface FileRouteTypes {
     | '/organization/settings/members'
     | '/organization/settings/provider-policy'
     | '/organization/settings/security'
+    | '/organization/settings/tools'
     | '/organization/settings'
     | '/organization/settings/models/$providerId'
     | '/organization/settings/models'
@@ -445,6 +457,7 @@ export interface FileRouteTypes {
     | '/(app)/_layout/organization/settings/models'
     | '/(app)/_layout/organization/settings/provider-policy'
     | '/(app)/_layout/organization/settings/security'
+    | '/(app)/_layout/organization/settings/tools'
     | '/(app)/_layout/organization/settings/'
     | '/(app)/_layout/organization/settings/models/$providerId'
     | '/(app)/_layout/organization/settings/models/'
@@ -646,6 +659,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appLayoutOrganizationSettingsIndexRouteImport
       parentRoute: typeof appLayoutOrganizationSettingsRouteRoute
     }
+    '/(app)/_layout/organization/settings/tools': {
+      id: '/(app)/_layout/organization/settings/tools'
+      path: '/tools'
+      fullPath: '/organization/settings/tools'
+      preLoaderRoute: typeof appLayoutOrganizationSettingsToolsRouteRouteImport
+      parentRoute: typeof appLayoutOrganizationSettingsRouteRoute
+    }
     '/(app)/_layout/organization/settings/security': {
       id: '/(app)/_layout/organization/settings/security'
       path: '/security'
@@ -767,6 +787,7 @@ interface appLayoutOrganizationSettingsRouteRouteChildren {
   appLayoutOrganizationSettingsModelsRouteRoute: typeof appLayoutOrganizationSettingsModelsRouteRouteWithChildren
   appLayoutOrganizationSettingsProviderPolicyRouteRoute: typeof appLayoutOrganizationSettingsProviderPolicyRouteRoute
   appLayoutOrganizationSettingsSecurityRouteRoute: typeof appLayoutOrganizationSettingsSecurityRouteRoute
+  appLayoutOrganizationSettingsToolsRouteRoute: typeof appLayoutOrganizationSettingsToolsRouteRoute
   appLayoutOrganizationSettingsIndexRoute: typeof appLayoutOrganizationSettingsIndexRoute
 }
 
@@ -786,6 +807,8 @@ const appLayoutOrganizationSettingsRouteRouteChildren: appLayoutOrganizationSett
       appLayoutOrganizationSettingsProviderPolicyRouteRoute,
     appLayoutOrganizationSettingsSecurityRouteRoute:
       appLayoutOrganizationSettingsSecurityRouteRoute,
+    appLayoutOrganizationSettingsToolsRouteRoute:
+      appLayoutOrganizationSettingsToolsRouteRoute,
     appLayoutOrganizationSettingsIndexRoute:
       appLayoutOrganizationSettingsIndexRoute,
   }

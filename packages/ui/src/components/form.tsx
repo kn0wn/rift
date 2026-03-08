@@ -50,6 +50,17 @@ export interface FormToggleItem {
 }
 
 /**
+ * A subsection within a toggle section: title, optional icon at right of title, and items.
+ */
+export interface FormToggleSubsection {
+  /** Subsection title (e.g. provider name) */
+  title: string;
+  /** Optional icon or content rendered to the left of the subsection title */
+  titleIcon?: ReactNode;
+  items: FormToggleItem[];
+}
+
+/**
  * Optional toggle section rendered inside the form card (e.g. Add-Ons style).
  */
 export interface FormToggleSection {
@@ -57,7 +68,10 @@ export interface FormToggleSection {
   sectionTitle?: string;
   /** When true, each toggle row gets a full-width hover background from content edge to edge (border to border). */
   rowHover?: boolean;
-  items: FormToggleItem[];
+  /** Flat list of items when subsections are not used */
+  items?: FormToggleItem[];
+  /** Grouped subsections, each with its own title and optional titleIcon. When provided, items is ignored. */
+  subsections?: FormToggleSubsection[];
 }
 
 /**
@@ -600,105 +614,234 @@ export function Form({
               </div>
           ) : null}
 
-          {toggleSection != null && toggleSection.items.length > 0 && (
+          {toggleSection != null &&
+            ((toggleSection.items != null && toggleSection.items.length > 0) ||
+              (toggleSection.subsections != null &&
+                toggleSection.subsections.length > 0)) && (
             <div className="flex flex-col">
               {toggleSection.sectionTitle != null && (
                 <h3 className="mb-4 text-base font-semibold text-content-emphasis">
                   {toggleSection.sectionTitle}
                 </h3>
               )}
-              <div
-                className={cn(
-                  !toggleSection.rowHover && "divide-y divide-border-default",
-                )}
-              >
-                {toggleSection.items.map((item, index) => {
-                  const rowHover = toggleSection.rowHover === true;
-                  return (
-                    <Fragment key={item.id}>
-                      {rowHover && index > 0 ? (
-                        <div
-                          className="border-t border-border-default"
-                          aria-hidden
-                        />
-                      ) : null}
+              {toggleSection.subsections != null ? (
+                <div className="space-y-6">
+                  {toggleSection.subsections.map((subsection) => (
+                    <div key={subsection.title} className="flex flex-col">
+                      <div className="mb-3 flex items-center gap-2">
+                        {subsection.titleIcon != null ? (
+                          <span
+                            className="flex shrink-0 text-content-default"
+                            aria-hidden
+                          >
+                            {subsection.titleIcon}
+                          </span>
+                        ) : null}
+                        <h4 className="text-sm font-semibold text-content-emphasis">
+                          {subsection.title}
+                        </h4>
+                      </div>
                       <div
                         className={cn(
-                          rowHover && "-mx-6 px-6 py-4 hover:bg-bg-inverted/5",
-                          !rowHover && "py-4",
+                          !toggleSection.rowHover &&
+                            "divide-y divide-border-default",
                         )}
                       >
+                        {subsection.items.map((item, index) => {
+                          const rowHover = toggleSection.rowHover === true;
+                          return (
+                            <Fragment key={item.id}>
+                              {rowHover && index > 0 ? (
+                                <div
+                                  className="border-t border-border-default"
+                                  aria-hidden
+                                />
+                              ) : null}
+                              <div
+                                className={cn(
+                                  rowHover &&
+                                    "-mx-6 px-6 py-4 hover:bg-bg-inverted/5",
+                                  !rowHover && "py-4",
+                                )}
+                              >
+                                <div
+                                  className={cn(
+                                    "grid grid-cols-[40%_1fr_1fr] items-center gap-4",
+                                    rowHover && "py-0",
+                                  )}
+                                >
+                                  <div className="min-w-0 space-y-1">
+                                    <p className="flex items-center gap-2 font-medium text-content-emphasis">
+                                      {item.icon != null ? (
+                                        <span
+                                          className="flex shrink-0"
+                                          aria-hidden
+                                        >
+                                          {item.icon}
+                                        </span>
+                                      ) : null}
+                                      {item.title}
+                                    </p>
+                                    {(item.description != null &&
+                                      item.description !== "") ||
+                                    item.learnMoreHref != null ? (
+                                      <p className="text-sm text-content-subtle">
+                                        {item.description}
+                                        {item.learnMoreHref != null ? (
+                                          <>
+                                            {" "}
+                                            <a
+                                              href={item.learnMoreHref}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center gap-1 font-medium text-accent-default underline underline-offset-2 hover:text-accent-default/80"
+                                            >
+                                              Learn more
+                                              <ExternalLink
+                                                className="size-3.5"
+                                                aria-hidden
+                                              />
+                                            </a>
+                                          </>
+                                        ) : null}
+                                      </p>
+                                    ) : null}
+                                    {item.actionSlot != null ? (
+                                      <div className="pt-1">
+                                        {item.actionSlot}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                  <div className="min-w-0 text-center">
+                                    {item.price != null ? (
+                                      <>
+                                        <p className="font-medium text-content-emphasis">
+                                          {item.price}
+                                        </p>
+                                        {item.priceSub != null && (
+                                          <p className="text-sm text-content-subtle">
+                                            {item.priceSub}
+                                          </p>
+                                        )}
+                                      </>
+                                    ) : null}
+                                  </div>
+                                  <div className="flex justify-end">
+                                    <Switch
+                                      checked={item.checked}
+                                      onCheckedChange={item.onCheckedChange}
+                                      disabled={item.disabled}
+                                      aria-label={`Toggle ${item.title}`}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </Fragment>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div
+                  className={cn(
+                    !toggleSection.rowHover &&
+                      "divide-y divide-border-default",
+                  )}
+                >
+                  {toggleSection.items!.map((item, index) => {
+                    const rowHover = toggleSection.rowHover === true;
+                    return (
+                      <Fragment key={item.id}>
+                        {rowHover && index > 0 ? (
+                          <div
+                            className="border-t border-border-default"
+                            aria-hidden
+                          />
+                        ) : null}
                         <div
                           className={cn(
-                            "grid grid-cols-[40%_1fr_1fr] items-center gap-4",
-                            rowHover && "py-0",
+                            rowHover &&
+                              "-mx-6 px-6 py-4 hover:bg-bg-inverted/5",
+                            !rowHover && "py-4",
                           )}
                         >
-                          <div className="min-w-0 space-y-1">
-                            <p className="flex items-center gap-2 font-medium text-content-emphasis">
-                              {item.icon != null ? (
-                                <span className="flex shrink-0" aria-hidden>
-                                  {item.icon}
-                                </span>
-                              ) : null}
-                              {item.title}
-                            </p>
-                            {(item.description != null &&
-                              item.description !== "") ||
-                            item.learnMoreHref != null ? (
-                              <p className="text-sm text-content-subtle">
-                                {item.description}
-                                {item.learnMoreHref != null ? (
-                                  <>
-                                    {" "}
-                                    <a
-                                      href={item.learnMoreHref}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1 font-medium text-accent-default underline underline-offset-2 hover:text-accent-default/80"
-                                    >
-                                      Learn more
-                                      <ExternalLink
-                                        className="size-3.5"
-                                        aria-hidden
-                                      />
-                                    </a>
-                                  </>
+                          <div
+                            className={cn(
+                              "grid grid-cols-[40%_1fr_1fr] items-center gap-4",
+                              rowHover && "py-0",
+                            )}
+                          >
+                            <div className="min-w-0 space-y-1">
+                              <p className="flex items-center gap-2 font-medium text-content-emphasis">
+                                {item.icon != null ? (
+                                  <span
+                                    className="flex shrink-0"
+                                    aria-hidden
+                                  >
+                                    {item.icon}
+                                  </span>
                                 ) : null}
+                                {item.title}
                               </p>
-                            ) : null}
-                            {item.actionSlot != null ? (
-                              <div className="pt-1">{item.actionSlot}</div>
-                            ) : null}
-                          </div>
-                          <div className="min-w-0 text-center">
-                            {item.price != null ? (
-                              <>
-                                <p className="font-medium text-content-emphasis">
-                                  {item.price}
+                              {(item.description != null &&
+                                item.description !== "") ||
+                              item.learnMoreHref != null ? (
+                                <p className="text-sm text-content-subtle">
+                                  {item.description}
+                                  {item.learnMoreHref != null ? (
+                                    <>
+                                      {" "}
+                                      <a
+                                        href={item.learnMoreHref}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 font-medium text-accent-default underline underline-offset-2 hover:text-accent-default/80"
+                                      >
+                                        Learn more
+                                        <ExternalLink
+                                          className="size-3.5"
+                                          aria-hidden
+                                        />
+                                      </a>
+                                    </>
+                                  ) : null}
                                 </p>
-                                {item.priceSub != null && (
-                                  <p className="text-sm text-content-subtle">
-                                    {item.priceSub}
+                              ) : null}
+                              {item.actionSlot != null ? (
+                                <div className="pt-1">{item.actionSlot}</div>
+                              ) : null}
+                            </div>
+                            <div className="min-w-0 text-center">
+                              {item.price != null ? (
+                                <>
+                                  <p className="font-medium text-content-emphasis">
+                                    {item.price}
                                   </p>
-                                )}
-                              </>
-                            ) : null}
-                          </div>
-                          <div className="flex justify-end">
-                            <Switch
-                              checked={item.checked}
-                              onCheckedChange={item.onCheckedChange}
-                              disabled={item.disabled}
-                              aria-label={`Toggle ${item.title}`}
-                            />
+                                  {item.priceSub != null && (
+                                    <p className="text-sm text-content-subtle">
+                                      {item.priceSub}
+                                    </p>
+                                  )}
+                                </>
+                              ) : null}
+                            </div>
+                            <div className="flex justify-end">
+                              <Switch
+                                checked={item.checked}
+                                onCheckedChange={item.onCheckedChange}
+                                disabled={item.disabled}
+                                aria-label={`Toggle ${item.title}`}
+                              />
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </Fragment>
-                  );
-                })}
-              </div>
+                      </Fragment>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>

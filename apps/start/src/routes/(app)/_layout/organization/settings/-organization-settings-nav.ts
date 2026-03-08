@@ -9,6 +9,7 @@ import {
   Settings,
   TrendingUp,
   Users,
+  Wrench,
 } from 'lucide-react'
 
 /** Root path for organization-scoped settings area. */
@@ -85,6 +86,12 @@ export const orgSettingsNavArea = () => ({
           name: 'Models',
           icon: Cpu,
           href: `${ORG_SETTINGS_HREF}/models`,
+          exact: true,
+        },
+        {
+          name: 'Tools',
+          icon: Wrench,
+          href: `${ORG_SETTINGS_HREF}/tools`,
           exact: true,
         },
         {
