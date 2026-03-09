@@ -84,6 +84,7 @@ export const mainPlans: LandingPlan[] = [
       { text: 'Full model access', iconId: 'ai-models' },
       { text: 'Unlimited chat history', iconId: 'logs' },
       { text: 'Team management', iconId: 'teams' },
+      { text: 'BYOK', iconId: 'shield' },
     ],
     buttonText: 'Get started',
     href: '/auth/sign-up?plan=starter',

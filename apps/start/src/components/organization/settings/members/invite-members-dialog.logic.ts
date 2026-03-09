@@ -37,7 +37,6 @@ export type InviteMembersDialogLogicResult = {
   handleSubmit: () => Promise<void>
 }
 
-
 export function useInviteMembersDialogLogic(): InviteMembersDialogLogicResult {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
   const [inviteEntries, setInviteEntries] = useState<InviteEntry[]>(() => [
@@ -99,28 +98,26 @@ export function useInviteMembersDialogLogic(): InviteMembersDialogLogicResult {
       return
     }
 
-    const results = await Promise.allSettled(
-      toInvite.map(({ email, role }) =>
-        authClient.organization.inviteMember({ email, role }),
-      ),
-    )
-
     const errors: string[] = []
     let invited = 0
-    for (let i = 0; i < results.length; i++) {
-      const result = results[i]
-      const { email } = toInvite[i]!
-      if (result.status === 'fulfilled' && result.value.error) {
-        errors.push(
-          `${email}: ${result.value.error.message ?? String(result.value.error)}`,
-        )
-      } else if (result.status === 'rejected') {
-        errors.push(
-          `${email}: ${result.reason?.message ?? String(result.reason)}`,
-        )
-      } else {
+
+    try {
+      for (const invite of toInvite) {
+        const response = await authClient.organization.inviteMember({
+          email: invite.email,
+          role: invite.role,
+        })
+
+        if (response.error?.message) {
+          errors.push(`${invite.email}: ${response.error.message}`)
+          continue
+        }
+
         invited += 1
       }
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Failed to send invitations.')
+      return
     }
 
     if (errors.length > 0) {

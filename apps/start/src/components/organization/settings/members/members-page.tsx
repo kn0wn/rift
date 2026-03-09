@@ -18,6 +18,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from '@rift/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@rift/ui/tooltip'
 import { MoreVertical, UserIcon } from 'lucide-react'
 
 import { ContentPage } from '@/components/layout'
@@ -60,7 +61,11 @@ function getStatusBadgeProps(status: MemberRow['status']): {
         variant: 'outline',
         className: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400',
       }
-    case 'inactive':
+    case 'restricted':
+      return {
+        variant: 'outline',
+        className: 'border-rose-500/50 bg-rose-500/15 text-rose-700 dark:text-rose-400',
+      }
     default:
       return { variant: 'secondary' }
   }
@@ -237,16 +242,37 @@ const MEMBERS_COLUMNS_BASE: Array<DataTableColumnDef<MemberRow>> = [
     accessorKey: 'status',
     header: 'Status',
     cell: ({ row }) => {
-      const status = row.getValue('status') as MemberRow['status']
+      const member = row.original
+      const status = member.status
       const { variant, className } = getStatusBadgeProps(status)
-      return (
+      const badge = (
         <Badge
           variant={variant}
-          className={cn('rounded-full px-2 py-0.5 capitalize', className)}
+          className={cn('w-fit rounded-full px-2 py-0.5 capitalize', className)}
         >
           {status}
         </Badge>
       )
+
+      const tooltipContent =
+        status === 'restricted'
+          ? member.statusDetail ?? 'Access is restricted.'
+          : status === 'pending'
+            ? 'Invitation has not been accepted yet.'
+            : null
+
+      if (tooltipContent) {
+        return (
+          <Tooltip>
+            <TooltipTrigger render={<span className="inline-flex cursor-help">{badge}</span>} />
+            <TooltipContent side="top" sideOffset={4} className="first-letter:uppercase">
+              {tooltipContent}
+            </TooltipContent>
+          </Tooltip>
+        )
+      }
+
+      return badge
     },
   },
 ]

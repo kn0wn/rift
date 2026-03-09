@@ -43,6 +43,7 @@ import { Route as appLayoutOrganizationSettingsModelsRouteRouteImport } from './
 import { Route as appLayoutOrganizationSettingsMembersRouteRouteImport } from './routes/(app)/_layout/organization/settings/members/route'
 import { Route as appLayoutOrganizationSettingsCompliancePolicyRouteRouteImport } from './routes/(app)/_layout/organization/settings/compliance-policy/route'
 import { Route as appLayoutOrganizationSettingsByokRouteRouteImport } from './routes/(app)/_layout/organization/settings/byok/route'
+import { Route as appLayoutOrganizationSettingsBillingRouteRouteImport } from './routes/(app)/_layout/organization/settings/billing/route'
 import { Route as appLayoutOrganizationSettingsAnalyticsRouteRouteImport } from './routes/(app)/_layout/organization/settings/analytics/route'
 import { Route as appLayoutOrganizationSettingsModelsIndexRouteImport } from './routes/(app)/_layout/organization/settings/models/index'
 import { Route as appLayoutOrganizationSettingsModelsProviderIdRouteRouteImport } from './routes/(app)/_layout/organization/settings/models/$providerId/route'
@@ -230,6 +231,12 @@ const appLayoutOrganizationSettingsByokRouteRoute =
     path: '/byok',
     getParentRoute: () => appLayoutOrganizationSettingsRouteRoute,
   } as any)
+const appLayoutOrganizationSettingsBillingRouteRoute =
+  appLayoutOrganizationSettingsBillingRouteRouteImport.update({
+    id: '/billing',
+    path: '/billing',
+    getParentRoute: () => appLayoutOrganizationSettingsRouteRoute,
+  } as any)
 const appLayoutOrganizationSettingsAnalyticsRouteRoute =
   appLayoutOrganizationSettingsAnalyticsRouteRouteImport.update({
     id: '/analytics',
@@ -276,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/chat/': typeof appLayoutChatIndexRoute
   '/settings/': typeof appLayoutSettingsIndexRoute
   '/organization/settings/analytics': typeof appLayoutOrganizationSettingsAnalyticsRouteRoute
+  '/organization/settings/billing': typeof appLayoutOrganizationSettingsBillingRouteRoute
   '/organization/settings/byok': typeof appLayoutOrganizationSettingsByokRouteRoute
   '/organization/settings/compliance-policy': typeof appLayoutOrganizationSettingsCompliancePolicyRouteRoute
   '/organization/settings/members': typeof appLayoutOrganizationSettingsMembersRouteRoute
@@ -311,6 +319,7 @@ export interface FileRoutesByTo {
   '/chat': typeof appLayoutChatIndexRoute
   '/settings': typeof appLayoutSettingsIndexRoute
   '/organization/settings/analytics': typeof appLayoutOrganizationSettingsAnalyticsRouteRoute
+  '/organization/settings/billing': typeof appLayoutOrganizationSettingsBillingRouteRoute
   '/organization/settings/byok': typeof appLayoutOrganizationSettingsByokRouteRoute
   '/organization/settings/compliance-policy': typeof appLayoutOrganizationSettingsCompliancePolicyRouteRoute
   '/organization/settings/members': typeof appLayoutOrganizationSettingsMembersRouteRoute
@@ -350,6 +359,7 @@ export interface FileRoutesById {
   '/(app)/_layout/chat/': typeof appLayoutChatIndexRoute
   '/(app)/_layout/settings/': typeof appLayoutSettingsIndexRoute
   '/(app)/_layout/organization/settings/analytics': typeof appLayoutOrganizationSettingsAnalyticsRouteRoute
+  '/(app)/_layout/organization/settings/billing': typeof appLayoutOrganizationSettingsBillingRouteRoute
   '/(app)/_layout/organization/settings/byok': typeof appLayoutOrganizationSettingsByokRouteRoute
   '/(app)/_layout/organization/settings/compliance-policy': typeof appLayoutOrganizationSettingsCompliancePolicyRouteRoute
   '/(app)/_layout/organization/settings/members': typeof appLayoutOrganizationSettingsMembersRouteRoute
@@ -390,6 +400,7 @@ export interface FileRouteTypes {
     | '/chat/'
     | '/settings/'
     | '/organization/settings/analytics'
+    | '/organization/settings/billing'
     | '/organization/settings/byok'
     | '/organization/settings/compliance-policy'
     | '/organization/settings/members'
@@ -425,6 +436,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/settings'
     | '/organization/settings/analytics'
+    | '/organization/settings/billing'
     | '/organization/settings/byok'
     | '/organization/settings/compliance-policy'
     | '/organization/settings/members'
@@ -463,6 +475,7 @@ export interface FileRouteTypes {
     | '/(app)/_layout/chat/'
     | '/(app)/_layout/settings/'
     | '/(app)/_layout/organization/settings/analytics'
+    | '/(app)/_layout/organization/settings/billing'
     | '/(app)/_layout/organization/settings/byok'
     | '/(app)/_layout/organization/settings/compliance-policy'
     | '/(app)/_layout/organization/settings/members'
@@ -728,6 +741,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appLayoutOrganizationSettingsByokRouteRouteImport
       parentRoute: typeof appLayoutOrganizationSettingsRouteRoute
     }
+    '/(app)/_layout/organization/settings/billing': {
+      id: '/(app)/_layout/organization/settings/billing'
+      path: '/billing'
+      fullPath: '/organization/settings/billing'
+      preLoaderRoute: typeof appLayoutOrganizationSettingsBillingRouteRouteImport
+      parentRoute: typeof appLayoutOrganizationSettingsRouteRoute
+    }
     '/(app)/_layout/organization/settings/analytics': {
       id: '/(app)/_layout/organization/settings/analytics'
       path: '/analytics'
@@ -801,6 +821,7 @@ const appLayoutOrganizationSettingsModelsRouteRouteWithChildren =
 
 interface appLayoutOrganizationSettingsRouteRouteChildren {
   appLayoutOrganizationSettingsAnalyticsRouteRoute: typeof appLayoutOrganizationSettingsAnalyticsRouteRoute
+  appLayoutOrganizationSettingsBillingRouteRoute: typeof appLayoutOrganizationSettingsBillingRouteRoute
   appLayoutOrganizationSettingsByokRouteRoute: typeof appLayoutOrganizationSettingsByokRouteRoute
   appLayoutOrganizationSettingsCompliancePolicyRouteRoute: typeof appLayoutOrganizationSettingsCompliancePolicyRouteRoute
   appLayoutOrganizationSettingsMembersRouteRoute: typeof appLayoutOrganizationSettingsMembersRouteRoute
@@ -815,6 +836,8 @@ const appLayoutOrganizationSettingsRouteRouteChildren: appLayoutOrganizationSett
   {
     appLayoutOrganizationSettingsAnalyticsRouteRoute:
       appLayoutOrganizationSettingsAnalyticsRouteRoute,
+    appLayoutOrganizationSettingsBillingRouteRoute:
+      appLayoutOrganizationSettingsBillingRouteRoute,
     appLayoutOrganizationSettingsByokRouteRoute:
       appLayoutOrganizationSettingsByokRouteRoute,
     appLayoutOrganizationSettingsCompliancePolicyRouteRoute:

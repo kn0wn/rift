@@ -4,6 +4,7 @@ import {
 import { z } from 'zod'
 import { AI_CATALOG_BY_ID, AI_MODELS_BY_PROVIDER } from '@/lib/ai-catalog'
 import { TOOL_CATALOG_BY_KEY } from '@/lib/ai-catalog/tool-catalog'
+import { getPlanEffectiveFeatures, type WorkspaceFeatureId } from '@/lib/billing/plan-catalog'
 import { isChatModeId } from '@/lib/chat-modes'
 import { zql } from '../zql'
 
@@ -77,6 +78,11 @@ type OrgPolicySnapshot = {
   enforcedModeId?: string | null
 }
 
+type OrgEntitlementRow = {
+  planId?: string
+  effectiveFeatures?: Record<WorkspaceFeatureId, boolean>
+}
+
 /** De-duplicates identifiers while preserving insertion order. */
 function unique(values: readonly string[]): string[] {
   return [...new Set(values)]
@@ -99,6 +105,28 @@ function requireOrgWorkosId(ctx: { organizationId?: string }): string {
     throw new Error('Organization context is required to update policy')
   }
   return organizationId
+}
+
+async function requireOrgFeature(args: {
+  tx: any
+  organizationId: string
+  feature: WorkspaceFeatureId
+}) {
+  const entitlement = await args.tx.run(
+    zql.orgEntitlementSnapshot.where('organizationId', args.organizationId).one(),
+  ) as OrgEntitlementRow | null | undefined
+
+  const effectiveFeatures
+    = entitlement?.effectiveFeatures
+      ?? getPlanEffectiveFeatures(
+        entitlement?.planId === 'plus' || entitlement?.planId === 'pro'
+          ? entitlement.planId
+          : 'free',
+      )
+
+  if (!effectiveFeatures[args.feature]) {
+    throw new Error('This workspace plan does not include that feature')
+  }
 }
 
 /** Normalizes an optional row into a complete policy snapshot with defaults. */
@@ -220,6 +248,11 @@ export const orgPolicyMutatorDefinitions = {
   orgPolicy: {
     toggleProvider: defineMutator(toggleProviderPolicyArgs, async ({ tx, args, ctx }) => {
       const organizationId = requireOrgWorkosId(ctx)
+      await requireOrgFeature({
+        tx,
+        organizationId,
+        feature: 'providerPolicy',
+      })
       if (!AI_MODELS_BY_PROVIDER.has(args.providerId)) {
         throw new Error(`Unknown provider id: ${args.providerId}`)
       }
@@ -245,6 +278,11 @@ export const orgPolicyMutatorDefinitions = {
 
     toggleModel: defineMutator(toggleModelPolicyArgs, async ({ tx, args, ctx }) => {
       const organizationId = requireOrgWorkosId(ctx)
+      await requireOrgFeature({
+        tx,
+        organizationId,
+        feature: 'providerPolicy',
+      })
       if (!AI_CATALOG_BY_ID.has(args.modelId)) {
         throw new Error(`Unknown model id: ${args.modelId}`)
       }
@@ -272,6 +310,11 @@ export const orgPolicyMutatorDefinitions = {
       toggleComplianceFlagArgs,
       async ({ tx, args, ctx }) => {
         const organizationId = requireOrgWorkosId(ctx)
+        await requireOrgFeature({
+          tx,
+          organizationId,
+          feature: 'compliancePolicy',
+        })
 
         const existing = await tx.run(
           zql.orgAiPolicy.where('organizationId', organizationId).one(),
@@ -295,6 +338,11 @@ export const orgPolicyMutatorDefinitions = {
     ),
     setEnforcedMode: defineMutator(setEnforcedModeArgs, async ({ tx, args, ctx }) => {
       const organizationId = requireOrgWorkosId(ctx)
+      await requireOrgFeature({
+        tx,
+        organizationId,
+        feature: 'providerPolicy',
+      })
       if (args.modeId && !isChatModeId(args.modeId)) {
         throw new Error(`Unknown mode id: ${args.modeId}`)
       }
@@ -319,6 +367,11 @@ export const orgPolicyMutatorDefinitions = {
       toggleProviderNativeToolsArgs,
       async ({ tx, args, ctx }) => {
         const organizationId = requireOrgWorkosId(ctx)
+        await requireOrgFeature({
+          tx,
+          organizationId,
+          feature: 'toolPolicy',
+        })
         const existing = await tx.run(
           zql.orgAiPolicy.where('organizationId', organizationId).one(),
         )
@@ -340,6 +393,11 @@ export const orgPolicyMutatorDefinitions = {
       toggleExternalToolsArgs,
       async ({ tx, args, ctx }) => {
         const organizationId = requireOrgWorkosId(ctx)
+        await requireOrgFeature({
+          tx,
+          organizationId,
+          feature: 'toolPolicy',
+        })
         const existing = await tx.run(
           zql.orgAiPolicy.where('organizationId', organizationId).one(),
         )
@@ -359,6 +417,11 @@ export const orgPolicyMutatorDefinitions = {
     ),
     toggleTool: defineMutator(toggleToolArgs, async ({ tx, args, ctx }) => {
       const organizationId = requireOrgWorkosId(ctx)
+      await requireOrgFeature({
+        tx,
+        organizationId,
+        feature: 'toolPolicy',
+      })
       if (!TOOL_CATALOG_BY_KEY.has(args.toolKey)) {
         throw new Error(`Unknown tool key: ${args.toolKey}`)
       }

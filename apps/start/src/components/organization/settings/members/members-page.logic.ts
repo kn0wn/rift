@@ -17,10 +17,11 @@ export type MemberRow = {
   name: string
   email: string
   role: string
-  status: 'active' | 'inactive' | 'pending'
+  status: 'active' | 'restricted' | 'pending'
   avatarUrl?: string
   /** Set only for active members; used for "View profile" link. */
   userId?: string
+  statusDetail?: string
 }
 
 export type OrgMemberDirectoryEntry = {
@@ -28,6 +29,10 @@ export type OrgMemberDirectoryEntry = {
   organizationId: string
   userId: string
   role: string
+  access?: {
+    status: string
+    reasonCode?: string | null
+  } | null
   user?: {
     id: string
     name: string
@@ -76,15 +81,21 @@ function toActiveMemberRows(members: Array<OrgMemberDirectoryEntry>): Array<Memb
       const user = member.user
       const fallbackName = user?.email?.trim() || 'Unknown user'
       const name = user?.name?.trim() || fallbackName
+      const accessStatus = member.access?.status ?? 'active'
+      const isRestricted = accessStatus !== 'active'
 
       return {
         id: member.id,
         name,
         email: user?.email?.trim() || 'Unknown email',
         role: member.role,
-        status: 'active' as const,
+        status: isRestricted ? 'restricted' as const : 'active' as const,
         avatarUrl: user?.image ?? undefined,
         userId: member.userId ?? member.user?.id,
+        statusDetail:
+          isRestricted
+            ? member.access?.reasonCode?.replace(/_/g, ' ') ?? 'access restricted'
+            : undefined,
       } satisfies MemberRow
     })
     .sort(sortMembers)

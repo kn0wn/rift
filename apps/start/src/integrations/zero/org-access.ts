@@ -43,6 +43,14 @@ export function whereViewerIsAdminOrOwner(userID: string) {
     )
 }
 
+/**
+ * Minimal membership predicate for org-scoped reads that any active member can
+ * access, such as billing summaries or grant visibility for their own account.
+ */
+export function whereViewerIsMember(userID: string) {
+  return (members: typeof zql.member) => members.where('userId', userID)
+}
+
 export function missingOrganizationQuery() {
   return zql.organization.where('id', MISSING_ORGANIZATION_ID).one()
 }

@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Effect } from 'effect'
 import { z } from 'zod'
+import { WorkspaceBillingService } from '@/lib/billing-backend/services/workspace-billing.service'
 import {
   ModelPolicyRuntime,
   OrgModelPolicyInvalidRequestError,
@@ -87,6 +88,12 @@ export const Route = createFileRoute('/api/org/model-policy')({
               }),
           })
 
+          const billing = yield* WorkspaceBillingService
+          yield* billing.assertFeatureEnabled({
+            organizationId: authContext.organizationId,
+            feature: 'providerPolicy',
+          })
+
           const policyService = yield* OrgModelPolicyService
           const payload = yield* policyService.getPayload({
             organizationId: authContext.organizationId,
@@ -141,6 +148,21 @@ export const Route = createFileRoute('/api/org/model-policy')({
               }),
             )
           }
+
+          const feature
+            = parsedBody.data.action === 'toggle_compliance_flag'
+              ? 'compliancePolicy'
+              : parsedBody.data.action === 'toggle_provider_native_tools'
+                  || parsedBody.data.action === 'toggle_external_tools'
+                  || parsedBody.data.action === 'toggle_tool'
+                ? 'toolPolicy'
+                : 'providerPolicy'
+
+          const billing = yield* WorkspaceBillingService
+          yield* billing.assertFeatureEnabled({
+            organizationId: authContext.organizationId,
+            feature,
+          })
 
           const policyService = yield* OrgModelPolicyService
           const payload = yield* policyService.updatePolicy({

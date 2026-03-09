@@ -1,4 +1,5 @@
 import { Effect, Schema } from 'effect'
+import { WorkspaceBillingService } from '@/lib/billing-backend/services/workspace-billing.service'
 import { ByokExecutorService } from './services/byok-executor.service'
 import { WorkOsOrgResolverService } from './services/workos-org-resolver.service'
 import { ByokValidationError } from './domain/errors'
@@ -25,6 +26,11 @@ export async function runUpdateByok(data: unknown): Promise<ByokUpdateResult> {
     const resolver = yield* WorkOsOrgResolverService
     const executor = yield* ByokExecutorService
     const organizationId = yield* resolver.getOrgWorkosId()
+    const billing = yield* WorkspaceBillingService
+    yield* billing.assertFeatureEnabled({
+      organizationId,
+      feature: 'byok',
+    })
     return yield* executor.executeUpdate(organizationId, validated)
   })
   return ByokRuntime.run(program)

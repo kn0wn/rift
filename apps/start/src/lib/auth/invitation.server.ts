@@ -1,5 +1,5 @@
 import { normalizeEmailAddress } from '@/components/auth/auth-shared'
-import { authPool } from './auth.server'
+import { authPool } from './auth-pool'
 
 type InvitationLookupRow = {
   email: string

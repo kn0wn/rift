@@ -129,7 +129,6 @@ const ThinkingIndicatorBase = forwardRef<
     finishedLabel?: string
   }
 >(({ className, isStreaming, finishedLabel, ...props }, ref) => {
-  const maskId = useId()
   const [index, setIndex] = useState(0)
   const words = [
     m.chat_reasoning_thinking_word_1(),

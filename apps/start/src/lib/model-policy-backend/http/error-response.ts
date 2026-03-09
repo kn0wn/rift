@@ -29,7 +29,14 @@ export function toOrgModelPolicyErrorResponse(
     )
   }
 
-  const tagged = error as OrgModelPolicyDomainError
+  const tagged = error as
+    | OrgModelPolicyDomainError
+    | {
+        _tag: string
+        message: string
+        requestId?: string
+        details?: unknown
+      }
   const requestId =
     'requestId' in tagged && typeof tagged.requestId === 'string'
       ? tagged.requestId
@@ -55,6 +62,10 @@ export function toOrgModelPolicyErrorResponse(
 
   if (tagged._tag === 'OrgModelPolicyPersistenceError') {
     return jsonResponse({ error: tagged.message, requestId }, 500)
+  }
+
+  if (tagged._tag === 'WorkspaceBillingFeatureUnavailableError') {
+    return jsonResponse({ error: tagged.message, requestId }, 403)
   }
 
   return jsonResponse(

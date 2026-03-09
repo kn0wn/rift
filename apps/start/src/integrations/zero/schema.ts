@@ -33,6 +33,9 @@ const organization = table('organization')
   .from('organization')
   .columns({
     id: string(),
+    name: string(),
+    slug: string(),
+    logo: string().optional(),
   })
   .primaryKey('id')
 
@@ -81,6 +84,137 @@ const orgAiPolicy = table('orgAiPolicy')
       }
     }>().from('provider_key_status'),
     enforcedModeId: string().from('enforced_mode_id').optional(),
+    updatedAt: number().from('updated_at'),
+  })
+  .primaryKey('id')
+
+const orgBillingAccount = table('orgBillingAccount')
+  .from('org_billing_account')
+  .columns({
+    id: string(),
+    organizationId: string().from('organization_id'),
+    provider: string(),
+    providerCustomerId: string().from('provider_customer_id').optional(),
+    status: string(),
+    createdAt: number().from('created_at'),
+    updatedAt: number().from('updated_at'),
+  })
+  .primaryKey('id')
+
+const orgSubscription = table('orgSubscription')
+  .from('org_subscription')
+  .columns({
+    id: string(),
+    organizationId: string().from('organization_id'),
+    billingAccountId: string().from('billing_account_id'),
+    providerSubscriptionId: string().from('provider_subscription_id').optional(),
+    planId: string().from('plan_id'),
+    billingInterval: string().from('billing_interval').optional(),
+    seatCount: number().from('seat_count').optional(),
+    status: string(),
+    currentPeriodStart: number().from('current_period_start').optional(),
+    currentPeriodEnd: number().from('current_period_end').optional(),
+    cancelAtPeriodEnd: boolean().from('cancel_at_period_end').optional(),
+    scheduledPlanId: string().from('scheduled_plan_id').optional(),
+    scheduledSeatCount: number().from('scheduled_seat_count').optional(),
+    scheduledChangeEffectiveAt: number()
+      .from('scheduled_change_effective_at')
+      .optional(),
+    pendingChangeReason: string().from('pending_change_reason').optional(),
+    usagePolicyTemplateId: string().from('usage_policy_template_id').optional(),
+    metadata: json<Record<string, string | number | boolean | null>>(),
+    createdAt: number().from('created_at'),
+    updatedAt: number().from('updated_at'),
+  })
+  .primaryKey('id')
+
+const orgEntitlementSnapshot = table('orgEntitlementSnapshot')
+  .from('org_entitlement_snapshot')
+  .columns({
+    organizationId: string().from('organization_id'),
+    planId: string().from('plan_id'),
+    billingProvider: string().from('billing_provider'),
+    subscriptionStatus: string().from('subscription_status'),
+    seatCount: number().from('seat_count').optional(),
+    activeMemberCount: number().from('active_member_count'),
+    pendingInvitationCount: number().from('pending_invitation_count'),
+    isOverSeatLimit: boolean().from('is_over_seat_limit'),
+    effectiveFeatures: json<Record<string, boolean | string | number>>()
+      .from('effective_features'),
+    usagePolicy: json<Record<string, string | number | boolean | null>>()
+      .from('usage_policy'),
+    computedAt: number().from('computed_at'),
+    version: number(),
+  })
+  .primaryKey('organizationId')
+
+const orgMemberAccess = table('orgMemberAccess')
+  .from('org_member_access')
+  .columns({
+    id: string(),
+    organizationId: string().from('organization_id'),
+    userId: string().from('user_id'),
+    status: string(),
+    reasonCode: string().from('reason_code').optional(),
+    suspendedAt: number().from('suspended_at').optional(),
+    reactivatedAt: number().from('reactivated_at').optional(),
+    sourceSubscriptionId: string().from('source_subscription_id').optional(),
+    createdAt: number().from('created_at'),
+    updatedAt: number().from('updated_at'),
+  })
+  .primaryKey('id')
+
+const topupProduct = table('topupProduct')
+  .from('topup_product')
+  .columns({
+    id: string(),
+    code: string(),
+    displayName: string().from('display_name'),
+    currency: string(),
+    priceMinor: number().from('price_minor'),
+    creditAmountMinor: number().from('credit_amount_minor'),
+    provider: string(),
+    stripePriceId: string().from('stripe_price_id').optional(),
+    active: boolean(),
+    createdAt: number().from('created_at'),
+    updatedAt: number().from('updated_at'),
+  })
+  .primaryKey('id')
+
+const orgTopupOrder = table('orgTopupOrder')
+  .from('org_topup_order')
+  .columns({
+    id: string(),
+    organizationId: string().from('organization_id'),
+    billingAccountId: string().from('billing_account_id').optional(),
+    provider: string(),
+    providerPaymentId: string().from('provider_payment_id').optional(),
+    status: string(),
+    currency: string(),
+    subtotalMinor: number().from('subtotal_minor'),
+    totalMinor: number().from('total_minor'),
+    targetingMode: string().from('targeting_mode'),
+    purchasedByUserId: string().from('purchased_by_user_id'),
+    createdAt: number().from('created_at'),
+    updatedAt: number().from('updated_at'),
+  })
+  .primaryKey('id')
+
+const orgTopupGrant = table('orgTopupGrant')
+  .from('org_topup_grant')
+  .columns({
+    id: string(),
+    organizationId: string().from('organization_id'),
+    userId: string().from('user_id'),
+    topupOrderId: string().from('topup_order_id'),
+    topupProductId: string().from('topup_product_id'),
+    currency: string(),
+    grantedAmountMinor: number().from('granted_amount_minor'),
+    remainingAmountMinor: number().from('remaining_amount_minor'),
+    status: string(),
+    grantReasonCode: string().from('grant_reason_code').optional(),
+    expiresAt: number().from('expires_at').optional(),
+    createdAt: number().from('created_at'),
     updatedAt: number().from('updated_at'),
   })
   .primaryKey('id')
@@ -251,6 +385,31 @@ const organizationRelationships = relationships(organization, ({ many }) => ({
     destSchema: invitation,
     destField: ['organizationId'],
   }),
+  billingAccounts: many({
+    sourceField: ['id'],
+    destSchema: orgBillingAccount,
+    destField: ['organizationId'],
+  }),
+  subscriptions: many({
+    sourceField: ['id'],
+    destSchema: orgSubscription,
+    destField: ['organizationId'],
+  }),
+  entitlementSnapshots: many({
+    sourceField: ['id'],
+    destSchema: orgEntitlementSnapshot,
+    destField: ['organizationId'],
+  }),
+  memberAccess: many({
+    sourceField: ['id'],
+    destSchema: orgMemberAccess,
+    destField: ['organizationId'],
+  }),
+  grants: many({
+    sourceField: ['id'],
+    destSchema: orgTopupGrant,
+    destField: ['organizationId'],
+  }),
 }))
 
 const memberRelationships = relationships(member, ({ one }) => ({
@@ -263,6 +422,37 @@ const memberRelationships = relationships(member, ({ one }) => ({
     sourceField: ['userId'],
     destField: ['id'],
     destSchema: user,
+  }),
+  access: one({
+    sourceField: ['organizationId', 'userId'],
+    destField: ['organizationId', 'userId'],
+    destSchema: orgMemberAccess,
+  }),
+}))
+
+const orgSubscriptionRelationships = relationships(orgSubscription, ({ one }) => ({
+  organization: one({
+    sourceField: ['organizationId'],
+    destField: ['id'],
+    destSchema: organization,
+  }),
+  billingAccount: one({
+    sourceField: ['billingAccountId'],
+    destField: ['id'],
+    destSchema: orgBillingAccount,
+  }),
+}))
+
+const orgTopupGrantRelationships = relationships(orgTopupGrant, ({ one }) => ({
+  organization: one({
+    sourceField: ['organizationId'],
+    destField: ['id'],
+    destSchema: organization,
+  }),
+  product: one({
+    sourceField: ['topupProductId'],
+    destField: ['id'],
+    destSchema: topupProduct,
   }),
 }))
 
@@ -279,8 +469,30 @@ const messageRelationships = relationships(message, ({ one }) => ({
 // ---------------------------------------------------------------------------
 
 export const schema = createSchema({
-  tables: [user, organization, member, invitation, orgAiPolicy, thread, message, attachment],
-  relationships: [organizationRelationships, memberRelationships, messageRelationships],
+  tables: [
+    user,
+    organization,
+    member,
+    invitation,
+    orgAiPolicy,
+    orgBillingAccount,
+    orgSubscription,
+    orgEntitlementSnapshot,
+    orgMemberAccess,
+    topupProduct,
+    orgTopupOrder,
+    orgTopupGrant,
+    thread,
+    message,
+    attachment,
+  ],
+  relationships: [
+    organizationRelationships,
+    memberRelationships,
+    orgSubscriptionRelationships,
+    orgTopupGrantRelationships,
+    messageRelationships,
+  ],
 })
 
 export type Schema = typeof schema

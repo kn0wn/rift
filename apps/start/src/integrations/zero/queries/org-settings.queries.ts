@@ -33,7 +33,7 @@ export const orgSettingsQueryDefinitions = {
           if (args.cursor?.id) {
             q = q.start({ id: args.cursor.id })
           }
-          return q.related('user')
+          return q.related('user').related('access')
         })
         .related('invitations', (invitations) =>
           invitations

@@ -1,5 +1,6 @@
 import { Layer } from 'effect'
 import { makeRuntimeRunner } from '@/lib/server-effect'
+import { WorkspaceBillingService } from '@/lib/billing-backend/services/workspace-billing.service'
 import { ByokExecutorService } from '../services/byok-executor.service'
 import { WorkOsOrgResolverService } from '../services/workos-org-resolver.service'
 
@@ -8,6 +9,7 @@ import { WorkOsOrgResolverService } from '../services/workos-org-resolver.servic
  * Keeps service wiring centralized so handlers only execute domain programs.
  */
 const layer = Layer.mergeAll(
+  WorkspaceBillingService.layer,
   WorkOsOrgResolverService.layer,
   ByokExecutorService.layer,
 )
