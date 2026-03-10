@@ -98,7 +98,10 @@ function statusForTag(tag: string): number {
     case 'ModelPolicyDeniedError':
       return 403
     case 'RateLimitExceededError':
+    case 'QuotaExceededError':
       return 429
+    case 'RateLimitPersistenceError':
+      return 500
     case 'ModelProviderError':
     case 'ToolExecutionError':
     case 'MessagePersistenceError':
@@ -113,6 +116,7 @@ function statusForTag(tag: string): number {
 function isRetryable(tag: string): boolean {
   switch (tag) {
     case 'RateLimitExceededError':
+    case 'QuotaExceededError':
     case 'ModelProviderError':
     case 'StreamProtocolError':
       return true

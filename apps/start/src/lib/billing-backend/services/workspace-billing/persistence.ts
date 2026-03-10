@@ -5,6 +5,10 @@ import {
 } from '@/lib/billing/member-seat-restrictions'
 import { getPlanEffectiveFeatures } from '@/lib/billing/plan-catalog'
 import type { StripeManagedWorkspacePlanId } from '@/lib/billing/plan-catalog'
+import {
+  resolveEffectiveUsagePolicyRecord,
+  syncOrganizationUsageQuotaState,
+} from '../workspace-usage/persistence'
 import type {
   CurrentOrgSubscription,
   MembershipRoleRow,
@@ -41,11 +45,14 @@ export async function readCurrentOrgSubscription(
 ): Promise<CurrentOrgSubscription | null> {
   const result = await authPool.query<CurrentOrgSubscription>(
     `select
+       org_subscription.id as id,
        plan_id as "planId",
        org_subscription.status as status,
        seat_count as "seatCount",
        provider as "billingProvider",
-       provider_subscription_id as "providerSubscriptionId"
+       provider_subscription_id as "providerSubscriptionId",
+       current_period_start as "currentPeriodStart",
+       current_period_end as "currentPeriodEnd"
      from org_subscription
      join org_billing_account
        on org_billing_account.id = org_subscription.billing_account_id
@@ -244,6 +251,18 @@ export async function upsertEntitlementSnapshot(input: {
   currentSubscription: CurrentOrgSubscription | null
   counts: OrgMemberCounts
 }): Promise<OrgSeatAvailability> {
+  const usagePolicy = await syncOrganizationUsageQuotaState({
+    organizationId: input.organizationId,
+    currentSubscription: input.currentSubscription
+      ? {
+          id: input.currentSubscription.id,
+          planId: input.currentSubscription.planId,
+          seatCount: Math.max(1, input.currentSubscription.seatCount ?? 1),
+          currentPeriodStart: input.currentSubscription.currentPeriodStart,
+          currentPeriodEnd: input.currentSubscription.currentPeriodEnd,
+        }
+      : null,
+  })
   const seatCount = Math.max(1, input.currentSubscription?.seatCount ?? 1)
   const planId = normalizePlanId(input.currentSubscription?.planId)
   const subscriptionStatus = input.currentSubscription?.status ?? 'inactive'
@@ -268,7 +287,7 @@ export async function upsertEntitlementSnapshot(input: {
        computed_at,
        version
      )
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, '{}'::jsonb, $10, 1)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, 1)
      on conflict (organization_id) do update
      set plan_id = excluded.plan_id,
          billing_provider = excluded.billing_provider,
@@ -278,6 +297,7 @@ export async function upsertEntitlementSnapshot(input: {
          pending_invitation_count = excluded.pending_invitation_count,
          is_over_seat_limit = excluded.is_over_seat_limit,
          effective_features = excluded.effective_features,
+         usage_policy = excluded.usage_policy,
          computed_at = excluded.computed_at`,
     [
       input.organizationId,
@@ -289,6 +309,7 @@ export async function upsertEntitlementSnapshot(input: {
       input.counts.pendingInvitationCount,
       isOverSeatLimit,
       JSON.stringify(effectiveFeatures),
+      JSON.stringify(usagePolicy),
       now,
     ],
   )
@@ -307,6 +328,7 @@ export async function upsertEntitlementSnapshot(input: {
     pendingInvitationCount: input.counts.pendingInvitationCount,
     isOverSeatLimit,
     effectiveFeatures,
+    usagePolicy,
   }
 }
 
@@ -326,6 +348,7 @@ export async function readEntitlementSnapshot(
     pendingInvitationCount: number
     isOverSeatLimit: boolean
     effectiveFeatures: Record<string, boolean>
+    usagePolicy: Awaited<ReturnType<typeof resolveEffectiveUsagePolicyRecord>>
   }>(
     `select
        plan_id as "planId",
@@ -334,7 +357,8 @@ export async function readEntitlementSnapshot(
        active_member_count as "activeMemberCount",
        pending_invitation_count as "pendingInvitationCount",
        is_over_seat_limit as "isOverSeatLimit",
-       effective_features as "effectiveFeatures"
+       effective_features as "effectiveFeatures",
+       usage_policy as "usagePolicy"
      from org_entitlement_snapshot
      where organization_id = $1
      limit 1`,
@@ -354,6 +378,7 @@ export async function readEntitlementSnapshot(
     pendingInvitationCount: row.pendingInvitationCount,
     isOverSeatLimit: row.isOverSeatLimit,
     effectiveFeatures: row.effectiveFeatures as ReturnType<typeof getPlanEffectiveFeatures>,
+    usagePolicy: row.usagePolicy,
   }
 }
 

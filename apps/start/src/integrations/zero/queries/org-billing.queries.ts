@@ -43,6 +43,16 @@ export const orgBillingQueryDefinitions = {
             .orderBy('createdAt', 'asc')
             .related('product'),
         )
+        .related('seatSlots', (seatSlots) =>
+          seatSlots
+            .where('currentAssigneeUserId', scoped.userID)
+            .where('status', 'active')
+            .orderBy('cycleEndAt', 'desc')
+            .limit(1)
+            .related('bucketBalances', (bucketBalances) =>
+              bucketBalances.orderBy('bucketType', 'asc'),
+            ),
+        )
         .one()
     }),
     catalog: defineQuery(emptyArgs, () =>

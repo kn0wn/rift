@@ -2,6 +2,7 @@ import type { Subscription as BetterAuthStripeSubscription } from '@better-auth/
 import type { Effect } from 'effect'
 import type Stripe from 'stripe'
 import { getPlanEffectiveFeatures } from '@/lib/billing/plan-catalog'
+import type { UsagePolicySnapshot } from '../workspace-usage/shared'
 import type {
   WorkspaceBillingConfigurationError,
   WorkspaceBillingFeatureUnavailableError,
@@ -21,11 +22,14 @@ export type OrgMemberCounts = {
 }
 
 export type CurrentOrgSubscription = {
+  id: string
   planId: WorkspacePlanId
   status: string
   seatCount: number | null
   billingProvider: string
   providerSubscriptionId: string | null
+  currentPeriodStart: number | null
+  currentPeriodEnd: number | null
 }
 
 export type WorkspaceSubscriptionRow = {
@@ -55,6 +59,7 @@ export type OrgSeatAvailability = OrgMemberCounts & {
   seatCount: number
   isOverSeatLimit: boolean
   effectiveFeatures: EffectiveFeatures
+  usagePolicy: UsagePolicySnapshot
 }
 
 export type WorkspaceBillingServiceShape = {

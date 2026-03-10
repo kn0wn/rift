@@ -1,8 +1,12 @@
 import type { UIMessage } from 'ai'
 import type { ReadonlyJSONValue } from '@rocicorp/zero'
-import { Effect, Layer, ServiceMap } from 'effect'
+import { Duration, Effect, Layer, ServiceMap } from 'effect'
 import type { ChatDomainError } from '../domain/errors'
-import { InvalidRequestError } from '../domain/errors'
+import {
+  InvalidRequestError,
+  MessagePersistenceError,
+  QuotaExceededError,
+} from '../domain/errors'
 import { chatErrorCodeFromTag } from '../domain/error-codes'
 import { toReadableErrorMessage } from '../domain/error-formatting'
 import type { IncomingAttachment, IncomingUserMessage } from '../domain/schemas'
@@ -15,6 +19,13 @@ import {
   runDetachedObserved,
   runDetachedUnsafe,
 } from '@/lib/server-effect/runtime/detached'
+import {
+  WorkspaceUsageQuotaService,
+} from '@/lib/billing-backend/services/workspace-usage-quota.service'
+import {
+  WorkspaceUsageSettlementService,
+} from '@/lib/billing-backend/services/workspace-usage-settlement.service'
+import { WorkspaceUsageQuotaExceededError } from '@/lib/billing-backend/domain/errors'
 import { MessageStoreService } from './message-store.service'
 import { ModelGatewayService } from './model-gateway.service'
 import { ModelPolicyService } from './model-policy.service'
@@ -84,6 +95,8 @@ export class ChatOrchestratorService extends ServiceMap.Service<
       const streamResume = yield* StreamResumeService
       const toolPolicy = yield* ToolPolicyService
       const tools = yield* ToolRegistryService
+      const usageQuota = yield* WorkspaceUsageQuotaService
+      const usageSettlement = yield* WorkspaceUsageSettlementService
 
       const createThread: ChatOrchestratorServiceShape['createThread'] =
         Effect.fn('ChatOrchestratorService.createThread')(
@@ -116,6 +129,16 @@ export class ChatOrchestratorService extends ServiceMap.Service<
       }) => {
         const startedAt = Date.now()
         let currentStreamId: string | undefined
+        let quotaReservationReleased = false
+        let quotaReservation: {
+          readonly bypassed: boolean
+          readonly estimatedNanoUsd?: number
+        } = { bypassed: true }
+        const releaseQuotaReservation = (reasonCode: string) => {
+          if (quotaReservation.bypassed || quotaReservationReleased) return Effect.void
+          quotaReservationReleased = true
+          return usageQuota.releaseReservation({ requestId, reasonCode })
+        }
         let requestTrigger:
           | 'submit-message'
           | 'regenerate-message'
@@ -366,6 +389,40 @@ export class ChatOrchestratorService extends ServiceMap.Service<
             assistantParentMessageId = command.message!.id
           }
 
+          quotaReservation = yield* usageQuota.reserveChatQuota({
+            organizationId,
+            userId,
+            requestId,
+            modelId: modelResolution.modelId,
+            messages,
+            bypassQuota: Boolean(modelResolution.providerApiKeyOverride),
+          }).pipe(
+            Effect.mapError((error) =>
+              error instanceof WorkspaceUsageQuotaExceededError
+                ? new QuotaExceededError({
+                    message: error.message,
+                    requestId,
+                    userId,
+                    retryAfterMs: error.retryAfterMs,
+                    reasonCode: error.reasonCode,
+                  })
+                : new MessagePersistenceError({
+                    message: 'Failed to reserve workspace chat quota',
+                    requestId,
+                    threadId,
+                    cause:
+                      typeof error === 'object'
+                      && error !== null
+                      && 'cause' in error
+                      && typeof (error as { cause?: unknown }).cause === 'string'
+                        ? (error as { cause: string }).cause
+                        : error instanceof Error
+                          ? error.message
+                          : String(error),
+                  }),
+            ),
+          )
+
           // This ID is generated server-side so start/finalize writes are deterministic
           // and idempotent even when transport retries happen.
           const assistantMessageId = crypto.randomUUID()
@@ -426,7 +483,7 @@ export class ChatOrchestratorService extends ServiceMap.Service<
             })
           }
 
-          const finalizeAssistant = (input: {
+          const finalizeAssistant = async (input: {
             ok: boolean
             errorMessage?: string
             providerMetadata?: ReadonlyJSONValue
@@ -437,9 +494,9 @@ export class ChatOrchestratorService extends ServiceMap.Service<
             if (assistantFinalized) return
             assistantFinalized = true
 
-            runDetachedUnsafe({
-              effect: messageStore
-                .finalizeAssistantMessage({
+            await Effect.runPromise(
+              Effect.gen(function* () {
+                yield* messageStore.finalizeAssistantMessage({
                   threadDbId: threadAccess.dbId,
                   threadModel: modelResolution.modelId,
                   threadId,
@@ -462,61 +519,83 @@ export class ChatOrchestratorService extends ServiceMap.Service<
                   generationAnalytics: input.generationAnalytics,
                   requestId,
                 })
-                .pipe(
-                  Effect.catch((error) =>
-                    Effect.flatMap(
-                      threads
-                        .markThreadGenerationFailed({
-                          userId,
-                          threadId,
-                          requestId,
-                        })
-                        .pipe(Effect.catch(() => Effect.void)),
-                      () =>
-                        emitWideErrorEvent({
-                          eventName: 'chat.stream.persist.failed',
-                          route,
-                          requestId,
-                          userId,
-                          threadId,
-                          model: modelResolution.modelId,
-                          errorCode: chatErrorCodeFromTag(error._tag),
-                          errorTag: error._tag,
-                          message: error.message,
-                          latencyMs: Date.now() - startedAt,
-                          cause: input.ok
-                            ? 'assistant_finalize_success'
-                            : 'assistant_finalize_error',
-                        }),
-                    ),
+
+                if (!input.ok) {
+                  yield* releaseQuotaReservation('request_failed')
+                  return
+                }
+
+                yield* usageSettlement.recordChatUsage({
+                  organizationId,
+                  userId,
+                  requestId,
+                  assistantMessageId,
+                  modelId: modelResolution.modelId,
+                  actualCostUsd:
+                    input.generationAnalytics?.aiCost
+                    ?? input.generationAnalytics?.publicCost,
+                  estimatedCostNanoUsd: quotaReservation.estimatedNanoUsd,
+                  usedByok: input.generationAnalytics?.usedByok ?? false,
+                })
+                yield* usageSettlement.settleMonetizationEvent({ requestId })
+              }).pipe(
+                Effect.catch((error) =>
+                  Effect.flatMap(
+                    threads
+                      .markThreadGenerationFailed({
+                        userId,
+                        threadId,
+                        requestId,
+                      })
+                      .pipe(Effect.catch(() => Effect.void)),
+                    () =>
+                      emitWideErrorEvent({
+                        eventName: 'chat.stream.persist.failed',
+                        route,
+                        requestId,
+                        userId,
+                        threadId,
+                        model: modelResolution.modelId,
+                        errorCode: chatErrorCodeFromTag(error._tag),
+                        errorTag: error._tag,
+                        message: error.message,
+                        latencyMs: Date.now() - startedAt,
+                        cause: input.ok
+                          ? 'assistant_finalize_success'
+                          : 'assistant_finalize_error',
+                      }),
                   ),
                 ),
-              onFailure: () => Effect.void,
-              onTimeout: Effect.flatMap(
-                threads
-                  .markThreadGenerationFailed({
-                    userId,
-                    threadId,
-                    requestId,
-                  })
-                  .pipe(Effect.catch(() => Effect.void)),
-                () =>
-                  emitWideErrorEvent({
-                    eventName: 'chat.stream.persist.timed_out',
-                    route,
-                    requestId,
-                    userId,
-                    threadId,
-                    model: modelResolution.modelId,
-                    errorTag: 'DetachedTimeout',
-                    message: 'Detached assistant finalization timed out',
-                    latencyMs: Date.now() - startedAt,
-                    cause: input.ok
-                      ? 'assistant_finalize_success'
-                      : 'assistant_finalize_error',
-                  }),
+                Effect.asVoid,
+                Effect.timeout(Duration.seconds(30)),
+                Effect.catch(() =>
+                  Effect.flatMap(
+                    threads
+                      .markThreadGenerationFailed({
+                        userId,
+                        threadId,
+                        requestId,
+                      })
+                      .pipe(Effect.catch(() => Effect.void)),
+                    () =>
+                      emitWideErrorEvent({
+                        eventName: 'chat.stream.persist.timed_out',
+                        route,
+                        requestId,
+                        userId,
+                        threadId,
+                        model: modelResolution.modelId,
+                        errorTag: 'DetachedTimeout',
+                        message: 'Assistant finalization timed out',
+                        latencyMs: Date.now() - startedAt,
+                        cause: input.ok
+                          ? 'assistant_finalize_success'
+                          : 'assistant_finalize_error',
+                      }),
+                  ),
+                ),
               ),
-            })
+            ).catch(() => undefined)
           }
 
           const result = yield* modelGateway.streamResponse({
@@ -596,7 +675,7 @@ export class ChatOrchestratorService extends ServiceMap.Service<
                 error,
                 defaultStreamFailureMessage,
               )
-              finalizeAssistant({
+              void finalizeAssistant({
                 ok: false,
                 errorMessage: readableMessage,
               })
@@ -645,7 +724,7 @@ export class ChatOrchestratorService extends ServiceMap.Service<
               }
               return undefined
             },
-            onFinish: ({
+            onFinish: async ({
               isAborted,
               responseMessage,
             }: {
@@ -659,7 +738,7 @@ export class ChatOrchestratorService extends ServiceMap.Service<
               )
 
               const ok = assistantBuffer.text.length > 0
-              void Promise.all([
+              const persistedGeneration = await Promise.all([
                 result.totalUsage,
                 result.providerMetadata,
               ])
@@ -683,18 +762,17 @@ export class ChatOrchestratorService extends ServiceMap.Service<
                   }),
                 )
                 .catch(() => undefined)
-                .then((persistedGeneration) =>
-                  finalizeAssistant({
-                    ok,
-                    providerMetadata: persistedGeneration?.providerMetadata,
-                    generationAnalytics: persistedGeneration,
-                    errorMessage: isAborted
-                      ? 'Stream aborted before completion'
-                      : ok
-                        ? undefined
-                        : 'No assistant content generated',
-                  }),
-                )
+
+              await finalizeAssistant({
+                ok,
+                providerMetadata: persistedGeneration?.providerMetadata,
+                generationAnalytics: persistedGeneration,
+                errorMessage: isAborted
+                  ? 'Stream aborted before completion'
+                  : ok
+                    ? undefined
+                    : 'No assistant content generated',
+              })
               cleanupActiveStream()
             },
           })
@@ -754,6 +832,9 @@ export class ChatOrchestratorService extends ServiceMap.Service<
                   requestId,
                 })
                 .pipe(Effect.catch(() => Effect.void))
+              yield* releaseQuotaReservation('request_failed').pipe(
+                Effect.catch(() => Effect.void),
+              )
 
               if (!currentStreamId) {
                 return yield* emitWideErrorEvent({

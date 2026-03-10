@@ -11,6 +11,7 @@ export const ChatErrorCode = {
   InvalidEditTarget: 'error_chat_invalid_edit_target',
   ModelNotAllowed: 'error_chat_model_not_allowed',
   RateLimited: 'error_chat_rate_limited',
+  QuotaExceeded: 'error_chat_quota_exceeded',
   ProviderUnavailable: 'error_chat_provider_unavailable',
   ToolFailed: 'error_chat_tool_failed',
   PersistenceFailed: 'error_chat_persistence_failed',
@@ -41,6 +42,10 @@ export function chatErrorCodeFromTag(tag: string): ChatErrorCode {
       return ChatErrorCode.ModelNotAllowed
     case 'RateLimitExceededError':
       return ChatErrorCode.RateLimited
+    case 'RateLimitPersistenceError':
+      return ChatErrorCode.PersistenceFailed
+    case 'QuotaExceededError':
+      return ChatErrorCode.QuotaExceeded
     case 'ModelProviderError':
       return ChatErrorCode.ProviderUnavailable
     case 'ToolExecutionError':

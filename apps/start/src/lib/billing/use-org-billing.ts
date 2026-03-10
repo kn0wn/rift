@@ -36,6 +36,7 @@ type BillingSummaryRow = {
     pendingInvitationCount: number
     isOverSeatLimit: boolean
     effectiveFeatures?: Record<WorkspaceFeatureId, boolean>
+    usagePolicy?: Record<string, string | number | boolean | null>
   }>
   grants?: Array<{
     id: string
@@ -48,6 +49,21 @@ type BillingSummaryRow = {
       displayName: string
       priceMinor: number
     } | null
+  }>
+  seatSlots?: Array<{
+    id: string
+    seatIndex: number
+    cycleStartAt: number
+    cycleEndAt: number
+    currentAssigneeUserId?: string
+    bucketBalances?: Array<{
+      id: string
+      bucketType: string
+      totalNanoUsd: number
+      remainingNanoUsd: number
+      currentWindowStartedAt?: number
+      currentWindowEndsAt?: number
+    }>
   }>
 }
 
@@ -69,6 +85,14 @@ export function useOrgBillingSummary() {
   const [summary, result] = useQuery(queries.orgBilling.currentSummary())
   const normalized = useMemo(() => {
     const row = (summary as BillingSummaryRow | undefined | null) ?? null
+    const currentSeatSlot = row?.seatSlots?.[0] ?? null
+    const seatWindowBucket = currentSeatSlot?.bucketBalances?.find(
+      (bucket) => bucket.bucketType === 'seat_window',
+    ) ?? null
+    const seatOverageBucket = currentSeatSlot?.bucketBalances?.find(
+      (bucket) => bucket.bucketType === 'seat_overage',
+    ) ?? null
+
     return {
       organizationId: row?.id ?? null,
       organizationName: row?.name ?? null,
@@ -76,6 +100,9 @@ export function useOrgBillingSummary() {
       subscription: row?.subscriptions?.[0] ?? null,
       entitlement: row?.entitlementSnapshots?.[0] ?? null,
       grants: row?.grants ?? [],
+      currentSeatSlot,
+      seatWindowBucket,
+      seatOverageBucket,
     }
   }, [summary])
 

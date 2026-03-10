@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildPersistedGenerationAnalytics } from './generation-metrics'
+import { canExposeUserCost } from '@/utils/app-feature-flags'
 
 describe('buildPersistedGenerationAnalytics', () => {
   it('extracts dedicated analytics columns plus generic metadata', () => {
@@ -36,8 +37,12 @@ describe('buildPersistedGenerationAnalytics', () => {
       },
     })
 
-    expect(analytics.aiCost).toBe(0.0013025)
-    expect(analytics.publicCost).toBeUndefined()
+    expect(analytics.aiCost).toBe(
+      canExposeUserCost() ? undefined : 0.0013025,
+    )
+    expect(analytics.publicCost).toBe(
+      canExposeUserCost() ? 0.0013025 : undefined,
+    )
     expect(analytics.usedByok).toBe(false)
     expect(analytics.inputTokens).toBe(120)
     expect(analytics.outputTokens).toBe(30)

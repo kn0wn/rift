@@ -51,6 +51,15 @@ export class WorkspaceBillingPersistenceError extends Schema.TaggedErrorClass<Wo
   },
 ) {}
 
+export class WorkspaceUsageQuotaExceededError extends Schema.TaggedErrorClass<WorkspaceUsageQuotaExceededError>()(
+  'WorkspaceUsageQuotaExceededError',
+  {
+    ...ContextFields,
+    retryAfterMs: Schema.Number,
+    reasonCode: Schema.String,
+  },
+) {}
+
 export type WorkspaceBillingDomainError =
   | WorkspaceBillingUnauthorizedError
   | WorkspaceBillingMissingOrgContextError
@@ -59,3 +68,4 @@ export type WorkspaceBillingDomainError =
   | WorkspaceBillingFeatureUnavailableError
   | WorkspaceBillingConfigurationError
   | WorkspaceBillingPersistenceError
+  | WorkspaceUsageQuotaExceededError

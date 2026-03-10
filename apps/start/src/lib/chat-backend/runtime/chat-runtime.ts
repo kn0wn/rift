@@ -1,4 +1,10 @@
 import { Layer } from 'effect'
+import {
+  WorkspaceUsageQuotaService,
+} from '@/lib/billing-backend/services/workspace-usage-quota.service'
+import {
+  WorkspaceUsageSettlementService,
+} from '@/lib/billing-backend/services/workspace-usage-settlement.service'
 import { makeRuntimeRunner } from '@/lib/server-effect'
 import { ZeroDatabaseService } from '@/lib/server-effect/services/zero-database.service'
 import { ChatOrchestratorService } from '../services/chat-orchestrator.service'
@@ -14,18 +20,20 @@ import { ToolPolicyService } from '../services/tool-policy.service'
 
 /**
  * Dependency graph for chat runtime.
- * Persistence uses Zero/Postgres, stream resume uses Redis, and rate limiting
- * is temporarily in-memory until distributed limiter is introduced.
+ * Persistence uses Zero/Postgres, stream resume uses Redis, and quota/rate
+ * limiting resolve through the shared billing-backed Postgres services.
  */
 const dependencyLayer = Layer.mergeAll(
   ThreadService.layer,
   MessageStoreService.layer,
-  RateLimitService.layerMemory,
+  RateLimitService.layer,
   ModelPolicyService.layer,
   ToolPolicyService.layer,
   ToolRegistryService.layer,
   ModelGatewayService.layer,
   StreamResumeService.layer,
+  WorkspaceUsageQuotaService.layer,
+  WorkspaceUsageSettlementService.layer,
 ).pipe(
   // Provide shared infra dependencies into service layers that require them.
   Layer.provideMerge(ZeroDatabaseService.layer),

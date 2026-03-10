@@ -219,6 +219,41 @@ const orgTopupGrant = table('orgTopupGrant')
   })
   .primaryKey('id')
 
+const orgSeatSlot = table('orgSeatSlot')
+  .from('org_seat_slot')
+  .columns({
+    id: string(),
+    organizationId: string().from('organization_id'),
+    orgSubscriptionId: string().from('org_subscription_id').optional(),
+    planId: string().from('plan_id'),
+    cycleStartAt: number().from('cycle_start_at'),
+    cycleEndAt: number().from('cycle_end_at'),
+    seatIndex: number().from('seat_index'),
+    status: string(),
+    currentAssigneeUserId: string().from('current_assignee_user_id').optional(),
+    firstAssignedAt: number().from('first_assigned_at').optional(),
+    lastAssignedAt: number().from('last_assigned_at').optional(),
+    createdAt: number().from('created_at'),
+    updatedAt: number().from('updated_at'),
+  })
+  .primaryKey('id')
+
+const orgSeatBucketBalance = table('orgSeatBucketBalance')
+  .from('org_seat_bucket_balance')
+  .columns({
+    id: string(),
+    organizationId: string().from('organization_id'),
+    seatSlotId: string().from('seat_slot_id'),
+    bucketType: string().from('bucket_type'),
+    totalNanoUsd: number().from('total_nano_usd'),
+    remainingNanoUsd: number().from('remaining_nano_usd'),
+    currentWindowStartedAt: number().from('current_window_started_at').optional(),
+    currentWindowEndsAt: number().from('current_window_ends_at').optional(),
+    createdAt: number().from('created_at'),
+    updatedAt: number().from('updated_at'),
+  })
+  .primaryKey('id')
+
 const thread = table('thread')
   .from('threads')
   .columns({
@@ -410,6 +445,11 @@ const organizationRelationships = relationships(organization, ({ many }) => ({
     destSchema: orgTopupGrant,
     destField: ['organizationId'],
   }),
+  seatSlots: many({
+    sourceField: ['id'],
+    destSchema: orgSeatSlot,
+    destField: ['organizationId'],
+  }),
 }))
 
 const memberRelationships = relationships(member, ({ one }) => ({
@@ -456,6 +496,27 @@ const orgTopupGrantRelationships = relationships(orgTopupGrant, ({ one }) => ({
   }),
 }))
 
+const orgSeatSlotRelationships = relationships(orgSeatSlot, ({ one, many }) => ({
+  organization: one({
+    sourceField: ['organizationId'],
+    destField: ['id'],
+    destSchema: organization,
+  }),
+  bucketBalances: many({
+    sourceField: ['id'],
+    destField: ['seatSlotId'],
+    destSchema: orgSeatBucketBalance,
+  }),
+}))
+
+const orgSeatBucketBalanceRelationships = relationships(orgSeatBucketBalance, ({ one }) => ({
+  seatSlot: one({
+    sourceField: ['seatSlotId'],
+    destField: ['id'],
+    destSchema: orgSeatSlot,
+  }),
+}))
+
 const messageRelationships = relationships(message, ({ one }) => ({
   thread: one({
     sourceField: ['threadId'],
@@ -482,6 +543,8 @@ export const schema = createSchema({
     topupProduct,
     orgTopupOrder,
     orgTopupGrant,
+    orgSeatSlot,
+    orgSeatBucketBalance,
     thread,
     message,
     attachment,
@@ -491,6 +554,8 @@ export const schema = createSchema({
     memberRelationships,
     orgSubscriptionRelationships,
     orgTopupGrantRelationships,
+    orgSeatSlotRelationships,
+    orgSeatBucketBalanceRelationships,
     messageRelationships,
   ],
 })

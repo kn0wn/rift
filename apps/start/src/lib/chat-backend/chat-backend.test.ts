@@ -3,7 +3,14 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { LanguageModelUsage, UIMessage } from 'ai'
 import { Effect, Layer } from 'effect'
 import {
+  WorkspaceUsageQuotaService,
+} from '@/lib/billing-backend/services/workspace-usage-quota.service'
+import {
+  WorkspaceUsageSettlementService,
+} from '@/lib/billing-backend/services/workspace-usage-settlement.service'
+import {
   BranchVersionConflictError,
+  QuotaExceededError,
   RateLimitExceededError,
 } from '@/lib/chat-backend/domain/errors'
 import { ChatErrorCode } from '@/lib/chat-backend/domain/error-codes'
@@ -88,6 +95,8 @@ const TestChatLayer = ChatOrchestratorService.layer.pipe(
   Layer.provideMerge(RecordingToolRegistryLayer),
   Layer.provideMerge(TestModelGatewayLive),
   Layer.provideMerge(StreamResumeService.layerMemory),
+  Layer.provideMerge(WorkspaceUsageQuotaService.layerNoop),
+  Layer.provideMerge(WorkspaceUsageSettlementService.layerNoop),
 )
 
 beforeEach(() => {
@@ -278,6 +287,23 @@ describe('chat-backend scaffold', () => {
     expect(payload.error.message).toBe('Too many requests. Please wait a moment and retry.')
     expect(payload.requestId).toBe('req-rate')
     expect(payload.error.retryable).toBe(true)
+  })
+
+  it('maps quota exhaustion to the dedicated transport envelope', async () => {
+    const response = toErrorResponse(
+      new QuotaExceededError({
+        message: 'Seat quota exhausted',
+        requestId: 'req-quota',
+        userId: 'user-quota',
+        retryAfterMs: 7_200_000,
+        reasonCode: 'seat_quota_exhausted',
+      }),
+      'req-fallback',
+    )
+
+    expect(response.status).toBe(429)
+    const payload = await response.json()
+    expect(payload.error.code).toBe(ChatErrorCode.QuotaExceeded)
   })
 
   it('normalizes nested gateway beta-flag errors into readable copy', () => {

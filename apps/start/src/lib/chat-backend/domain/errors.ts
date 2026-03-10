@@ -74,6 +74,27 @@ export class RateLimitExceededError extends Schema.TaggedErrorClass<RateLimitExc
   },
 ) {}
 
+/** Distributed rate-limit storage failed before a quota decision could be made. */
+export class RateLimitPersistenceError extends Schema.TaggedErrorClass<RateLimitPersistenceError>()(
+  'RateLimitPersistenceError',
+  {
+    ...ErrorFields,
+    userId: Schema.String,
+    cause: Schema.optional(Schema.String),
+  },
+) {}
+
+/** Request exceeds the active seat quota waterfall for the organization plan. */
+export class QuotaExceededError extends Schema.TaggedErrorClass<QuotaExceededError>()(
+  'QuotaExceededError',
+  {
+    ...ErrorFields,
+    userId: Schema.String,
+    retryAfterMs: Schema.Number,
+    reasonCode: Schema.String,
+  },
+) {}
+
 /** AI provider call failed before/during stream setup. */
 export class ModelProviderError extends Schema.TaggedErrorClass<ModelProviderError>()(
   'ModelProviderError',
@@ -132,6 +153,8 @@ export type ChatDomainError =
   | BranchVersionConflictError
   | InvalidEditTargetError
   | RateLimitExceededError
+  | RateLimitPersistenceError
+  | QuotaExceededError
   | ModelProviderError
   | ModelPolicyDeniedError
   | ToolExecutionError
