@@ -5,11 +5,11 @@ import { Effect, Schema } from 'effect'
 import { schema } from '@/integrations/zero/schema'
 import { mutators } from '@/integrations/zero/mutators'
 import type { ZeroContext } from '@/integrations/zero/schema'
-import { emitWideErrorEvent } from '@/lib/chat-backend/observability/wide-event'
-import { ChatErrorCode } from '@/lib/chat-contracts/error-codes'
-import { getZeroUpstreamPool } from '@/lib/server-effect/infra/zero-upstream-pool'
-import { requireUserAuth } from '@/lib/server-effect/http/server-auth'
-import { ServerRuntime } from '@/lib/server-effect'
+import { emitWideErrorEvent } from '@/lib/backend/chat/observability/wide-event'
+import { ChatErrorCode } from '@/lib/shared/chat-contracts/error-codes'
+import { getZeroUpstreamPool } from '@/lib/backend/server-effect/infra/zero-upstream-pool'
+import { requireUserAuth } from '@/lib/backend/server-effect/http/server-auth'
+import { ServerRuntime } from '@/lib/backend/server-effect'
 
 /**
  * Zero mutate endpoint. zero-cache calls this to run mutators against Postgres.

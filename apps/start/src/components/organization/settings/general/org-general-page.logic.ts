@@ -1,9 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { authClient } from '@/lib/auth/auth-client'
-import { useActiveOrganization } from '@/lib/auth/active-organization'
-import { useAppAuth } from '@/lib/auth/use-auth'
+import { authClient } from '@/lib/frontend/auth/auth-client'
+import { useActiveOrganization } from '@/lib/frontend/auth/active-organization'
+import { useAppAuth } from '@/lib/frontend/auth/use-auth'
 import { m } from '@/paraglide/messages.js'
 
 export type OrgGeneralPageLogicResult = {

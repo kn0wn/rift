@@ -9,8 +9,8 @@ import {
   enterprisePlan,
   mainPlans,
   selfHostingPlan,
-} from '@/lib/pricing'
-import type { LandingPlan } from '@/lib/pricing'
+} from '@/lib/shared/pricing'
+import type { LandingPlan } from '@/lib/shared/pricing'
 import {
   CardDashedBorder,
   DashedBorderFrame,

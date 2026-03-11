@@ -1,6 +1,6 @@
 'use client'
 
-import { useAppAuth } from '@/lib/auth/use-auth'
+import { useAppAuth } from '@/lib/frontend/auth/use-auth'
 import {
   readRecord,
   readStringField,

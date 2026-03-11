@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { authClient } from '@/lib/auth/auth-client'
-import { useAppAuth } from '@/lib/auth/use-auth'
+import { authClient } from '@/lib/frontend/auth/auth-client'
+import { useAppAuth } from '@/lib/frontend/auth/use-auth'
 
 type DebugAuthProps = {
   signInUrl: string

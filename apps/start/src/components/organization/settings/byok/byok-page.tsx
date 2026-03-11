@@ -2,8 +2,8 @@
 
 import { ContentPage } from '@/components/layout'
 import { ByokForm } from '@/components/organization/settings/byok'
-import { useOrgFeatureAccess } from '@/lib/billing/use-org-billing'
-import { useByok } from '@/lib/byok/use-byok'
+import { useOrgFeatureAccess } from '@/lib/frontend/billing/use-org-billing'
+import { useByok } from '@/lib/frontend/byok/use-byok'
 import { m } from '@/paraglide/messages.js'
 
 /**

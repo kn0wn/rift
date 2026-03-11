@@ -4,8 +4,8 @@ import { useServerFn } from '@tanstack/react-start'
 import { useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useState } from 'react'
 import { m } from '@/paraglide/messages.js'
-import { authClient } from '@/lib/auth/auth-client'
-import { getInvitationEmailForAuth } from '@/lib/auth/invitation.functions'
+import { authClient } from '@/lib/frontend/auth/auth-client'
+import { getInvitationEmailForAuth } from '@/lib/frontend/auth/invitation.functions'
 import {
   getDefaultAuthDisplayName,
   normalizeEmailAddress,

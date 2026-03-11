@@ -6,14 +6,14 @@ import { m } from '@/paraglide/messages.js'
 import { Button } from '@rift/ui/button'
 import { Input } from '@rift/ui/input'
 import { Label } from '@rift/ui/label'
-import { cardVariants, staggerChildVariants } from '@/lib/animations'
+import { cardVariants, staggerChildVariants } from '@/lib/shared/animations'
 import { GoogleIcon, MicrosoftIcon } from '@/components/icons/provider-icons'
 import {
   AUTH_PASSWORD_MIN_LENGTH,
   isValidEmailAddress,
   normalizeEmailAddress,
 } from '@/components/auth/auth-shared'
-import { authClient } from '@/lib/auth/auth-client'
+import { authClient } from '@/lib/frontend/auth/auth-client'
 
 export type LoginFormProps = {
   /** When true, shows sign-up fields (confirm password) and sign-up copy. */

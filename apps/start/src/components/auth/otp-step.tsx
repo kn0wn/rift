@@ -14,7 +14,7 @@ import {
   menuCardContentVariants,
   menuCardHeaderVariants,
   staggerChildVariants,
-} from '@/lib/animations'
+} from '@/lib/shared/animations'
 
 export type OtpStepProps = {
   title: ReactNode

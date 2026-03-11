@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useServerFn } from '@tanstack/react-start'
-import { authClient } from '@/lib/auth/auth-client'
-import { useAppAuth } from '@/lib/auth/use-auth'
-import { requestEmailChange, saveAvatar, updateProfileName } from '@/lib/settings/account'
+import { authClient } from '@/lib/frontend/auth/auth-client'
+import { useAppAuth } from '@/lib/frontend/auth/use-auth'
+import { requestEmailChange, saveAvatar, updateProfileName } from '@/lib/frontend/settings/account'
 import { getLocale, locales, setLocale } from '@/paraglide/runtime.js'
 import { m } from '@/paraglide/messages.js'
 

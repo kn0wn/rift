@@ -2,13 +2,13 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Effect } from 'effect'
 import {
   getFeatureAccessGateMessage,
-} from '@/lib/access-control'
-import { resolveAccessContext, resolveChatAccessPolicy } from '@/lib/access-control.server'
+} from '@/lib/shared/access-control'
+import { resolveAccessContext, resolveChatAccessPolicy } from '@/lib/backend/access-control'
 import {
   getServerAuthContextFromHeaders,
   requireNonAnonymousUserAuth,
-} from '@/lib/server-effect/http/server-auth'
-import { MAX_UPLOAD_SIZE_BYTES } from '@/lib/upload/upload.model'
+} from '@/lib/backend/server-effect/http/server-auth'
+import { MAX_UPLOAD_SIZE_BYTES } from '@/lib/shared/upload/upload.model'
 import {
   FileInvalidRequestError,
   FileForbiddenError,
@@ -16,7 +16,7 @@ import {
   FileUnauthorizedError,
   FileUploadOrchestratorService,
   handleFileRouteFailure,
-} from '@/lib/file-backend'
+} from '@/lib/backend/file'
 
 export const Route = createFileRoute('/api/files/upload')({
   server: {

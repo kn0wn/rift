@@ -1,11 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { UI_MESSAGE_STREAM_HEADERS } from 'ai'
 import { Effect, Schema } from 'effect'
-import { resolveAccessContext, resolveChatAccessPolicy } from '@/lib/access-control.server'
+import { resolveAccessContext, resolveChatAccessPolicy } from '@/lib/backend/access-control'
 import {
   getServerAuthContextFromHeaders,
   requireUserAuth,
-} from '@/lib/server-effect/http/server-auth'
+} from '@/lib/backend/server-effect/http/server-auth'
 import { canUseOrganizationProviderKeys } from '@/utils/app-feature-flags'
 import {
   ChatOrchestratorService,
@@ -15,8 +15,8 @@ import {
   ModelPolicyService,
   StreamResumeService,
   UnauthorizedError,
-} from '@/lib/chat-backend'
-import { handleRouteFailure } from '@/lib/chat-backend/http/route-failure'
+} from '@/lib/backend/chat'
+import { handleRouteFailure } from '@/lib/backend/chat/http/route-failure'
 
 /** Chat API route handling stream resume (GET) and new turns (POST). */
 export const Route = createFileRoute('/api/chat')({

@@ -25,10 +25,10 @@ import {
   ContextCacheUsage,
   ContextTrigger,
 } from './composer-bar'
-import { getCatalogModel } from '@/lib/ai-catalog'
+import { getCatalogModel } from '@/lib/shared/ai-catalog'
 import { useFileAttachments } from '../../hooks/chat/upload'
 import { parseChatApiError } from './chat-error-messages'
-import { getChatModeDefinition } from '@/lib/chat-modes'
+import { getChatModeDefinition } from '@/lib/shared/chat-modes'
 import { m } from '@/paraglide/messages.js'
 import { useContextUsage } from '@/hooks/chat/use-context-usage'
 import {
@@ -40,7 +40,7 @@ import {
 import type {
   ChatAttachment,
   ChatAttachmentInput,
-} from '@/lib/chat-contracts/attachments'
+} from '@/lib/shared/chat-contracts/attachments'
 
 export function ChatInput() {
   const { branchCost, branchUsage, messages, showBranchCost } = useChatMessages()

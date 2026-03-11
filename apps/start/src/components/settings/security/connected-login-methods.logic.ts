@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { authClient } from '@/lib/auth/auth-client'
+import { authClient } from '@/lib/frontend/auth/auth-client'
 import { m } from '@/paraglide/messages.js'
 import {
   getErrorMessage,

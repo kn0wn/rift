@@ -7,8 +7,8 @@ import { Effect, Schema } from 'effect'
 import { schema } from '@/integrations/zero/schema'
 import type { Schema as ZeroSchema, ZeroContext } from '@/integrations/zero/schema'
 import { queries } from '@/integrations/zero/queries'
-import { requireUserAuth } from '@/lib/server-effect/http/server-auth'
-import { ServerRuntime } from '@/lib/server-effect'
+import { requireUserAuth } from '@/lib/backend/server-effect/http/server-auth'
+import { ServerRuntime } from '@/lib/backend/server-effect'
 
 class ZeroQueryUnauthorizedError extends Schema.TaggedErrorClass<ZeroQueryUnauthorizedError>()(
   'ZeroQueryUnauthorizedError',

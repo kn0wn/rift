@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { ContentPage } from '@/components/layout'
 import { OrgSecurityPage } from '@/components/organization/settings/security'
-import { useAppAuth } from '@/lib/auth/use-auth'
+import { useAppAuth } from '@/lib/frontend/auth/use-auth'
 import { m } from '@/paraglide/messages.js'
 
 /**

@@ -1,7 +1,7 @@
 'use client'
 
 import { ContentPage } from '@/components/layout'
-import { useOrgFeatureAccess } from '@/lib/billing/use-org-billing'
+import { useOrgFeatureAccess } from '@/lib/frontend/billing/use-org-billing'
 import { m } from '@/paraglide/messages.js'
 import { ComplianceFlagsSection } from './compliance-flags-section'
 import { ModelControlsSection } from './model-controls-section'

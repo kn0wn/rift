@@ -3,11 +3,11 @@
 import {
   getFeatureAccessAction,
   type WorkspaceFeatureAccessState,
-} from '@/lib/access-control'
+} from '@/lib/shared/access-control'
 import {
   getLocalizedFeatureAccessActionLabel,
   getLocalizedFeatureAccessGateMessage,
-} from '@/lib/access-control-client'
+} from '@/lib/frontend/access-control'
 
 type FeatureAccessInput = {
   enabled: boolean

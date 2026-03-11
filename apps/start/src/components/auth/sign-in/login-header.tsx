@@ -2,7 +2,7 @@
 
 import { motion } from 'motion/react'
 import { m } from '@/paraglide/messages.js'
-import { menuCardHeaderVariants } from '@/lib/animations'
+import { menuCardHeaderVariants } from '@/lib/shared/animations'
 
 export type LoginHeaderProps = {
   isSignUp: boolean

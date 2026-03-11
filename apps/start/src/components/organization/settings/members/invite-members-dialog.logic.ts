@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { authClient } from '@/lib/auth/auth-client'
+import { authClient } from '@/lib/frontend/auth/auth-client'
 
 export const INVITE_BATCH_MAX = 10
 

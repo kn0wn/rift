@@ -2,17 +2,17 @@ import {
   defineMutator,
 } from '@rocicorp/zero'
 import { z } from 'zod'
-import { AI_CATALOG_BY_ID, AI_MODELS_BY_PROVIDER } from '@/lib/ai-catalog'
-import { TOOL_CATALOG_BY_KEY } from '@/lib/ai-catalog/tool-catalog'
+import { AI_CATALOG_BY_ID, AI_MODELS_BY_PROVIDER } from '@/lib/shared/ai-catalog'
+import { TOOL_CATALOG_BY_KEY } from '@/lib/shared/ai-catalog/tool-catalog'
 import {
   coerceWorkspacePlanId,
   getFeatureAccessGateMessage,
   getPlanEffectiveFeatures,
   getWorkspaceFeatureAccessState,
   type WorkspaceFeatureId,
-} from '@/lib/access-control'
-import { isChatModeId } from '@/lib/chat-modes'
-import { isAdminRole } from '@/lib/auth/roles'
+} from '@/lib/shared/access-control'
+import { isChatModeId } from '@/lib/shared/chat-modes'
+import { isAdminRole } from '@/lib/shared/auth/roles'
 import { requireOrgContext } from '../org-access'
 import { zql } from '../zql'
 

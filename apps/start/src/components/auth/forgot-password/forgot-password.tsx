@@ -12,7 +12,7 @@ import {
   menuCardHeaderVariants,
   menuCardButtonVariants,
   menuCardContentVariants,
-} from '@/lib/animations'
+} from '@/lib/shared/animations'
 import { OtpStep } from '@/components/auth/otp-step'
 import { useForgotPasswordLogic } from './forgot-password.logic'
 

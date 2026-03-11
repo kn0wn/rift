@@ -13,13 +13,13 @@ import {
 import { cn } from '@rift/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@rift/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@rift/ui/tooltip'
-import { getCatalogModel, getProviderIcon } from '@/lib/ai-catalog'
-import type { AiModelCatalogEntry } from '@/lib/ai-catalog/types'
-import type { CatalogProviderId } from '@/lib/ai-catalog/provider-tools'
+import { getCatalogModel, getProviderIcon } from '@/lib/shared/ai-catalog'
+import type { AiModelCatalogEntry } from '@/lib/shared/ai-catalog/types'
+import type { CatalogProviderId } from '@/lib/shared/ai-catalog/provider-tools'
 import {
   type PaidWorkspacePlanId,
-} from '@/lib/access-control'
-import { getLocalizedFeatureAccessGateMessage } from '@/lib/access-control-client'
+} from '@/lib/shared/access-control'
+import { getLocalizedFeatureAccessGateMessage } from '@/lib/frontend/access-control'
 import { m } from '@/paraglide/messages.js'
 
 /** Display names for providers in the sidebar filter. */

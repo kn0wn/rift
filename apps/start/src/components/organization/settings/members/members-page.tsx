@@ -22,7 +22,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@rift/ui/tooltip'
 import { MoreVertical, UserIcon } from 'lucide-react'
 
 import { ContentPage } from '@/components/layout'
-import { useAppAuth } from '@/lib/auth/use-auth'
+import { useAppAuth } from '@/lib/frontend/auth/use-auth'
 import { MEMBERS_DIRECTORY_PAGE_SIZE } from '@/integrations/zero/queries/org-settings.queries'
 import { useMembersPageLogic, type MemberRow } from './members-page.logic'
 import { InviteMembersDialog } from './invite-members-dialog'

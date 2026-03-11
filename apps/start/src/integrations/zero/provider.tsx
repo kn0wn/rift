@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { schema } from './schema'
 import { mutators } from './mutators'
 import type { ZeroContext } from './schema'
-import { useAppAuth } from '@/lib/auth/use-auth'
+import { useAppAuth } from '@/lib/frontend/auth/use-auth'
 
 const cacheURL = import.meta.env.VITE_ZERO_CACHE_URL
 

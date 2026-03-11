@@ -4,8 +4,8 @@ import { motion, useReducedMotion } from 'motion/react'
 import { Link } from '@tanstack/react-router'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@rift/ui/tooltip'
 import { cn } from '@rift/utils'
-import { useOrgBillingSummary } from '@/lib/billing/use-org-billing'
-import { buildSidebarUsageMeterModel } from '@/lib/billing/sidebar-usage'
+import { useOrgBillingSummary } from '@/lib/frontend/billing/use-org-billing'
+import { buildSidebarUsageMeterModel } from '@/lib/frontend/billing/sidebar-usage'
 import { ORG_SETTINGS_HREF } from '@/routes/(app)/_layout/organization/settings/-organization-settings-nav'
 
 const BILLING_HREF = `${ORG_SETTINGS_HREF}/billing`

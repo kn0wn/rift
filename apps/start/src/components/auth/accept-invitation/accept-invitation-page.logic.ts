@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { authClient } from '@/lib/auth/auth-client'
-import { useAppAuth } from '@/lib/auth/use-auth'
+import { authClient } from '@/lib/frontend/auth/auth-client'
+import { useAppAuth } from '@/lib/frontend/auth/use-auth'
 import { m } from '@/paraglide/messages.js'
 
 /** Minimal view model for the invitation card. */

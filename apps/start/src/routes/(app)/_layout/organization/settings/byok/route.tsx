@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { ByokPage } from '@/components/organization/settings/byok'
 import { ContentPage } from '@/components/layout'
-import { useAppAuth } from '@/lib/auth/use-auth'
+import { useAppAuth } from '@/lib/frontend/auth/use-auth'
 
 export const Route = createFileRoute(
   '/(app)/_layout/organization/settings/byok',

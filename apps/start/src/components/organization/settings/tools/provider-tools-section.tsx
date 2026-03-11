@@ -2,14 +2,14 @@
 
 import * as React from 'react'
 import { Form } from '@rift/ui/form'
-import { getProviderIcon } from '@/lib/ai-catalog'
-import type { WorkspaceFeatureAccessState } from '@/lib/access-control'
+import { getProviderIcon } from '@/lib/shared/ai-catalog'
+import type { WorkspaceFeatureAccessState } from '@/lib/shared/access-control'
 import { getFeatureAccessFormProps } from '@/components/organization/settings/feature-access-form-helpers'
 import {
   getLocalizedToolCopy,
   getToolUiGroupKey,
-} from '@/lib/ai-catalog/tool-ui'
-import type { CatalogProviderId } from '@/lib/ai-catalog/provider-tools'
+} from '@/lib/shared/ai-catalog/tool-ui'
+import type { CatalogProviderId } from '@/lib/shared/ai-catalog/provider-tools'
 import { PROVIDER_NAMES } from '@/components/organization/settings/model-policy/provider-constants'
 import { m } from '@/paraglide/messages.js'
 import type { PolicyPayload } from '@/components/organization/settings/model-policy/types'

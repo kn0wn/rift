@@ -3,7 +3,7 @@
 import { Form } from '@rift/ui/form'
 import { ContentPage } from '@/components/layout'
 import { getFeatureAccessFormProps } from '@/components/organization/settings/feature-access-form-helpers'
-import { useOrgFeatureAccess } from '@/lib/billing/use-org-billing'
+import { useOrgFeatureAccess } from '@/lib/frontend/billing/use-org-billing'
 import { m } from '@/paraglide/messages.js'
 
 const DOMAINS_ACTION_HREF = '#'

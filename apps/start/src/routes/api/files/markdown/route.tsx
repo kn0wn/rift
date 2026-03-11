@@ -4,14 +4,14 @@ import { z } from 'zod'
 import {
   getServerAuthContextFromHeaders,
   requireNonAnonymousUserAuth,
-} from '@/lib/server-effect/http/server-auth'
+} from '@/lib/backend/server-effect/http/server-auth'
 import {
   FileInvalidRequestError,
   FileRuntime,
   FileUnauthorizedError,
   MarkdownConversionService,
   handleFileRouteFailure,
-} from '@/lib/file-backend'
+} from '@/lib/backend/file'
 
 const SUPPORTED_MIME_TYPES = new Set([
   'application/pdf',

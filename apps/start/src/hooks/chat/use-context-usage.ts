@@ -2,8 +2,8 @@
 
 import { useMemo } from 'react'
 import type { UIMessage } from 'ai'
-import type { ChatMessageMetadata } from '@/lib/chat-contracts/message-metadata'
-import { estimatePromptTokens } from '@/lib/chat-contracts'
+import type { ChatMessageMetadata } from '@/lib/shared/chat-contracts/message-metadata'
+import { estimatePromptTokens } from '@/lib/shared/chat-contracts'
 
 /** Computes used tokens from messages for context display. */
 function computeContextUsage(

@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Effect } from 'effect'
 import { z } from 'zod'
-import { WorkspaceBillingService } from '@/lib/billing-backend/services/workspace-billing.service'
+import { WorkspaceBillingService } from '@/lib/backend/billing/services/workspace-billing.service'
 import {
   ModelPolicyRuntime,
   OrgModelPolicyInvalidRequestError,
@@ -9,8 +9,8 @@ import {
   OrgModelPolicyService,
   OrgModelPolicyUnauthorizedError,
   toOrgModelPolicyErrorResponse,
-} from '@/lib/model-policy-backend'
-import { requireOrgAuth } from '@/lib/server-effect/http/server-auth'
+} from '@/lib/backend/model-policy'
+import { requireOrgAuth } from '@/lib/backend/server-effect/http/server-auth'
 
 /** Request shape for provider-level policy updates. */
 const ToggleProviderBody = z.object({

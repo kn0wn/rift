@@ -4,7 +4,7 @@ import {
   mainPlans,
   enterprisePlan,
   selfHostingPlan,
-} from '@/lib/pricing'
+} from '@/lib/shared/pricing'
 import { PricingCard, type PricingPlanActionOverride } from './pricing-card'
 import { DashedBorderFrame } from './pricing-decorative'
 

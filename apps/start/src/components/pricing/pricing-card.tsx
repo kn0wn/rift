@@ -3,7 +3,7 @@
 import type { ComponentType } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Button } from '@rift/ui/button'
-import type { LandingPlan, FeatureIconId } from '@/lib/pricing'
+import type { LandingPlan, FeatureIconId } from '@/lib/shared/pricing'
 import {
   StandarIcon,
   PremiumIcon,

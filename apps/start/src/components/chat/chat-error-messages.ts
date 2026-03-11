@@ -1,8 +1,8 @@
 // Parses API error envelopes into user-facing messages for the prompt UI.
-import { ChatErrorCode } from '@/lib/chat-contracts/error-codes'
-import type { ChatApiErrorEnvelope } from '@/lib/chat-contracts/error-envelope'
-import type { ChatErrorCode as TChatErrorCode } from '@/lib/chat-contracts/error-codes'
-import { getChatErrorMessage } from '@/lib/chat-contracts/error-messages'
+import { ChatErrorCode } from '@/lib/shared/chat-contracts/error-codes'
+import type { ChatApiErrorEnvelope } from '@/lib/shared/chat-contracts/error-envelope'
+import type { ChatErrorCode as TChatErrorCode } from '@/lib/shared/chat-contracts/error-codes'
+import { getChatErrorMessage } from '@/lib/shared/chat-contracts/error-messages'
 
 export type ParsedChatApiError = {
   readonly code?: TChatErrorCode

@@ -8,7 +8,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@rift/ui/popover'
-import type { AiReasoningEffort } from '@/lib/ai-catalog/types'
+import type { AiReasoningEffort } from '@/lib/shared/ai-catalog/types'
 import { m } from '@/paraglide/messages.js'
 
 /** Readable labels for reasoning effort levels. */

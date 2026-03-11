@@ -8,7 +8,7 @@ import {
   getDefaultAuthDisplayName,
   normalizeEmailAddress,
 } from '@/components/auth/auth-shared'
-import { authClient } from '@/lib/auth/auth-client'
+import { authClient } from '@/lib/frontend/auth/auth-client'
 import { queries } from '@/integrations/zero'
 import { MEMBERS_DIRECTORY_PAGE_SIZE } from '@/integrations/zero/queries/org-settings.queries'
 

@@ -6,7 +6,7 @@ import {
   createAttachedFile,
   getFileValidationError,
   uploadFileToServer,
-} from '../../../lib/chat/upload'
+} from '../../../lib/frontend/chat/upload'
 
 export type UseFileAttachmentsOptions = {
   /** Maximum number of files allowed (default 10). */

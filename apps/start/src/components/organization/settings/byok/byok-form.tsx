@@ -5,13 +5,13 @@ import { Form } from '@rift/ui/form'
 import {
   getFeatureAccessAction,
   type WorkspaceFeatureAccessState,
-} from '@/lib/access-control'
+} from '@/lib/shared/access-control'
 import {
   getLocalizedFeatureAccessActionLabel,
   getLocalizedFeatureAccessGateMessage,
-} from '@/lib/access-control-client'
+} from '@/lib/frontend/access-control'
 import { getFeatureAccessFormProps } from '@/components/organization/settings/feature-access-form-helpers'
-import type { ByokProvider } from '@/lib/byok/types'
+import type { ByokProvider } from '@/lib/shared/byok/types'
 import { m } from '@/paraglide/messages.js'
 
 function getProviderApiKeyHref(providerId: ByokProvider): string {

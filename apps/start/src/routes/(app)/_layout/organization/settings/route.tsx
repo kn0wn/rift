@@ -1,6 +1,6 @@
 import { Navigate, Outlet, createFileRoute } from '@tanstack/react-router'
-import { authClient } from '@/lib/auth/auth-client'
-import { useAppAuth } from '@/lib/auth/use-auth'
+import { authClient } from '@/lib/frontend/auth/auth-client'
+import { useAppAuth } from '@/lib/frontend/auth/use-auth'
 
 /** Layout for organization settings subsection (e.g. provider-policy). */
 export const Route = createFileRoute('/(app)/_layout/organization/settings')({

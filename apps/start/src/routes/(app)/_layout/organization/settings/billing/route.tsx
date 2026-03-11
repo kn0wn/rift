@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { ContentPage } from '@/components/layout'
 import { BillingPage } from '@/components/organization/settings/billing'
-import { useAppAuth } from '@/lib/auth/use-auth'
+import { useAppAuth } from '@/lib/frontend/auth/use-auth'
 
 /**
  * Workspace billing and credits configuration page.

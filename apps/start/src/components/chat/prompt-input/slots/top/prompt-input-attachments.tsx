@@ -5,7 +5,7 @@ import { Button } from '@rift/ui/button'
 import { cn } from '@rift/utils'
 import { AlertTriangle, FileText, Loader2, X } from 'lucide-react'
 import type { HTMLAttributes } from 'react'
-import type { UploadedFile } from '@/lib/chat/upload'
+import type { UploadedFile } from '@/lib/frontend/chat/upload'
 import { m } from '@/paraglide/messages.js'
 
 export type AttachedFile = {

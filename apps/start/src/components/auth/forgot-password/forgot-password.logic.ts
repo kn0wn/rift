@@ -4,7 +4,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import { m } from '@/paraglide/messages.js'
-import { authClient } from '@/lib/auth/auth-client'
+import { authClient } from '@/lib/frontend/auth/auth-client'
 import {
   AUTH_PASSWORD_MIN_LENGTH,
   OTP_EXPIRES_IN_SECONDS,

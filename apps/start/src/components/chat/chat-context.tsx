@@ -22,7 +22,7 @@ import type { UIMessage } from 'ai'
 import { flushSync } from 'react-dom'
 import { mutators, queries } from '@/integrations/zero'
 import { CACHE_CHAT_NAV } from '@/integrations/zero/query-cache-policy'
-import { AI_CATALOG } from '@/lib/ai-catalog'
+import { AI_CATALOG } from '@/lib/shared/ai-catalog'
 import {
   coerceWorkspacePlanId,
   getFeatureAccessState,
@@ -30,12 +30,12 @@ import {
   hasFeatureAccess,
   type AccessContext,
   type PaidWorkspacePlanId,
-} from '@/lib/access-control'
-import { getLocalizedFeatureAccessGateMessage } from '@/lib/access-control-client'
+} from '@/lib/shared/access-control'
+import { getLocalizedFeatureAccessGateMessage } from '@/lib/frontend/access-control'
 import {
   getLocalizedToolCopy,
   getToolDisplayLabel,
-} from '@/lib/ai-catalog/tool-ui'
+} from '@/lib/shared/ai-catalog/tool-ui'
 import {
   canUseReasoningControls,
 } from '@/utils/app-feature-flags'
@@ -43,24 +43,24 @@ import {
   isChatModeId,
   resolveEffectiveChatMode,
   type ChatModeId,
-} from '@/lib/chat-modes'
-import { resolveToolPolicy } from '@/lib/chat-backend/domain/tool-policy'
-import { evaluateModelAvailability } from '@/lib/model-policy/policy-engine'
+} from '@/lib/shared/chat-modes'
+import { resolveToolPolicy } from '@/lib/shared/chat/tool-policy'
+import { evaluateModelAvailability } from '@/lib/shared/model-policy/policy-engine'
 import {
   DEFAULT_ORG_TOOL_POLICY,
   EMPTY_ORG_PROVIDER_KEY_STATUS,
   type OrgAiPolicy,
-} from '@/lib/model-policy/types'
+} from '@/lib/shared/model-policy/types'
 import type {
   ChatAttachment,
   ChatAttachmentInput,
-} from '@/lib/chat-contracts/attachments'
-import type { ChatMessageMetadata } from '@/lib/chat-contracts/message-metadata'
-import { getChatErrorMessage } from '@/lib/chat-contracts/error-messages'
-import { ChatErrorCode } from '@/lib/chat-contracts/error-codes'
-import type { AiReasoningEffort } from '@/lib/ai-catalog/types'
-import { useAppAuth } from '@/lib/auth/use-auth'
-import { useOrgBillingSummary } from '@/lib/billing/use-org-billing'
+} from '@/lib/shared/chat-contracts/attachments'
+import type { ChatMessageMetadata } from '@/lib/shared/chat-contracts/message-metadata'
+import { getChatErrorMessage } from '@/lib/shared/chat-contracts/error-messages'
+import { ChatErrorCode } from '@/lib/shared/chat-contracts/error-codes'
+import type { AiReasoningEffort } from '@/lib/shared/ai-catalog/types'
+import { useAppAuth } from '@/lib/frontend/auth/use-auth'
+import { useOrgBillingSummary } from '@/lib/frontend/billing/use-org-billing'
 import {
   getThreadGenerationStatus,
   getThreadStatusesVersion,
@@ -69,7 +69,7 @@ import {
 import {
   ROOT_BRANCH_PARENT_KEY,
   resolveCanonicalBranch,
-} from '@/lib/chat-branching/branch-resolver'
+} from '@/lib/shared/chat-branching/branch-resolver'
 
 type ChatUIMessage = UIMessage<ChatMessageMetadata>
 

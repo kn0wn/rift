@@ -12,7 +12,7 @@ import {
   menuCardContentVariants,
   menuCardHeaderVariants,
   staggerChildVariants,
-} from '@/lib/animations'
+} from '@/lib/shared/animations'
 import { m } from '@/paraglide/messages.js'
 import { useAcceptInvitationPageLogic } from './accept-invitation-page.logic'
 

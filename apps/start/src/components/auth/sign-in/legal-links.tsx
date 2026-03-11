@@ -2,7 +2,7 @@
 
 import { motion } from 'motion/react'
 import { m } from '@/paraglide/messages.js'
-import { staggerChildVariants } from '@/lib/animations'
+import { staggerChildVariants } from '@/lib/shared/animations'
 
 export type LegalLinksProps = {
   isSignUp: boolean

@@ -2,15 +2,15 @@ import {
   defineMutator,
 } from '@rocicorp/zero'
 import { z } from 'zod'
-import { sanitizeThreadDisabledToolKeys } from '@/lib/chat-backend/domain/tool-policy'
-import { isChatModeId, resolveEffectiveChatMode } from '@/lib/chat-modes'
+import { sanitizeThreadDisabledToolKeys } from '@/lib/shared/chat/tool-policy'
+import { isChatModeId, resolveEffectiveChatMode } from '@/lib/shared/chat-modes'
 import {
   DEFAULT_ORG_TOOL_POLICY,
   EMPTY_ORG_PROVIDER_KEY_STATUS,
   type OrgAiPolicy,
-} from '@/lib/model-policy/types'
+} from '@/lib/shared/model-policy/types'
 import { zql } from '../zql'
-import { ROOT_BRANCH_PARENT_KEY } from '@/lib/chat-branching/branch-resolver'
+import { ROOT_BRANCH_PARENT_KEY } from '@/lib/shared/chat-branching/branch-resolver'
 
 /**
  * Client-callable mutators only. Thread and message creation are server-only:

@@ -7,12 +7,12 @@ import { PricingComparisonTable } from './pricing-comparison-table'
 import {
   openWorkspaceBillingPortal,
   startWorkspaceSubscriptionCheckout,
-} from '@/lib/billing/billing.functions'
-import type { StripeManagedWorkspacePlanId } from '@/lib/access-control'
-import { useOrgBillingSummary } from '@/lib/billing/use-org-billing'
-import { isAdminRole } from '@/lib/auth/roles'
-import { useAppAuth } from '@/lib/auth/use-auth'
-import { authClient } from '@/lib/auth/auth-client'
+} from '@/lib/frontend/billing/billing.functions'
+import type { StripeManagedWorkspacePlanId } from '@/lib/shared/access-control'
+import { useOrgBillingSummary } from '@/lib/frontend/billing/use-org-billing'
+import { isAdminRole } from '@/lib/shared/auth/roles'
+import { useAppAuth } from '@/lib/frontend/auth/use-auth'
+import { authClient } from '@/lib/frontend/auth/auth-client'
 import type { PricingPlanActionOverride } from './pricing-card'
 
 /**

@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import { useServerFn } from '@tanstack/react-start'
 import { m } from '@/paraglide/messages.js'
-import { authClient } from '@/lib/auth/auth-client'
-import { setPassword } from '@/lib/settings/security'
+import { authClient } from '@/lib/frontend/auth/auth-client'
+import { setPassword } from '@/lib/frontend/settings/security'
 import type { SecurityPagePasswordMode } from './security-page-shared'
 import { getErrorMessage, readBetterAuthResultError } from './security-page-shared'
 

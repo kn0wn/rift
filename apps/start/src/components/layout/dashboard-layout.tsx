@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { MainNav } from '@/components/layout/main-nav'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { RightSidebarProvider } from '@/components/layout/right-sidebar-context'
-import { ActiveOrganizationProvider } from '@/lib/auth/active-organization'
+import { ActiveOrganizationProvider } from '@/lib/frontend/auth/active-organization'
 
 export function DashboardLayout({ children }: { children: ReactNode }) {
   return (

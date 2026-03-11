@@ -1,8 +1,8 @@
 'use client'
 
 import { useMemo, useRef, useState } from 'react'
-import { uploadFileToServer } from '@/lib/chat/upload'
-import { MAX_UPLOAD_SIZE_BYTES } from '@/lib/upload/upload.model'
+import { uploadFileToServer } from '@/lib/frontend/chat/upload'
+import { MAX_UPLOAD_SIZE_BYTES } from '@/lib/shared/upload/upload.model'
 import { m } from '@/paraglide/messages.js'
 
 const DEFAULT_AVATAR_MIME_TYPES = [

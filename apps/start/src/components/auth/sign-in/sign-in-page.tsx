@@ -8,7 +8,7 @@ import { LoginForm } from './login-form'
 import { LegalLinks } from './legal-links'
 import { ForgotPassword } from '@/components/auth/forgot-password'
 import { OtpStep } from '@/components/auth/otp-step'
-import { menuCardContainerVariants } from '@/lib/animations'
+import { menuCardContainerVariants } from '@/lib/shared/animations'
 
 export type SignInPageProps = {
   redirectTarget: string

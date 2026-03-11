@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { ProviderModelsPage } from '@/components/organization/settings/model-policy/provider-models-page'
 import { useProviderPolicy } from '@/components/organization/settings/model-policy/use-provider-policy'
 import { ContentPage } from '@/components/layout'
-import { useAppAuth } from '@/lib/auth/use-auth'
+import { useAppAuth } from '@/lib/frontend/auth/use-auth'
 import { m } from '@/paraglide/messages.js'
 
 /**

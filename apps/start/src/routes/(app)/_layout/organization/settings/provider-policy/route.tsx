@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { ContentPage } from '@/components/layout'
 import { ProviderPolicyPage } from '@/components/organization/settings/model-policy'
-import { useAppAuth } from '@/lib/auth/use-auth'
+import { useAppAuth } from '@/lib/frontend/auth/use-auth'
 import { m } from '@/paraglide/messages.js'
 
 /** Organization settings: provider and model policy. Path: /organization/settings/provider-policy */
