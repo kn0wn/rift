@@ -1,5 +1,5 @@
 import { Effect, Layer, ServiceMap } from 'effect'
-import { getWorkspaceFeatureAccessState } from '@/lib/billing/plan-catalog'
+import { getFeatureAccessGateMessage, getWorkspaceFeatureAccessState } from '@/lib/access-control'
 import { toInvitationSeatLimitApiError, toWorkspaceFeatureApiError } from '../domain/api-errors'
 import {
   WorkspaceBillingConfigurationError,
@@ -94,7 +94,7 @@ export class WorkspaceBillingService extends ServiceMap.Service<
 
             if (!access.allowed) {
               throw new WorkspaceBillingFeatureUnavailableError({
-                message: access.upgradeCallout,
+                message: getFeatureAccessGateMessage(access.minimumPlanId),
                 organizationId,
                 feature,
                 planId: snapshot.planId,

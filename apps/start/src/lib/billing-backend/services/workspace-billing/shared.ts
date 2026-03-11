@@ -3,12 +3,12 @@ import {
   coerceWorkspacePlanId,
   getWorkspacePlanRank,
   type StripeManagedWorkspacePlanId,
-} from '../../../billing/plan-catalog'
+} from '../../../access-control'
 import {
   WorkspaceBillingConfigurationError,
   WorkspaceBillingPersistenceError,
 } from '../../domain/errors'
-import type { WorkspacePlanId } from '../../../billing/plan-catalog'
+import type { WorkspacePlanId } from '../../../access-control'
 
 export const AUTO_RESTRICTION_STATUS = 'restricted'
 export const AUTO_RESTRICTION_REASON = 'seat_limit_downgrade'

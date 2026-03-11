@@ -17,6 +17,8 @@ import type { ChatVisibleTool } from '../chat-context'
 
 export type PromptInputActionsMenuProps = {
   canAddMore: boolean
+  canUploadFiles: boolean
+  uploadUpgradeCallout?: string
   onOpenFilePicker: () => void
   isStudyModeEnabled: boolean
   isModeEnforced: boolean
@@ -33,6 +35,8 @@ export type PromptInputActionsMenuProps = {
  */
 export function PromptInputActionsMenu({
   canAddMore,
+  canUploadFiles,
+  uploadUpgradeCallout,
   onOpenFilePicker,
   isStudyModeEnabled,
   isModeEnforced,
@@ -66,10 +70,13 @@ export function PromptInputActionsMenu({
       >
         <DropdownMenuItem
           className="h-9 rounded-lg px-2 text-sm font-medium text-foreground-primary focus:bg-surface-inverse/8"
-          disabled={!canAddMore}
+          disabled={!canAddMore || !canUploadFiles}
           onClick={onOpenFilePicker}
+          title={!canUploadFiles ? uploadUpgradeCallout : undefined}
         >
-          {canAddMore
+          {!canUploadFiles
+            ? m.chat_prompt_actions_attach_files()
+            : canAddMore
             ? m.chat_prompt_actions_attach_files()
             : m.chat_prompt_actions_attach_files_max_reached()}
         </DropdownMenuItem>

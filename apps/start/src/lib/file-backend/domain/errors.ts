@@ -10,6 +10,11 @@ export class FileUnauthorizedError extends Schema.TaggedErrorClass<FileUnauthori
   ErrorFields,
 ) {}
 
+export class FileForbiddenError extends Schema.TaggedErrorClass<FileForbiddenError>()(
+  'FileForbiddenError',
+  ErrorFields,
+) {}
+
 export class FileInvalidRequestError extends Schema.TaggedErrorClass<FileInvalidRequestError>()(
   'FileInvalidRequestError',
   {
@@ -54,9 +59,9 @@ export class FileVectorIndexError extends Schema.TaggedErrorClass<FileVectorInde
 
 export type FileDomainError =
   | FileUnauthorizedError
+  | FileForbiddenError
   | FileInvalidRequestError
   | FileUploadStorageError
   | FileConversionError
   | FilePersistenceError
   | FileVectorIndexError
-

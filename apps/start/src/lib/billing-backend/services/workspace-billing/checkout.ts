@@ -1,5 +1,5 @@
 import { WorkspaceBillingConfigurationError, WorkspaceBillingForbiddenError } from '../../domain/errors'
-import { resolveStripePlanPriceId } from '../../../billing/plan-catalog'
+import { resolveStripePlanPriceId } from '../../../access-control'
 import {
   clearScheduledOrgSubscriptionChange,
   readCurrentWorkspaceSubscription,
@@ -9,7 +9,7 @@ import {
 } from './persistence'
 import { isScheduledDowngrade, requireStripeClient } from './shared'
 import type { WorkspaceSubscriptionRow } from './types'
-import type { StripeManagedWorkspacePlanId } from '../../../billing/plan-catalog'
+import type { StripeManagedWorkspacePlanId } from '../../../access-control'
 import { isOrgAdmin } from '@/lib/auth/organization-member-role.server'
 
 async function assertActiveOrgAdmin(input: {

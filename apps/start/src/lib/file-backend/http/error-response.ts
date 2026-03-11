@@ -4,6 +4,8 @@ function statusForTag(tag: string): number {
   switch (tag) {
     case 'FileUnauthorizedError':
       return 401
+    case 'FileForbiddenError':
+      return 403
     case 'FileInvalidRequestError':
       return 400
     case 'FileUploadStorageError':

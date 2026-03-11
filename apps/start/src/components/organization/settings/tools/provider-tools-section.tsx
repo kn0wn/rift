@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { Form } from '@rift/ui/form'
 import { getProviderIcon } from '@/lib/ai-catalog'
-import type { WorkspaceFeatureAccessState } from '@/lib/billing/plan-catalog'
+import type { WorkspaceFeatureAccessState } from '@/lib/access-control'
 import { getFeatureAccessFormProps } from '@/components/organization/settings/feature-access-form-helpers'
 import {
   getLocalizedToolCopy,

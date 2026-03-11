@@ -7,7 +7,7 @@ import {
 } from '@/lib/billing-backend/domain/errors'
 import { WorkspaceBillingService } from '@/lib/billing-backend/services/workspace-billing.service'
 import { requireOrgAuth } from '@/lib/server-effect/http/server-auth'
-import type { StripeManagedWorkspacePlanId } from './plan-catalog'
+import type { StripeManagedWorkspacePlanId } from '@/lib/access-control'
 
 export async function startWorkspaceSubscriptionCheckoutAction(input: {
   readonly planId: StripeManagedWorkspacePlanId

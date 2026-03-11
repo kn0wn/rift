@@ -3,13 +3,32 @@ import { ChatErrorCode, chatErrorCodeFromTag } from '../domain/error-codes'
 import { getChatErrorMessage } from '../domain/error-messages'
 import type { ChatApiErrorEnvelope } from '@/lib/chat-contracts/error-envelope'
 
+function getInvalidRequestMessage(tagged: ChatDomainError): string | undefined {
+  if (tagged._tag !== 'InvalidRequestError') return undefined
+  if (tagged.issue === 'feature_denied:chat.fileUpload') {
+    return 'File uploads are available on paid plans only. Upgrade to attach files in chat.'
+  }
+  return undefined
+}
+
 function getModelPolicyDeniedMessage(tagged: ChatDomainError): string | undefined {
   if (tagged._tag !== 'ModelPolicyDeniedError') return undefined
+  if (tagged.reason.startsWith('free_tier_model_denied:')) {
+    return 'This model is visible in Rift, but it requires a paid plan to use.'
+  }
   if (tagged.reason.includes('model_not_supported_for_provider_key')) {
     return 'This model cannot be used with your organization provider API key. Choose another model from that provider or remove the provider key.'
   }
   if (tagged.reason.includes('missing_provider_api_key')) {
     return 'This provider requires an organization API key, but no key is configured.'
+  }
+  return undefined
+}
+
+function getQuotaExceededMessage(tagged: ChatDomainError): string | undefined {
+  if (tagged._tag !== 'QuotaExceededError') return undefined
+  if (tagged.reasonCode === 'free_allowance_exhausted') {
+    return 'Your free chat allowance has been exhausted for the current window. Please wait for it to reset or upgrade for more access.'
   }
   return undefined
 }
@@ -29,7 +48,10 @@ export function toErrorResponse(error: unknown, fallbackRequestId: string): Resp
     const status = statusForTag(tagged._tag)
     const errorCode = chatErrorCodeFromTag(tagged._tag)
     const userMessage =
-      getModelPolicyDeniedMessage(tagged) ?? getChatErrorMessage(errorCode)
+      getInvalidRequestMessage(tagged)
+      ?? getModelPolicyDeniedMessage(tagged)
+      ?? getQuotaExceededMessage(tagged)
+      ?? getChatErrorMessage(errorCode)
     const requestId =
       'requestId' in tagged && typeof tagged.requestId === 'string'
         ? tagged.requestId

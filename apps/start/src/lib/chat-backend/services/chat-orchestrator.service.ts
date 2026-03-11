@@ -15,6 +15,7 @@ import { emitWideErrorEvent, getErrorTag } from '../observability/wide-event'
 import { canUseReasoningControls } from '@/utils/app-feature-flags'
 import type { OrgAiPolicy } from '@/lib/model-policy/types'
 import { resolveEffectiveChatMode } from '@/lib/chat-modes'
+import { type ResolvedChatAccessPolicy } from '@/lib/access-control.server'
 import {
   runDetachedObserved,
   runDetachedUnsafe,
@@ -29,6 +30,7 @@ import { WorkspaceUsageQuotaExceededError } from '@/lib/billing-backend/domain/e
 import { MessageStoreService } from './message-store.service'
 import { ModelGatewayService } from './model-gateway.service'
 import { ModelPolicyService } from './model-policy.service'
+import { FreeChatAllowanceService } from './free-chat-allowance.service'
 import { RateLimitService } from './rate-limit.service'
 import { StreamResumeService } from './stream-resume.service'
 import { ThreadService } from './thread.service'
@@ -62,6 +64,7 @@ export type ChatOrchestratorServiceShape = {
     readonly userId: string
     readonly threadId: string
     readonly organizationId?: string
+    readonly accessPolicy: ResolvedChatAccessPolicy
     readonly orgPolicy?: OrgAiPolicy
     readonly skipProviderKeyResolution?: boolean
     readonly requestId: string
@@ -90,6 +93,7 @@ export class ChatOrchestratorService extends ServiceMap.Service<
       const threads = yield* ThreadService
       const messageStore = yield* MessageStoreService
       const rateLimit = yield* RateLimitService
+      const freeChatAllowance = yield* FreeChatAllowanceService
       const modelGateway = yield* ModelGatewayService
       const modelPolicy = yield* ModelPolicyService
       const streamResume = yield* StreamResumeService
@@ -112,6 +116,7 @@ export class ChatOrchestratorService extends ServiceMap.Service<
         userId,
         threadId,
         organizationId,
+        accessPolicy,
         orgPolicy,
         skipProviderKeyResolution,
         requestId,
@@ -154,7 +159,12 @@ export class ChatOrchestratorService extends ServiceMap.Service<
           })
           requestTrigger = command.trigger
 
-          yield* rateLimit.assertAllowed({ userId, requestId })
+          yield* rateLimit.assertAllowed({
+            userId,
+            requestId,
+            windowMs: accessPolicy.rateLimit.windowMs,
+            maxRequests: accessPolicy.rateLimit.maxRequests,
+          })
 
           const threadAccess = yield* threads.assertThreadAccess({
             userId,
@@ -222,12 +232,31 @@ export class ChatOrchestratorService extends ServiceMap.Service<
             threadReasoningEffort: threadAccess.reasoningEffort,
             requestedModelId: modelId,
             modeModelId: effectiveMode?.definition.fixedModelId,
+            accessContext: accessPolicy.context,
             requestedReasoningEffort: canUseReasoningControls()
               ? reasoningEffort
               : undefined,
             skipProviderKeyResolution,
             requestId,
           })
+          if (attachments && attachments.length > 0 && !accessPolicy.features['chat.fileUpload'].allowed) {
+            return yield* Effect.fail(
+              new InvalidRequestError({
+                message: 'File uploads are not available on the current plan',
+                requestId,
+                issue: 'feature_denied:chat.fileUpload',
+              }),
+            )
+          }
+          if (accessPolicy.allowance) {
+            yield* freeChatAllowance.assertAllowed({
+              userId,
+              requestId,
+              policyKey: accessPolicy.allowance.policyKey,
+              windowMs: accessPolicy.allowance.windowMs,
+              maxRequests: accessPolicy.allowance.maxRequests,
+            })
+          }
           const requestedDisabledToolKeys =
             disabledToolKeys ?? threadAccess.disabledToolKeys
           const sanitizedDisabledToolKeys =

@@ -24,6 +24,15 @@ import { mutators, queries } from '@/integrations/zero'
 import { CACHE_CHAT_NAV } from '@/integrations/zero/query-cache-policy'
 import { AI_CATALOG } from '@/lib/ai-catalog'
 import {
+  coerceWorkspacePlanId,
+  getFeatureAccessState,
+  getModelAccess,
+  hasFeatureAccess,
+  type AccessContext,
+  type PaidWorkspacePlanId,
+} from '@/lib/access-control'
+import { getLocalizedFeatureAccessGateMessage } from '@/lib/access-control-client'
+import {
   getLocalizedToolCopy,
   getToolDisplayLabel,
 } from '@/lib/ai-catalog/tool-ui'
@@ -50,6 +59,8 @@ import type { ChatMessageMetadata } from '@/lib/chat-contracts/message-metadata'
 import { getChatErrorMessage } from '@/lib/chat-contracts/error-messages'
 import { ChatErrorCode } from '@/lib/chat-contracts/error-codes'
 import type { AiReasoningEffort } from '@/lib/ai-catalog/types'
+import { useAppAuth } from '@/lib/auth/use-auth'
+import { useOrgBillingSummary } from '@/lib/billing/use-org-billing'
 import {
   getThreadGenerationStatus,
   getThreadStatusesVersion,
@@ -67,6 +78,8 @@ type ChatModelOption = {
   readonly name: string
   readonly reasoningEfforts: readonly AiReasoningEffort[]
   readonly defaultReasoningEffort?: AiReasoningEffort
+  readonly locked: boolean
+  readonly minimumPlanId?: PaidWorkspacePlanId
 }
 
 export type ChatVisibleTool = {
@@ -91,6 +104,7 @@ type ChatActionsContextValue = Pick<
   selectedModelId: string
   selectedReasoningEffort?: AiReasoningEffort
   selectableModels: readonly ChatModelOption[]
+  visibleModels: readonly ChatModelOption[]
   setSelectedModelId: (modelId: string) => void
   setSelectedReasoningEffort: (reasoningEffort?: AiReasoningEffort) => void
   selectedModeId?: ChatModeId
@@ -99,6 +113,8 @@ type ChatActionsContextValue = Pick<
   visibleTools: readonly ChatVisibleTool[]
   disabledToolKeys: readonly string[]
   setThreadDisabledToolKeys: (disabledToolKeys: readonly string[]) => Promise<void>
+  canUploadFiles: boolean
+  uploadUpgradeCallout?: string
   regenerateMessage: (messageId: string) => Promise<void>
   editMessage: (input: { messageId: string; editedText: string }) => Promise<void>
   selectBranchVersion: (input: {
@@ -117,6 +133,7 @@ type ChatComposerContextValue = Pick<
   | 'selectedModelId'
   | 'selectedReasoningEffort'
   | 'selectableModels'
+  | 'visibleModels'
   | 'setSelectedModelId'
   | 'setSelectedReasoningEffort'
   | 'selectedModeId'
@@ -125,6 +142,8 @@ type ChatComposerContextValue = Pick<
   | 'visibleTools'
   | 'disabledToolKeys'
   | 'setThreadDisabledToolKeys'
+  | 'canUploadFiles'
+  | 'uploadUpgradeCallout'
 >
 
 type ChatMessageActionsContextValue = Pick<
@@ -542,6 +561,8 @@ export function ChatProvider({
 }) {
   const navigate = useNavigate()
   const z = useZero()
+  const { isAnonymous, activeOrganizationId } = useAppAuth()
+  const { entitlement } = useOrgBillingSummary()
   // Mutable refs avoid stale values inside async callbacks owned by the transport hook.
   const threadIdRef = useRef<string | undefined>(threadId)
   const previousThreadIdRef = useRef<string | undefined>(threadId)
@@ -661,32 +682,60 @@ export function ChatProvider({
     [canonicalStoredMessages],
   )
   const orgPolicy = useMemo(() => toOrgAiPolicy(orgPolicyRow), [orgPolicyRow])
-  const selectableModels = useMemo<readonly ChatModelOption[]>(() => {
-    return AI_CATALOG.filter(
-      (model) =>
-        evaluateModelAvailability({
-          model,
-          policy: orgPolicy,
-        }).allowed,
-    )
-      .filter((model) => {
-        if (!orgPolicy?.complianceFlags?.require_org_provider_key) return true
-        return hasActiveOrgKeyForModel({
-          providers: model.providers,
-          providerKeyStatus: orgPolicy.providerKeyStatus,
-        })
+  const accessContext = useMemo<AccessContext>(() => ({
+    isAnonymous,
+    planId: activeOrganizationId
+      ? coerceWorkspacePlanId(entitlement?.planId)
+      : 'free',
+  }), [activeOrganizationId, entitlement?.planId, isAnonymous])
+  const uploadPermission = useMemo(
+    () =>
+      getFeatureAccessState({
+        feature: 'chat.fileUpload',
+        planId: accessContext.planId,
+      }),
+    [accessContext.planId],
+  )
+  const visibleModels = useMemo<readonly ChatModelOption[]>(() => {
+    return AI_CATALOG.filter((model) => {
+      const policyAvailability = evaluateModelAvailability({
+        model,
+        policy: orgPolicy,
       })
-      .map((model) => ({
-        id: model.id,
-        name: model.name,
-        reasoningEfforts: canUseReasoningControls()
-          ? model.reasoningEfforts
-          : [],
-        defaultReasoningEffort: canUseReasoningControls()
-          ? model.defaultReasoningEffort
-          : undefined,
-      }))
-  }, [orgPolicy])
+      if (!policyAvailability.allowed) {
+        return false
+      }
+      if (!orgPolicy?.complianceFlags?.require_org_provider_key) return true
+      return hasActiveOrgKeyForModel({
+        providers: model.providers,
+        providerKeyStatus: orgPolicy.providerKeyStatus,
+      })
+    })
+      .map((model) => {
+        const modelAccess = getModelAccess({
+          modelId: model.id,
+          context: accessContext,
+        })
+        return {
+          id: model.id,
+          name: model.name,
+          reasoningEfforts: canUseReasoningControls()
+            ? model.reasoningEfforts
+            : [],
+          defaultReasoningEffort: canUseReasoningControls()
+            ? model.defaultReasoningEffort
+            : undefined,
+          locked: !modelAccess.allowed,
+          minimumPlanId: modelAccess.minimumPlanId,
+        }
+      })
+  }, [accessContext, orgPolicy])
+  const selectableModels = useMemo<readonly ChatModelOption[]>(() => {
+    return visibleModels
+      .filter((model) => {
+        return !model.locked
+      })
+  }, [visibleModels])
   const orgEnforcedModeId = useMemo<ChatModeId | undefined>(() => {
     return orgPolicy?.enforcedModeId
   }, [orgPolicy])
@@ -907,11 +956,11 @@ export function ChatProvider({
 
   useEffect(() => {
     if (selectableModels.length === 0) return
-    if (!selectableModels.some((model) => model.id === selectedModelId)) {
+    if (!activeThreadId && !selectableModels.some((model) => model.id === selectedModelId)) {
       setSelectedModelId(selectableModels[0].id)
       setSelectedReasoningEffort(selectableModels[0].defaultReasoningEffort)
     }
-  }, [selectableModels, selectedModelId])
+  }, [activeThreadId, selectableModels, selectedModelId])
 
   useEffect(() => {
     if (!activeThreadId) {
@@ -927,7 +976,7 @@ export function ChatProvider({
     ) {
       return
     }
-    const model = selectableModels.find((m) => m.id === threadRow.model)
+    const model = visibleModels.find((m) => m.id === threadRow.model)
     if (!model) return
 
     hydratedModelSelectionThreadIdRef.current = activeThreadId
@@ -942,7 +991,7 @@ export function ChatProvider({
         ? threadEffort
       : model.defaultReasoningEffort,
     )
-  }, [activeThreadId, threadRow, selectableModels])
+  }, [activeThreadId, threadRow, visibleModels])
 
   useEffect(() => {
     if (!activeThreadId) return
@@ -1057,15 +1106,19 @@ export function ChatProvider({
     let shouldPatchMessages = false
 
     for (const manifest of pendingManifests) {
-      const targetIndex = nextMessages.findLastIndex((candidate) => {
-        if (candidate.role !== 'user') return false
-        if (consumedMessageIds.has(candidate.id)) return false
+      let targetIndex = -1
+      for (let index = nextMessages.length - 1; index >= 0; index -= 1) {
+        const candidate = nextMessages[index]
+        if (!candidate || candidate.role !== 'user') continue
+        if (consumedMessageIds.has(candidate.id)) continue
         const hasExistingAttachments =
           Array.isArray(candidate.metadata?.attachments) &&
           candidate.metadata.attachments.length > 0
-        if (hasExistingAttachments) return false
-        return textFromUIMessage(candidate) === manifest.text
-      })
+        if (hasExistingAttachments) continue
+        if (textFromUIMessage(candidate) !== manifest.text) continue
+        targetIndex = index
+        break
+      }
 
       if (targetIndex < 0) {
         nextPending.push(manifest)
@@ -1196,6 +1249,23 @@ export function ChatProvider({
 
   const sendMessage = useCallback<ChatActionsContextValue['sendMessage']>(
     async ({ text, attachments, attachmentManifest }) => {
+      const selectedModel = visibleModels.find(
+        (model) => model.id === selectedModelIdRef.current,
+      )
+      if (selectedModel?.locked) {
+        const message =
+          selectedModel.minimumPlanId
+            ? getLocalizedFeatureAccessGateMessage(selectedModel.minimumPlanId)
+            : 'This model is available on paid plans only.'
+        setLocalError(new Error(message))
+        throw new Error(message)
+      }
+      if (attachments && attachments.length > 0 && !hasFeatureAccess('chat.fileUpload', accessContext)) {
+        const message =
+          getLocalizedFeatureAccessGateMessage(uploadPermission.minimumPlanId)
+        setLocalError(new Error(message))
+        throw new Error(message)
+      }
       // Follow-up sends should not permit branch-snapshot shrink handling.
       allowShrinkOnNextBranchVersionRef.current = false
       let resolvedThreadId = threadIdRef.current
@@ -1286,7 +1356,7 @@ export function ChatProvider({
         throw sendError
       }
     },
-    [draftDisabledToolKeys, navigate],
+    [accessContext, draftDisabledToolKeys, navigate, uploadPermission.minimumPlanId, visibleModels],
   )
 
   const regenerateMessage = useCallback<
@@ -1333,7 +1403,8 @@ export function ChatProvider({
             message.role === 'assistant' &&
             message.parentMessageId === anchorMessageId,
         )
-        .toSorted((left, right) => {
+        .slice()
+        .sort((left, right) => {
           const leftBranch = left.branchIndex
           const rightBranch = right.branchIndex
           if (leftBranch !== rightBranch) return leftBranch - rightBranch
@@ -1438,7 +1509,8 @@ export function ChatProvider({
               : ROOT_BRANCH_PARENT_KEY
           return candidateParentId === parentMessageId
         })
-        .toSorted((left, right) => {
+        .slice()
+        .sort((left, right) => {
           const leftBranch = left.branchIndex
           const rightBranch = right.branchIndex
           if (leftBranch !== rightBranch) return leftBranch - rightBranch
@@ -1658,12 +1730,15 @@ export function ChatProvider({
       selectedModeId: effectiveModeId,
       isModeEnforced,
       selectableModels,
+      visibleModels,
       setSelectedModelId: setModelSelection,
       setSelectedReasoningEffort: setReasoningSelection,
       setSelectedModeId: setModeSelection,
       visibleTools,
       disabledToolKeys: threadDisabledToolKeys,
       setThreadDisabledToolKeys,
+      canUploadFiles: hasFeatureAccess('chat.fileUpload', accessContext),
+      uploadUpgradeCallout: getLocalizedFeatureAccessGateMessage(uploadPermission.minimumPlanId),
     }),
     [
       status,
@@ -1676,12 +1751,15 @@ export function ChatProvider({
       effectiveModeId,
       isModeEnforced,
       selectableModels,
+      visibleModels,
       setModelSelection,
       setReasoningSelection,
       setModeSelection,
       visibleTools,
       threadDisabledToolKeys,
       setThreadDisabledToolKeys,
+      accessContext,
+      uploadPermission.minimumPlanId,
     ],
   )
 

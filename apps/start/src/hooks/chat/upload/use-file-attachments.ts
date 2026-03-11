@@ -11,6 +11,10 @@ import {
 export type UseFileAttachmentsOptions = {
   /** Maximum number of files allowed (default 10). */
   maxFiles?: number
+  /** Whether uploads are enabled for the current user/context. */
+  enabled?: boolean
+  /** Message surfaced when the upload UI is intentionally disabled. */
+  disabledMessage?: string
 }
 
 /**
@@ -18,7 +22,11 @@ export type UseFileAttachmentsOptions = {
  * Handles validation (images + PDF only), max count, and object URL cleanup on remove.
  */
 export function useFileAttachments(options: UseFileAttachmentsOptions = {}) {
-  const { maxFiles = 10 } = options
+  const {
+    maxFiles = 10,
+    enabled = true,
+    disabledMessage = 'File uploads are not available.',
+  } = options
   const [files, setFiles] = useState<AttachedFile[]>([])
   const filesRef = useRef<AttachedFile[]>([])
 
@@ -65,6 +73,21 @@ export function useFileAttachments(options: UseFileAttachmentsOptions = {}) {
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!enabled) {
+        const selected = Array.from(e.target.files ?? [])
+        if (selected.length > 0) {
+          setFiles((current) => [
+            ...current,
+            ...selected.slice(0, 1).map((file) => ({
+              ...createAttachedFile(file),
+              isUploading: false,
+              uploadError: disabledMessage,
+            })),
+          ])
+        }
+        e.target.value = ''
+        return
+      }
       const selected = Array.from(e.target.files ?? [])
       if (selected.length === 0) {
         e.target.value = ''
@@ -106,7 +129,7 @@ export function useFileAttachments(options: UseFileAttachmentsOptions = {}) {
 
       e.target.value = ''
     },
-    [maxFiles, uploadAttachment],
+    [disabledMessage, enabled, maxFiles, uploadAttachment],
   )
 
   const handleRemoveFile = useCallback((id: string) => {
@@ -135,7 +158,7 @@ export function useFileAttachments(options: UseFileAttachmentsOptions = {}) {
     handleFileSelect,
     handleRemoveFile,
     clearFiles,
-    canAddMore: files.length < maxFiles,
+    canAddMore: enabled && files.length < maxFiles,
     maxFiles,
   }
 }

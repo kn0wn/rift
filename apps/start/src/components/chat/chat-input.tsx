@@ -48,7 +48,7 @@ export function ChatInput() {
     sendMessage,
     status,
     error,
-    selectableModels,
+    visibleModels,
     selectedModelId,
     selectedReasoningEffort,
     setSelectedModelId,
@@ -60,6 +60,8 @@ export function ChatInput() {
     visibleTools,
     disabledToolKeys,
     setThreadDisabledToolKeys,
+    canUploadFiles,
+    uploadUpgradeCallout,
   } = useChatComposer()
 
   const [errorDismissed, setErrorDismissed] = useState(false)
@@ -67,7 +69,11 @@ export function ChatInput() {
 
   // File upload: worker-supported markdown-convertible files, max 10 files.
   const { files, handleFileSelect, handleRemoveFile, clearFiles, canAddMore } =
-    useFileAttachments({ maxFiles: 10 })
+    useFileAttachments({
+      maxFiles: 10,
+      enabled: canUploadFiles,
+      disabledMessage: uploadUpgradeCallout,
+    })
 
   const isBusy = status === 'submitted' || status === 'streaming'
   const hasPendingUploads = files.some((file) => file.isUploading)
@@ -165,14 +171,14 @@ export function ChatInput() {
     [isSendBlocked, sendMessage, buildAttachmentPayload, clearFiles],
   )
 
-  const selectedModel = selectableModels.find((m) => m.id === selectedModelId)
+  const selectedModel = visibleModels.find((m) => m.id === selectedModelId)
   const isStudyModeEnabled = selectedModeId === 'study'
   const studyModeDefinition = getChatModeDefinition('study')
   const modeLockedModelId = isStudyModeEnabled
     ? studyModeDefinition.fixedModelId
     : selectedModelId
   const modeLockedModelName =
-    selectableModels.find((model) => model.id === studyModeDefinition.fixedModelId)
+    visibleModels.find((model) => model.id === studyModeDefinition.fixedModelId)
       ?.name ?? m.chat_mode_study_default_model_name()
   const reasoningOptions = selectedModel?.reasoningEfforts ?? []
 
@@ -198,7 +204,12 @@ export function ChatInput() {
         <ModelSelectorPanel
           value={modeLockedModelId}
           onValueChange={setSelectedModelId}
-          options={selectableModels.map((m) => ({ id: m.id, name: m.name }))}
+          options={visibleModels.map((m) => ({
+            id: m.id,
+            name: m.name,
+            locked: m.locked,
+            minimumPlanId: m.minimumPlanId,
+          }))}
           className={selectorTriggerClassName}
         />
       )}
@@ -269,6 +280,8 @@ export function ChatInput() {
     >
       <ComposerToolbar
         canAddMore={canAddMore}
+        canUploadFiles={canUploadFiles}
+        uploadUpgradeCallout={uploadUpgradeCallout}
         onFileSelect={handleFileSelect}
         status={status}
         isBusy={isSendBlocked}
@@ -301,6 +314,8 @@ const ComposerTextarea = memo(function ComposerTextarea() {
 
 const ComposerToolbar = memo(function ComposerToolbar({
   canAddMore,
+  canUploadFiles,
+  uploadUpgradeCallout,
   onFileSelect,
   status,
   isBusy,
@@ -314,6 +329,8 @@ const ComposerToolbar = memo(function ComposerToolbar({
   setThreadDisabledToolKeys,
 }: {
   canAddMore: boolean
+  canUploadFiles: boolean
+  uploadUpgradeCallout?: string
   onFileSelect: (event: React.ChangeEvent<HTMLInputElement>) => void
   status: ReturnType<typeof useChatComposer>['status']
   isBusy: boolean
@@ -332,6 +349,8 @@ const ComposerToolbar = memo(function ComposerToolbar({
   return (
     <PromptInputToolbar
       canAddMore={canAddMore}
+      canUploadFiles={canUploadFiles}
+      uploadUpgradeCallout={uploadUpgradeCallout}
       onFileSelect={onFileSelect}
       status={status}
       isEmpty={isEmpty}

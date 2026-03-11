@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Form } from '@rift/ui/form'
-import type { WorkspaceFeatureAccessState } from '@/lib/billing/plan-catalog'
+import {
+  getFeatureAccessAction,
+  type WorkspaceFeatureAccessState,
+} from '@/lib/access-control'
+import {
+  getLocalizedFeatureAccessActionLabel,
+  getLocalizedFeatureAccessGateMessage,
+} from '@/lib/access-control-client'
 import { getFeatureAccessFormProps } from '@/components/organization/settings/feature-access-form-helpers'
 import type { ByokProvider } from '@/lib/byok/types'
 import { m } from '@/paraglide/messages.js'
@@ -50,6 +57,7 @@ export function ByokForm({
   onRemove,
 }: ByokFormProps) {
   const featureEnabled = featureAccess.allowed
+  const featureAction = getFeatureAccessAction(featureAccess.minimumPlanId)
   const [openaiInput, setOpenaiInput] = useState(() =>
     providerKeyStatus.openai ? MASKED_KEY_VALUE : '',
   )
@@ -101,7 +109,7 @@ export function ByokForm({
             title={card.title}
             description={
               !featureEnabled
-                ? featureAccess.upgradeCallout
+                ? getLocalizedFeatureAccessGateMessage(featureAccess.minimumPlanId)
                 : card.configured
                 ? m.org_byok_provider_configured_description()
                 : m.org_byok_provider_not_configured_description()
@@ -183,12 +191,12 @@ export function ByokForm({
             helpLearnMoreHref={
               featureEnabled
                 ? getProviderApiKeyHref(card.providerId)
-                : featureAccess.action.href
+                : featureAction.href
             }
             helpLearnMoreLabel={
               featureEnabled
                 ? m.org_byok_api_key_help_link_text()
-                : featureAccess.action.label
+                : getLocalizedFeatureAccessActionLabel(featureAccess.minimumPlanId)
             }
           />
         </div>

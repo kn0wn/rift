@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg'
-import type { WorkspacePlanId } from '@/lib/billing/plan-catalog'
+import type { WorkspacePlanId } from '@/lib/access-control'
 import { authPool } from '@/lib/auth/auth-pool'
 import {
   CHAT_USAGE_FEATURE_KEY,

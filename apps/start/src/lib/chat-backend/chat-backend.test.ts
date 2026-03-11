@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { LanguageModelUsage, UIMessage } from 'ai'
 import { Effect, Layer } from 'effect'
+import { resolveChatAccessPolicy } from '@/lib/access-control.server'
 import {
   WorkspaceUsageQuotaService,
 } from '@/lib/billing-backend/services/workspace-usage-quota.service'
@@ -18,6 +19,7 @@ import { toReadableErrorMessage } from '@/lib/chat-backend/domain/error-formatti
 import { getMemoryState } from '@/lib/chat-backend/infra/memory/state'
 import { toErrorResponse } from '@/lib/chat-backend/http/error-response'
 import { ChatOrchestratorService } from '@/lib/chat-backend/services/chat-orchestrator.service'
+import { FreeChatAllowanceService } from '@/lib/chat-backend/services/free-chat-allowance.service'
 import { MessageStoreService } from '@/lib/chat-backend/services/message-store.service'
 import type { ModelStreamResult } from '@/lib/chat-backend/services/model-gateway.service'
 import { ModelGatewayService } from '@/lib/chat-backend/services/model-gateway.service'
@@ -90,6 +92,7 @@ const TestChatLayer = ChatOrchestratorService.layer.pipe(
   Layer.provideMerge(ThreadService.layerMemory),
   Layer.provideMerge(MessageStoreService.layerMemory),
   Layer.provideMerge(RateLimitService.layerMemory),
+  Layer.provideMerge(FreeChatAllowanceService.layerMemory),
   Layer.provideMerge(ModelPolicyService.layerMemory),
   Layer.provideMerge(ToolPolicyService.layer),
   Layer.provideMerge(RecordingToolRegistryLayer),
@@ -104,7 +107,22 @@ beforeEach(() => {
   state.threads.clear()
   state.messages.clear()
   state.rateLimits.clear()
+  state.freeAllowances.clear()
   lastResolvedToolKeys = []
+})
+
+const paidAccessPolicy = resolveChatAccessPolicy({
+  userId: 'paid-user',
+  organizationId: 'org-paid',
+  isAnonymous: false,
+  planId: 'plus',
+})
+
+const freeAccessPolicy = resolveChatAccessPolicy({
+  userId: 'free-user',
+  organizationId: undefined,
+  isAnonymous: false,
+  planId: 'free',
 })
 
 describe('chat-backend scaffold', () => {
@@ -137,6 +155,7 @@ describe('chat-backend scaffold', () => {
         const response = yield* orchestrator.streamChat({
           userId: 'user-stream',
           threadId: created.threadId,
+          accessPolicy: paidAccessPolicy,
           requestId: 'req-stream',
           route: '/api/chat',
           expectedBranchVersion: 1,
@@ -174,6 +193,7 @@ describe('chat-backend scaffold', () => {
         return yield* orchestrator.streamChat({
           userId: 'user-bootstrap-tools',
           threadId,
+          accessPolicy: paidAccessPolicy,
           requestId: 'req-bootstrap-tools',
           route: '/api/chat',
           createIfMissing: true,
@@ -210,6 +230,7 @@ describe('chat-backend scaffold', () => {
         yield* orchestrator.streamChat({
           userId: 'user-edit',
           threadId: created.threadId,
+          accessPolicy: paidAccessPolicy,
           requestId: 'req-seed',
           route: '/api/chat',
           expectedBranchVersion: 1,
@@ -223,6 +244,7 @@ describe('chat-backend scaffold', () => {
         const response = yield* orchestrator.streamChat({
           userId: 'user-edit',
           threadId: created.threadId,
+          accessPolicy: paidAccessPolicy,
           requestId: 'req-edit',
           route: '/api/chat',
           trigger: 'edit-message',
@@ -348,12 +370,16 @@ describe('chat-backend scaffold', () => {
         yield* rateLimit.assertAllowed({
           userId: 'rate-user',
           requestId: `req-${index}`,
+          windowMs: 60_000,
+          maxRequests: 30,
         })
       }
 
       return yield* rateLimit.assertAllowed({
         userId: 'rate-user',
         requestId: 'req-31',
+        windowMs: 60_000,
+        maxRequests: 30,
       })
     }).pipe(
       Effect.provide(RateLimitService.layerMemory),
@@ -362,5 +388,94 @@ describe('chat-backend scaffold', () => {
 
     const error = await Effect.runPromise(effect)
     expect(error._tag).toBe('RateLimitExceededError')
+  })
+
+  it('denies paid-only models for free-tier access contexts', async () => {
+    const error = await Effect.runPromise(
+      Effect.gen(function* () {
+        const orchestrator = yield* ChatOrchestratorService
+        const created = yield* orchestrator.createThread({
+          userId: 'free-user',
+          requestId: 'req-free-create',
+          modelId: 'openai/gpt-5-nano',
+        })
+
+        return yield* orchestrator.streamChat({
+          userId: 'free-user',
+          threadId: created.threadId,
+          accessPolicy: freeAccessPolicy,
+          requestId: 'req-free-model',
+          route: '/api/chat',
+          expectedBranchVersion: 1,
+          modelId: 'openai/gpt-5-mini',
+          message: {
+            id: 'free-user-message',
+            role: 'user',
+            parts: [{ type: 'text', text: 'hello' }],
+          },
+        })
+      }).pipe(Effect.provide(TestChatLayer), Effect.flip),
+    )
+
+    expect(error._tag).toBe('ModelPolicyDeniedError')
+  })
+
+  it('denies chat attachments for free-tier access contexts', async () => {
+    const error = await Effect.runPromise(
+      Effect.gen(function* () {
+        const orchestrator = yield* ChatOrchestratorService
+        const created = yield* orchestrator.createThread({
+          userId: 'free-user',
+          requestId: 'req-free-upload-create',
+          modelId: 'openai/gpt-5-nano',
+        })
+
+        return yield* orchestrator.streamChat({
+          userId: 'free-user',
+          threadId: created.threadId,
+          accessPolicy: freeAccessPolicy,
+          requestId: 'req-free-upload',
+          route: '/api/chat',
+          expectedBranchVersion: 1,
+          modelId: 'openai/gpt-5-nano',
+          attachments: [{ id: 'attachment-1' }],
+          message: {
+            id: 'free-upload-message',
+            role: 'user',
+            parts: [{ type: 'text', text: 'hello with file' }],
+          },
+        })
+      }).pipe(Effect.provide(TestChatLayer), Effect.flip),
+    )
+
+    expect(error._tag).toBe('InvalidRequestError')
+  })
+
+  it('enforces free-tier renewable allowance in memory mode', async () => {
+    const error = await Effect.runPromise(
+      Effect.gen(function* () {
+        const allowance = yield* FreeChatAllowanceService
+        yield* allowance.assertAllowed({
+          userId: 'free-user',
+          requestId: 'req-allowance-1',
+          policyKey: 'free-chat-test',
+          windowMs: 60_000,
+          maxRequests: 1,
+        })
+
+        return yield* allowance.assertAllowed({
+          userId: 'free-user',
+          requestId: 'req-allowance-2',
+          policyKey: 'free-chat-test',
+          windowMs: 60_000,
+          maxRequests: 1,
+        })
+      }).pipe(Effect.provide(FreeChatAllowanceService.layerMemory), Effect.flip),
+    )
+
+    expect(error._tag).toBe('QuotaExceededError')
+    if (error._tag === 'QuotaExceededError') {
+      expect(error.reasonCode).toBe('free_allowance_exhausted')
+    }
   })
 })

@@ -65,6 +65,8 @@ export function ToolbarSelect({
 
 export type PromptInputToolbarProps = HTMLAttributes<HTMLDivElement> & {
   canAddMore: boolean
+  canUploadFiles: boolean
+  uploadUpgradeCallout?: string
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void
   status: ChatStatus
   isEmpty: boolean
@@ -88,6 +90,8 @@ export type PromptInputToolbarProps = HTMLAttributes<HTMLDivElement> & {
 export function PromptInputToolbar({
   className,
   canAddMore,
+  canUploadFiles,
+  uploadUpgradeCallout,
   onFileSelect,
   status,
   isEmpty,
@@ -133,9 +137,11 @@ export function PromptInputToolbar({
         aria-hidden
         onChange={onFileSelect}
       />
-      <PromptInputActionsMenu
-        canAddMore={canAddMore}
-        onOpenFilePicker={handleOpenFilePicker}
+        <PromptInputActionsMenu
+          canAddMore={canAddMore}
+          canUploadFiles={canUploadFiles}
+          uploadUpgradeCallout={uploadUpgradeCallout}
+          onOpenFilePicker={handleOpenFilePicker}
         isStudyModeEnabled={isStudyModeEnabled}
         isModeEnforced={isModeEnforced}
         activeThreadId={activeThreadId}

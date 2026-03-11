@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { UI_MESSAGE_STREAM_HEADERS } from 'ai'
 import { Effect, Schema } from 'effect'
+import { resolveAccessContext, resolveChatAccessPolicy } from '@/lib/access-control.server'
 import {
   getServerAuthContextFromHeaders,
   requireUserAuth,
@@ -113,6 +114,21 @@ export const Route = createFileRoute('/api/chat')({
               }),
           })
 
+          const accessContext = yield* Effect.tryPromise({
+            try: () => resolveAccessContext({
+              userId: authContext.userId,
+              isAnonymous: authContext.isAnonymous,
+              organizationId: authContext.organizationId,
+            }),
+            catch: (error) =>
+              new InvalidRequestError({
+                message: 'Failed to resolve access policy',
+                requestId,
+                issue: error instanceof Error ? error.message : String(error),
+              }),
+          })
+          const accessPolicy = resolveChatAccessPolicy(accessContext)
+
           const orchestrator = yield* ChatOrchestratorService
           const modelPolicy = yield* ModelPolicyService
           // Org is resolved server-side and passed to model policy resolution.
@@ -134,6 +150,7 @@ export const Route = createFileRoute('/api/chat')({
             userId: authContext.userId,
             threadId: body.threadId,
             organizationId,
+            accessPolicy,
             orgPolicy,
             skipProviderKeyResolution,
             requestId,

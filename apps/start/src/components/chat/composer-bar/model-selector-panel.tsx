@@ -16,6 +16,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@rift/ui/tooltip'
 import { getCatalogModel, getProviderIcon } from '@/lib/ai-catalog'
 import type { AiModelCatalogEntry } from '@/lib/ai-catalog/types'
 import type { CatalogProviderId } from '@/lib/ai-catalog/provider-tools'
+import {
+  type PaidWorkspacePlanId,
+} from '@/lib/access-control'
+import { getLocalizedFeatureAccessGateMessage } from '@/lib/access-control-client'
 import { m } from '@/paraglide/messages.js'
 
 /** Display names for providers in the sidebar filter. */
@@ -50,6 +54,8 @@ const CAPABILITY_ORDER: Array<keyof typeof CAPABILITY_ICONS> = [
 export type SelectableModelOption = {
   readonly id: string
   readonly name: string
+  readonly locked?: boolean
+  readonly minimumPlanId?: PaidWorkspacePlanId
 }
 
 export type ModelSelectorPanelProps = {
@@ -283,6 +289,8 @@ export function ModelSelectorPanel({
                         model={catalog}
                         displayName={opt.name}
                         isSelected={value === opt.id}
+                        locked={opt.locked}
+                        minimumPlanId={opt.minimumPlanId}
                         onSelect={handleSelect}
                         capabilityLabels={capabilityLabels}
                         style={{
@@ -306,6 +314,8 @@ interface ModelRowProps {
   model: AiModelCatalogEntry
   displayName: string
   isSelected: boolean
+  locked?: boolean
+  minimumPlanId?: PaidWorkspacePlanId
   onSelect: (id: string) => void
   capabilityLabels: Record<keyof typeof CAPABILITY_ICONS, string>
   style?: React.CSSProperties
@@ -315,6 +325,8 @@ const ModelRow = React.memo(function ModelRow({
   model,
   displayName,
   isSelected,
+  locked = false,
+  minimumPlanId,
   onSelect,
   capabilityLabels,
   style,
@@ -323,17 +335,22 @@ const ModelRow = React.memo(function ModelRow({
     (key) => model.capabilities[key as keyof typeof model.capabilities],
   )
 
-  return (
+  const buttonContent = (
     <button
       type="button"
-      onClick={() => onSelect(model.id)}
+      onClick={() => {
+        if (locked) return
+        onSelect(model.id)
+      }}
       data-active={isSelected}
-      style={style}
+      disabled={locked}
+      style={locked ? undefined : style}
       className={cn(
         'w-full rounded-lg border border-transparent px-3 py-3 text-start text-sm leading-none font-normal transition-[background-color,color,font-weight] duration-0 active:duration-75 group',
         'hover:bg-surface-inverse/5 active:bg-surface-inverse/10',
         'data-[active=true]:bg-surface-info/25 data-[active=true]:font-medium data-[active=true]:text-foreground-info',
         'data-[active=true]:hover:bg-surface-info/45 data-[active=true]:active:bg-surface-info/75',
+        'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-surface-inverse/5 disabled:active:bg-surface-inverse/5',
         'outline-none focus:!outline-none focus-visible:!outline-none',
         'focus-visible:border-border-strong focus-visible:ring-[3px] focus-visible:ring-border-strong/50',
       )}
@@ -393,6 +410,27 @@ const ModelRow = React.memo(function ModelRow({
       </div>
     </button>
   )
+
+  if (locked && minimumPlanId) {
+    return (
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <div className="w-full" style={style}>
+              {buttonContent}
+            </div>
+          }
+        />
+        <TooltipContent side="top" sideOffset={8}>
+          <p className="text-xs">
+            {getLocalizedFeatureAccessGateMessage(minimumPlanId)}
+          </p>
+        </TooltipContent>
+      </Tooltip>
+    )
+  }
+
+  return buttonContent
 })
 
 interface ProviderButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

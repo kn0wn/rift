@@ -1,83 +1,83 @@
 import { Effect, Layer, ServiceMap } from 'effect'
-import { RateLimitExceededError, RateLimitPersistenceError } from '../domain/errors'
+import { QuotaExceededError, RateLimitPersistenceError } from '../domain/errors'
 import { getMemoryState } from '../infra/memory/state'
 import { authPool } from '@/lib/auth/auth-pool'
 
-/**
- * Fixed-window request throttling. The live implementation is database-backed
- * so multiple server replicas share the same counters, while memory remains
- * available for deterministic unit tests.
- */
-const RATE_LIMIT_RETENTION_WINDOWS = 2
+const RETENTION_WINDOWS = 2
 
-/** Service contract for per-user chat request throttling. */
-export type RateLimitServiceShape = {
+export type FreeChatAllowanceServiceShape = {
   readonly assertAllowed: (input: {
     readonly userId: string
     readonly requestId: string
+    readonly policyKey: string
     readonly windowMs: number
     readonly maxRequests: number
   }) => Effect.Effect<
     { readonly allowed: true; readonly remaining: number },
-    RateLimitExceededError | RateLimitPersistenceError
+    QuotaExceededError | RateLimitPersistenceError
   >
 }
 
-/** Injectable rate-limit service token. */
-export class RateLimitService extends ServiceMap.Service<
-  RateLimitService,
-  RateLimitServiceShape
->()('chat-backend/RateLimitService') {
-  /** Shared Postgres-backed limiter used in production runtimes. */
+/**
+ * Free-tier allowance tracking stays user-scoped because anonymous users and
+ * unsubscribed users do not necessarily have a paid workspace seat model.
+ */
+export class FreeChatAllowanceService extends ServiceMap.Service<
+  FreeChatAllowanceService,
+  FreeChatAllowanceServiceShape
+>()('chat-backend/FreeChatAllowanceService') {
   static readonly layer = Layer.succeed(this, {
-    assertAllowed: Effect.fn('RateLimitService.assertAllowedLive')(
-      ({ userId, requestId, windowMs, maxRequests }) =>
+    assertAllowed: Effect.fn('FreeChatAllowanceService.assertAllowedLive')(
+      ({ userId, requestId, policyKey, windowMs, maxRequests }) =>
         Effect.tryPromise({
           try: async () => {
             const now = Date.now()
             const windowStartMs = Math.floor(now / windowMs) * windowMs
             const result = await authPool.query<{ hits: number }>(
-              `insert into chat_request_rate_limit_window (
+              `insert into chat_free_allowance_window (
                  user_id,
+                 policy_key,
                  window_started_at,
                  hits,
                  updated_at
                )
-               values ($1, $2, 1, $3)
-               on conflict (user_id, window_started_at) do update
-               set hits = chat_request_rate_limit_window.hits + 1,
+               values ($1, $2, $3, 1, $4)
+               on conflict (user_id, policy_key, window_started_at) do update
+               set hits = chat_free_allowance_window.hits + 1,
                    updated_at = excluded.updated_at
                returning hits`,
-              [userId, windowStartMs, now],
+              [userId, policyKey, windowStartMs, now],
             )
             const hits = result.rows[0]?.hits ?? 1
 
             await authPool.query(
-              `delete from chat_request_rate_limit_window
+              `delete from chat_free_allowance_window
                where user_id = $1
-                 and window_started_at < $2`,
-              [
-                userId,
-                windowStartMs - (windowMs * RATE_LIMIT_RETENTION_WINDOWS),
-              ],
+                 and policy_key = $2
+                 and window_started_at < $3`,
+              [userId, policyKey, windowStartMs - (windowMs * RETENTION_WINDOWS)],
             )
 
             if (hits > maxRequests) {
-              throw new RateLimitExceededError({
-                message: 'Rate limit exceeded',
+              throw new QuotaExceededError({
+                message: 'Free chat allowance exhausted',
                 requestId,
                 userId,
                 retryAfterMs: windowMs - (now - windowStartMs),
+                reasonCode: 'free_allowance_exhausted',
               })
             }
 
-            return { allowed: true as const, remaining: maxRequests - hits }
+            return {
+              allowed: true as const,
+              remaining: maxRequests - hits,
+            }
           },
           catch: (error) =>
-            error instanceof RateLimitExceededError
+            error instanceof QuotaExceededError
               ? error
               : new RateLimitPersistenceError({
-                  message: 'Failed to evaluate chat rate limit',
+                  message: 'Failed to evaluate free chat allowance',
                   requestId,
                   userId,
                   cause: error instanceof Error ? error.message : String(error),
@@ -86,42 +86,47 @@ export class RateLimitService extends ServiceMap.Service<
     ),
   })
 
-  /** In-memory limiter retained for deterministic tests. */
   static readonly layerMemory = Layer.succeed(this, {
-    assertAllowed: Effect.fn('RateLimitService.assertAllowed')(
+    assertAllowed: Effect.fn('FreeChatAllowanceService.assertAllowedMemory')(
       function* ({
         userId,
         requestId,
+        policyKey,
         windowMs,
         maxRequests,
       }: {
         readonly userId: string
         readonly requestId: string
+        readonly policyKey: string
         readonly windowMs: number
         readonly maxRequests: number
       }) {
         const now = Date.now()
-        const bucket = getMemoryState().rateLimits.get(userId)
+        const key = `${userId}:${policyKey}`
+        const bucket = getMemoryState().freeAllowances.get(key)
 
         if (!bucket || now - bucket.windowStartMs >= windowMs) {
-          getMemoryState().rateLimits.set(userId, { windowStartMs: now, hits: 1 })
+          getMemoryState().freeAllowances.set(key, {
+            windowStartMs: now,
+            hits: 1,
+          })
           return { allowed: true as const, remaining: maxRequests - 1 }
         }
 
         if (bucket.hits >= maxRequests) {
-          const retryAfterMs = windowMs - (now - bucket.windowStartMs)
           return yield* Effect.fail(
-            new RateLimitExceededError({
-              message: 'Rate limit exceeded',
+            new QuotaExceededError({
+              message: 'Free chat allowance exhausted',
               requestId,
               userId,
-              retryAfterMs,
+              retryAfterMs: windowMs - (now - bucket.windowStartMs),
+              reasonCode: 'free_allowance_exhausted',
             }),
           )
         }
 
         bucket.hits += 1
-        getMemoryState().rateLimits.set(userId, bucket)
+        getMemoryState().freeAllowances.set(key, bucket)
         return { allowed: true as const, remaining: maxRequests - bucket.hits }
       },
     ),

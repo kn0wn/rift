@@ -11,7 +11,7 @@ import {
   isStripeManagedWorkspacePlan,
   WORKSPACE_PLANS,
   resolveStripePlanPriceId,
-} from '@/lib/billing/plan-catalog'
+} from '@/lib/access-control'
 import {
   assertInvitationCapacity,
   getOrganizationSeatLimit,
@@ -347,6 +347,14 @@ auth = betterAuth({
             toUserId,
             fromUserId,
           ])
+          await client.query(
+            'UPDATE chat_request_rate_limit_window SET user_id = $1 WHERE user_id = $2',
+            [toUserId, fromUserId],
+          )
+          await client.query(
+            'UPDATE chat_free_allowance_window SET user_id = $1 WHERE user_id = $2',
+            [toUserId, fromUserId],
+          )
           await client.query('COMMIT')
         } catch (error) {
           await client.query('ROLLBACK')

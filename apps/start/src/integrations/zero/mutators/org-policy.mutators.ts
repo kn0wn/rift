@@ -6,10 +6,11 @@ import { AI_CATALOG_BY_ID, AI_MODELS_BY_PROVIDER } from '@/lib/ai-catalog'
 import { TOOL_CATALOG_BY_KEY } from '@/lib/ai-catalog/tool-catalog'
 import {
   coerceWorkspacePlanId,
-  getWorkspaceFeatureAccessState,
+  getFeatureAccessGateMessage,
   getPlanEffectiveFeatures,
+  getWorkspaceFeatureAccessState,
   type WorkspaceFeatureId,
-} from '@/lib/billing/plan-catalog'
+} from '@/lib/access-control'
 import { isChatModeId } from '@/lib/chat-modes'
 import { isAdminRole } from '@/lib/auth/roles'
 import { requireOrgContext } from '../org-access'
@@ -183,7 +184,7 @@ async function requireOrgFeature(args: {
   })
 
   if (!access.allowed) {
-    throw new Error(access.upgradeCallout)
+    throw new Error(getFeatureAccessGateMessage(access.minimumPlanId))
   }
 }
 

@@ -1,12 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Effect } from 'effect'
 import {
+  getFeatureAccessGateMessage,
+} from '@/lib/access-control'
+import { resolveAccessContext, resolveChatAccessPolicy } from '@/lib/access-control.server'
+import {
   getServerAuthContextFromHeaders,
   requireNonAnonymousUserAuth,
 } from '@/lib/server-effect/http/server-auth'
 import { MAX_UPLOAD_SIZE_BYTES } from '@/lib/upload/upload.model'
 import {
   FileInvalidRequestError,
+  FileForbiddenError,
   FileRuntime,
   FileUnauthorizedError,
   FileUploadOrchestratorService,
@@ -28,6 +33,29 @@ export const Route = createFileRoute('/api/files/upload')({
                 requestId,
               }),
           })
+          const accessContext = yield* Effect.tryPromise({
+            try: () => resolveAccessContext({
+              userId: authContext.userId,
+              isAnonymous: authContext.isAnonymous,
+              organizationId: authContext.organizationId,
+            }),
+            catch: () =>
+              new FileInvalidRequestError({
+                message: 'Failed to resolve access policy',
+                requestId,
+              }),
+          })
+          const accessPolicy = resolveChatAccessPolicy(accessContext)
+          if (!accessPolicy.features['chat.fileUpload'].allowed) {
+            return yield* Effect.fail(
+              new FileForbiddenError({
+                message: getFeatureAccessGateMessage(
+                  accessPolicy.features['chat.fileUpload'].minimumPlanId,
+                ),
+                requestId,
+              }),
+            )
+          }
 
           const formData = yield* Effect.tryPromise({
             try: () => request.formData(),

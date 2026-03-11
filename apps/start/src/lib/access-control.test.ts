@@ -1,10 +1,58 @@
 import { describe, expect, it } from 'vitest'
 import {
+  getFeatureAccessState,
   getPlanEffectiveFeatures,
+  getModelAccess,
   getWorkspaceFeatureAccessState,
-} from './plan-catalog'
+  hasFeatureAccess,
+} from './access-control'
 
-describe('getPlanEffectiveFeatures', () => {
+describe('access-control', () => {
+  it('keeps workspace feature gating aligned with plan minimums', () => {
+    const access = getFeatureAccessState({
+      feature: 'byok',
+      planId: 'free',
+    })
+
+    expect(access.allowed).toBe(false)
+    expect(access.minimumPlanId).toBe('plus')
+  })
+
+  it('denies file uploads on the free tier', () => {
+    expect(
+      hasFeatureAccess('chat.fileUpload', {
+        isAnonymous: false,
+        planId: 'free',
+      }),
+    ).toBe(false)
+  })
+
+  it('allows llama models on the free tier', () => {
+    const access = getModelAccess({
+      modelId: 'meta/llama-4-scout',
+      context: {
+        isAnonymous: true,
+        planId: 'free',
+      },
+    })
+
+    expect(access.allowed).toBe(true)
+  })
+
+  it('keeps paid-only models visible but locked on the free tier', () => {
+    const access = getModelAccess({
+      modelId: 'openai/gpt-5-mini',
+      context: {
+        isAnonymous: false,
+        planId: 'free',
+      },
+    })
+
+    expect(access.visible).toBe(true)
+    expect(access.allowed).toBe(false)
+    expect(access.reason).toBe('free_tier_locked')
+  })
+
   it('keeps free workspaces out of gated organization settings', () => {
     expect(getPlanEffectiveFeatures('free')).toEqual({
       byok: false,
@@ -52,10 +100,8 @@ describe('getPlanEffectiveFeatures', () => {
       directoryProvisioning: true,
     })
   })
-})
 
-describe('getWorkspaceFeatureAccessState', () => {
-  it('returns the required upgrade copy for locked features', () => {
+  it('returns the minimum plan for locked workspace features', () => {
     expect(
       getWorkspaceFeatureAccessState({
         planId: 'free',
@@ -64,11 +110,10 @@ describe('getWorkspaceFeatureAccessState', () => {
     ).toMatchObject({
       allowed: false,
       minimumPlanId: 'plus',
-      minimumPlanName: 'Plus',
     })
   })
 
-  it('keeps unlocked feature metadata available for enabled plans', () => {
+  it('keeps minimum-plan metadata on enabled workspace features', () => {
     expect(
       getWorkspaceFeatureAccessState({
         planId: 'scale',
@@ -77,7 +122,6 @@ describe('getWorkspaceFeatureAccessState', () => {
     ).toMatchObject({
       allowed: true,
       minimumPlanId: 'pro',
-      minimumPlanName: 'Pro',
     })
   })
 })

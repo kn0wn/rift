@@ -7,6 +7,7 @@ import {
   evaluateModelAvailability,
   getCatalogModelById,
 } from '@/lib/model-policy/policy-engine'
+import { getModelAccess, type AccessContext } from '@/lib/access-control'
 import {
   isByokSupportedProviderId,
   readOrgProviderApiKey,
@@ -69,6 +70,7 @@ export type ModelPolicyServiceShape = {
     readonly threadReasoningEffort?: AiReasoningEffort
     readonly requestedModelId?: string
     readonly modeModelId?: string
+    readonly accessContext?: AccessContext
     readonly requestedReasoningEffort?: string
     readonly skipProviderKeyResolution?: boolean
     readonly requestId: string
@@ -122,6 +124,7 @@ export class ModelPolicyService extends ServiceMap.Service<
         threadReasoningEffort,
         requestedModelId,
         modeModelId,
+        accessContext,
         requestedReasoningEffort,
         skipProviderKeyResolution,
         requestId,
@@ -133,6 +136,7 @@ export class ModelPolicyService extends ServiceMap.Service<
         readonly threadReasoningEffort?: AiReasoningEffort
         readonly requestedModelId?: string
         readonly modeModelId?: string
+        readonly accessContext?: AccessContext
         readonly requestedReasoningEffort?: string
         readonly skipProviderKeyResolution?: boolean
         readonly requestId: string
@@ -176,6 +180,23 @@ export class ModelPolicyService extends ServiceMap.Service<
                 threadId,
                 requestId,
                 reason: 'unknown_model',
+              }),
+            )
+          }
+
+          const access = accessContext
+            ? getModelAccess({
+                modelId: selectedModel.id,
+                context: accessContext,
+              })
+            : undefined
+          if (access && !access.allowed) {
+            return yield* Effect.fail(
+              toPolicyDenied({
+                modelId: selectedModel.id,
+                threadId,
+                requestId,
+                reason: `free_tier_model_denied:${selectedModel.id}`,
               }),
             )
           }
@@ -378,27 +399,50 @@ export class ModelPolicyService extends ServiceMap.Service<
       ({
         requestedModelId,
         modeModelId,
+        accessContext,
         requestedReasoningEffort,
       }: {
         readonly requestedModelId?: string
         readonly modeModelId?: string
+        readonly accessContext?: AccessContext
         readonly requestedReasoningEffort?: string
       }) =>
-        Effect.succeed({
-          modelId:
+        Effect.gen(function* () {
+          const modelId =
             modeModelId?.trim() ||
             requestedModelId?.trim() ||
-            'missing-model',
-          reasoningEffort:
-            requestedReasoningEffort && requestedReasoningEffort !== 'none'
-              ? (requestedReasoningEffort as AiReasoningEffort)
-              : undefined,
-          source: modeModelId
-            ? 'mode'
-            : requestedModelId || requestedReasoningEffort
-              ? 'request'
-              : 'thread',
-        } satisfies EffectiveModelResolution),
+            'missing-model'
+
+          const access = accessContext
+            ? getModelAccess({
+                modelId,
+                context: accessContext,
+              })
+            : undefined
+          if (access && !access.allowed) {
+            return yield* Effect.fail(
+              toPolicyDenied({
+                modelId,
+                threadId: 'memory-thread',
+                requestId: 'memory-request',
+                reason: `free_tier_model_denied:${modelId}`,
+              }),
+            )
+          }
+
+          return {
+            modelId,
+            reasoningEffort:
+              requestedReasoningEffort && requestedReasoningEffort !== 'none'
+                ? (requestedReasoningEffort as AiReasoningEffort)
+                : undefined,
+            source: modeModelId
+              ? 'mode'
+              : requestedModelId || requestedReasoningEffort
+                ? 'request'
+                : 'thread',
+          } satisfies EffectiveModelResolution
+        }),
     ),
   })
 }

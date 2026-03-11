@@ -1,7 +1,7 @@
 import type { Subscription as BetterAuthStripeSubscription } from '@better-auth/stripe'
 import type { Effect } from 'effect'
 import type Stripe from 'stripe'
-import { getPlanEffectiveFeatures } from '@/lib/billing/plan-catalog'
+import { getPlanEffectiveFeatures } from '@/lib/access-control'
 import type { UsagePolicySnapshot } from '../workspace-usage/shared'
 import type {
   WorkspaceBillingConfigurationError,
@@ -14,7 +14,7 @@ import type {
   StripeManagedWorkspacePlanId,
   WorkspaceFeatureId,
   WorkspacePlanId,
-} from '../../../billing/plan-catalog'
+} from '../../../access-control'
 
 export type OrgMemberCounts = {
   activeMemberCount: number

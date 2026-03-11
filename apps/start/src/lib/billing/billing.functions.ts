@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import type { StripeManagedWorkspacePlanId } from './plan-catalog'
+import type { StripeManagedWorkspacePlanId } from '@/lib/access-control'
 
 const CheckoutPlanSchema = z.enum(['plus', 'pro', 'scale'])
 

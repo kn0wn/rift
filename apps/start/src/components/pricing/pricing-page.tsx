@@ -8,7 +8,7 @@ import {
   openWorkspaceBillingPortal,
   startWorkspaceSubscriptionCheckout,
 } from '@/lib/billing/billing.functions'
-import type { StripeManagedWorkspacePlanId } from '@/lib/billing/plan-catalog'
+import type { StripeManagedWorkspacePlanId } from '@/lib/access-control'
 import { useOrgBillingSummary } from '@/lib/billing/use-org-billing'
 import { isAdminRole } from '@/lib/auth/roles'
 import { useAppAuth } from '@/lib/auth/use-auth'

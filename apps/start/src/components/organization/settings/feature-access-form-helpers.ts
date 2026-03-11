@@ -1,7 +1,13 @@
 'use client'
 
-import type { WorkspaceFeatureAccessState } from '@/lib/billing/plan-catalog'
-import { m } from '@/paraglide/messages.js'
+import {
+  getFeatureAccessAction,
+  type WorkspaceFeatureAccessState,
+} from '@/lib/access-control'
+import {
+  getLocalizedFeatureAccessActionLabel,
+  getLocalizedFeatureAccessGateMessage,
+} from '@/lib/access-control-client'
 
 type FeatureAccessInput = {
   enabled: boolean
@@ -24,16 +30,12 @@ export function getFeatureAccessFormProps(input: FeatureAccessInput) {
     }
   }
 
-  const planName = input.featureAccess.minimumPlanName
-  const helpLabel =
-    input.featureAccess.action.kind === 'contact'
-      ? m.feature_access_contact_label()
-      : m.feature_access_upgrade_label({ planName })
+  const action = getFeatureAccessAction(input.featureAccess.minimumPlanId)
 
   return {
-    helpText: m.feature_access_requires_plan({ planName }),
-    helpLearnMoreHref: input.featureAccess.action.href,
-    helpLearnMoreLabel: helpLabel,
+    helpText: getLocalizedFeatureAccessGateMessage(input.featureAccess.minimumPlanId),
+    helpLearnMoreHref: action.href,
+    helpLearnMoreLabel: getLocalizedFeatureAccessActionLabel(input.featureAccess.minimumPlanId),
     featureDisabled: true,
   }
 }

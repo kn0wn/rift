@@ -3,8 +3,8 @@ import {
   selectRestrictedMembersForSeatLimit,
   type SeatReconciliationMember,
 } from '@/lib/billing/member-seat-restrictions'
-import { getPlanEffectiveFeatures } from '@/lib/billing/plan-catalog'
-import type { StripeManagedWorkspacePlanId } from '@/lib/billing/plan-catalog'
+import { getPlanEffectiveFeatures } from '@/lib/access-control'
+import type { StripeManagedWorkspacePlanId } from '@/lib/access-control'
 import {
   resolveEffectiveUsagePolicyRecord,
   syncOrganizationUsageQuotaState,

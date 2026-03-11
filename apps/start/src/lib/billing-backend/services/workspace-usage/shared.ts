@@ -1,7 +1,7 @@
 import type { UIMessage } from 'ai'
 import { getCatalogModel } from '@/lib/ai-catalog'
-import type { WorkspacePlanId } from '@/lib/billing/plan-catalog'
-import { getWorkspacePlan } from '@/lib/billing/plan-catalog'
+import type { WorkspacePlanId } from '@/lib/access-control'
+import { getWorkspacePlan } from '@/lib/access-control'
 import { estimatePromptTokens } from '@/lib/chat-contracts'
 
 export const CHAT_USAGE_FEATURE_KEY = 'chat_message' as const

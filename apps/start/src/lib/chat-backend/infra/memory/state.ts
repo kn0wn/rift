@@ -17,10 +17,16 @@ type RateLimitBucket = {
   hits: number
 }
 
+type FreeAllowanceBucket = {
+  windowStartMs: number
+  hits: number
+}
+
 const state = {
   threads: new Map<string, ThreadRecord>(),
   messages: new Map<string, UIMessage[]>(),
   rateLimits: new Map<string, RateLimitBucket>(),
+  freeAllowances: new Map<string, FreeAllowanceBucket>(),
 }
 
 export function getMemoryState() {

@@ -6,9 +6,9 @@ import { Form } from '@rift/ui/form'
 import { ContentPage } from '@/components/layout'
 import { reconcileActiveWorkspaceBilling } from '@/lib/billing/billing-reconcile.functions'
 import { openWorkspaceBillingPortal } from '@/lib/billing/billing.functions'
-import { getWorkspacePlan } from '@/lib/billing/plan-catalog'
+import { getWorkspacePlan } from '@/lib/access-control'
 import { useOrgBillingSummary } from '@/lib/billing/use-org-billing'
-import type { WorkspacePlanId } from '@/lib/billing/plan-catalog'
+import type { WorkspacePlanId } from '@/lib/access-control'
 
 type UsagePolicyRecord = Record<string, string | number | boolean | null>
 

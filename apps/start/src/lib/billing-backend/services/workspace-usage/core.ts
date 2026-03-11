@@ -1,4 +1,4 @@
-import type { WorkspacePlanId } from '@/lib/billing/plan-catalog'
+import type { WorkspacePlanId } from '@/lib/access-control'
 import {
   CHAT_USAGE_FEATURE_KEY,
   type UsageBucketType,

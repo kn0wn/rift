@@ -9,7 +9,7 @@ import {
   getWorkspaceFeatureAccessState,
   type WorkspaceFeatureAccessState,
   type WorkspaceFeatureId,
-} from './plan-catalog'
+} from '@/lib/access-control'
 
 type BillingSummaryRow = {
   id: string
