@@ -582,11 +582,18 @@ export function ChatProvider({
   const activeThreadId = threadId ?? provisionalThreadId
   const [orgPolicyRow] = useQuery(queries.orgPolicy.current())
   const [threadRow] = useQuery(
-    queries.threads.byId({ threadId: activeThreadId ?? '' }),
+    queries.threads.byId({
+      threadId: activeThreadId ?? '',
+      organizationId: activeOrganizationId?.trim() ?? '__missing_org__',
+    }),
     CACHE_CHAT_NAV,
   )
+  const scopedThreadId =
+    threadRow?.threadId && threadRow.threadId === activeThreadId
+      ? activeThreadId
+      : ''
   const [storedMessages, storedMessagesResult] = useQuery(
-    queries.messages.byThread({ threadId: activeThreadId ?? '' }),
+    queries.messages.byThread({ threadId: scopedThreadId }),
     CACHE_CHAT_NAV,
   )
   const { canonicalStoredMessages, storedBranchSelectorsByAnchorMessageId } =

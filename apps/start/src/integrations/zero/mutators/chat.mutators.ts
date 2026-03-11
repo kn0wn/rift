@@ -97,11 +97,33 @@ function buildOrgToolPolicy(input: {
   }
 }
 
+function isThreadVisibleInContext(input: {
+  readonly threadOwnerOrgId?: string | null
+  readonly contextOrganizationId?: string
+}): boolean {
+  const scopedOrgId = input.contextOrganizationId?.trim()
+  const threadOwnerOrgId = input.threadOwnerOrgId?.trim()
+
+  if (scopedOrgId) {
+    return threadOwnerOrgId === scopedOrgId
+  }
+
+  return !threadOwnerOrgId
+}
+
 export const chatMutatorDefinitions = {
   threads: {
     rename: defineMutator(renameThreadArgs, async ({ tx, args, ctx }) => {
       const thread = await tx.run(zql.thread.where('threadId', args.threadId).one())
       if (!thread || thread.userId !== ctx.userID) {
+        return
+      }
+      if (
+        !isThreadVisibleInContext({
+          threadOwnerOrgId: thread.ownerOrgId,
+          contextOrganizationId: ctx.organizationId,
+        })
+      ) {
         return
       }
 
@@ -118,6 +140,14 @@ export const chatMutatorDefinitions = {
       if (!thread || thread.userId !== ctx.userID) {
         return
       }
+      if (
+        !isThreadVisibleInContext({
+          threadOwnerOrgId: thread.ownerOrgId,
+          contextOrganizationId: ctx.organizationId,
+        })
+      ) {
+        return
+      }
 
       await tx.mutate.thread.update({
         id: thread.id,
@@ -130,6 +160,14 @@ export const chatMutatorDefinitions = {
     delete: defineMutator(deleteThreadArgs, async ({ tx, args, ctx }) => {
       const thread = await tx.run(zql.thread.where('threadId', args.threadId).one())
       if (!thread || thread.userId !== ctx.userID) {
+        return
+      }
+      if (
+        !isThreadVisibleInContext({
+          threadOwnerOrgId: thread.ownerOrgId,
+          contextOrganizationId: ctx.organizationId,
+        })
+      ) {
         return
       }
 
@@ -151,6 +189,14 @@ export const chatMutatorDefinitions = {
       async ({ tx, args, ctx }) => {
         const thread = await tx.run(zql.thread.where('threadId', args.threadId).one())
         if (!thread || thread.userId !== ctx.userID) {
+          return
+        }
+        if (
+          !isThreadVisibleInContext({
+            threadOwnerOrgId: thread.ownerOrgId,
+            contextOrganizationId: ctx.organizationId,
+          })
+        ) {
           return
         }
 
@@ -213,6 +259,14 @@ export const chatMutatorDefinitions = {
       if (!thread || thread.userId !== ctx.userID) {
         return
       }
+      if (
+        !isThreadVisibleInContext({
+          threadOwnerOrgId: thread.ownerOrgId,
+          contextOrganizationId: ctx.organizationId,
+        })
+      ) {
+        return
+      }
 
       const nextModeId = args.modeId ?? null
       const currentModeId =
@@ -237,6 +291,14 @@ export const chatMutatorDefinitions = {
       async ({ tx, args, ctx }) => {
         const thread = await tx.run(zql.thread.where('threadId', args.threadId).one())
         if (!thread || thread.userId !== ctx.userID) {
+          return
+        }
+        if (
+          !isThreadVisibleInContext({
+            threadOwnerOrgId: thread.ownerOrgId,
+            contextOrganizationId: ctx.organizationId,
+          })
+        ) {
           return
         }
 

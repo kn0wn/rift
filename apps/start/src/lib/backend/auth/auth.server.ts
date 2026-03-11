@@ -3,10 +3,11 @@ import { stripe } from '@better-auth/stripe'
 import { emailOTP, testUtils } from 'better-auth/plugins'
 import { anonymous } from 'better-auth/plugins/anonymous'
 import { multiSession } from 'better-auth/plugins/multi-session'
-import { organization } from 'better-auth/plugins/organization'
+import { organization as organizationPlugin } from 'better-auth/plugins/organization'
 import { twoFactor } from 'better-auth/plugins/two-factor'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import Stripe from 'stripe'
+import type { PoolClient } from 'pg'
 import {
   isStripeManagedWorkspacePlan,
   WORKSPACE_PLANS,
@@ -150,9 +151,111 @@ const stripePlugin
       })
     : null
 
-let auth: any
+/**
+ * Serializes default-org provisioning and anonymous-link migration by user.
+ * A transaction-scoped advisory lock keeps concurrent auth hooks from racing
+ * and accidentally issuing duplicate organization creation attempts.
+ */
+async function withUserProvisioningLock<T>(
+  userId: string,
+  operation: (lockClient: PoolClient) => Promise<T>,
+): Promise<T> {
+  const lockKey = `auth-user-provision:${userId}`
+  const client = await authPool.connect()
 
-auth = betterAuth({
+  try {
+    await client.query('BEGIN')
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [lockKey])
+    const result = await operation(client)
+    await client.query('COMMIT')
+    return result
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined)
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+async function readFirstOrganizationForUserWithClient(
+  client: PoolClient,
+  userId: string,
+): Promise<string | null> {
+  const result = await client.query<{ organizationId: string }>(
+    `select "organizationId" as "organizationId"
+     from member
+     where "userId" = $1
+     order by "createdAt" asc
+     limit 1`,
+    [userId],
+  )
+
+  return result.rows[0]?.organizationId ?? null
+}
+
+/**
+ * Idempotently ensures the persisted user has a default organization.
+ * Must be called while holding `withUserProvisioningLock`.
+ */
+async function ensureDefaultOrganizationForUserWithinLock(input: {
+  lockClient: PoolClient
+  userId: string
+  name: string
+  email: string
+}): Promise<string> {
+  const existingOrganizationId = await readFirstOrganizationForUserWithClient(
+    input.lockClient,
+    input.userId,
+  )
+  if (existingOrganizationId) {
+    return existingOrganizationId
+  }
+
+  const workspaceName = buildDefaultOrganizationName({
+    name: input.name,
+    email: input.email,
+  })
+
+  await auth.api.createOrganization({
+    body: {
+      userId: input.userId,
+      name: workspaceName,
+      slug: buildOrganizationSlug({
+        name: workspaceName,
+        userId: input.userId,
+      }),
+    },
+  })
+
+  const createdOrganizationId = await readFirstOrganizationForUserWithClient(
+    input.lockClient,
+    input.userId,
+  )
+  if (!createdOrganizationId) {
+    throw new Error(
+      `Default organization was not found after provisioning for user ${input.userId}`,
+    )
+  }
+
+  return createdOrganizationId
+}
+
+async function ensureDefaultOrganizationForUser(input: {
+  userId: string
+  name: string
+  email: string
+}): Promise<string> {
+  return withUserProvisioningLock(input.userId, (lockClient) =>
+    ensureDefaultOrganizationForUserWithinLock({
+      lockClient,
+      userId: input.userId,
+      name: input.name,
+      email: input.email,
+    }),
+  )
+}
+
+const auth = betterAuth({
   appName: 'Rift',
   baseURL: authBaseURL,
   basePath: '/api/auth',
@@ -168,21 +271,10 @@ auth = betterAuth({
           })) {
             return
           }
-
-          const workspaceName = buildDefaultOrganizationName({
+          await ensureDefaultOrganizationForUser({
+            userId: user.id,
             name: user.name,
             email: user.email,
-          })
-
-          await auth.api.createOrganization({
-            body: {
-              userId: user.id,
-              name: workspaceName,
-              slug: buildOrganizationSlug({
-                name: workspaceName,
-                userId: user.id,
-              }),
-            },
           })
         },
       },
@@ -254,7 +346,7 @@ auth = betterAuth({
         })
       },
     }),
-    organization({
+    organizationPlugin({
       allowUserToCreateOrganization: async (user) => !user.isAnonymous,
       membershipLimit: async (_user, organization): Promise<number> =>
         getOrganizationSeatLimit(organization.id),
@@ -312,8 +404,8 @@ auth = betterAuth({
       },
       sendInvitationEmail: async (data) => {
         const inviteLink = `${authBaseURL}/auth/accept-invitation/${data.id}`
-        const inviterName = data.inviter?.user?.name ?? data.inviter?.user?.email ?? 'A team member'
-        const orgName = data.organization?.name ?? 'the organization'
+        const inviterName = data.inviter.user.name || data.inviter.user.email || 'A team member'
+        const orgName = data.organization.name || 'the organization'
         void sendAuthEmail({
           to: data.email,
           subject: `You're invited to join ${orgName}`,
@@ -328,40 +420,46 @@ auth = betterAuth({
     anonymous({
       generateName: () => 'Human',
       onLinkAccount: async ({ anonymousUser, newUser }) => {
-        // Reassign app-owned rows so guest chat history survives account upgrade.
+        /**
+         * Reassign app-owned rows so guest chat history survives account upgrade.
+         */
         const fromUserId = anonymousUser.user.id
         const toUserId = newUser.user.id
-        const client = await authPool.connect()
+        await withUserProvisioningLock(toUserId, async (lockClient) => {
+          const targetOrganizationId = await ensureDefaultOrganizationForUserWithinLock({
+            lockClient,
+            userId: toUserId,
+            name: newUser.user.name,
+            email: newUser.user.email,
+          })
 
-        try {
-          await client.query('BEGIN')
-          await client.query('UPDATE threads SET user_id = $1 WHERE user_id = $2', [
-            toUserId,
-            fromUserId,
-          ])
-          await client.query('UPDATE messages SET user_id = $1 WHERE user_id = $2', [
-            toUserId,
-            fromUserId,
-          ])
-          await client.query('UPDATE attachments SET user_id = $1 WHERE user_id = $2', [
-            toUserId,
-            fromUserId,
-          ])
-          await client.query(
+          await lockClient.query(
+            `UPDATE threads
+             SET user_id = $1,
+                 owner_org_id = COALESCE(owner_org_id, $3)
+             WHERE user_id = $2`,
+            [toUserId, fromUserId, targetOrganizationId],
+          )
+          await lockClient.query(
+            'UPDATE messages SET user_id = $1 WHERE user_id = $2',
+            [toUserId, fromUserId],
+          )
+          await lockClient.query(
+            `UPDATE attachments
+             SET user_id = $1,
+                 owner_org_id = COALESCE(owner_org_id, $3)
+             WHERE user_id = $2`,
+            [toUserId, fromUserId, targetOrganizationId],
+          )
+          await lockClient.query(
             'UPDATE chat_request_rate_limit_window SET user_id = $1 WHERE user_id = $2',
             [toUserId, fromUserId],
           )
-          await client.query(
+          await lockClient.query(
             'UPDATE chat_free_allowance_window SET user_id = $1 WHERE user_id = $2',
             [toUserId, fromUserId],
           )
-          await client.query('COMMIT')
-        } catch (error) {
-          await client.query('ROLLBACK')
-          throw error
-        } finally {
-          client.release()
-        }
+        })
       },
     }),
     multiSession({

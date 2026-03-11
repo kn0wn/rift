@@ -33,6 +33,7 @@ import type {
 } from '@/components/layout/sidebar/app-sidebar-nav.config'
 import { mutators, queries } from '@/integrations/zero'
 import { CACHE_CHAT_NAV } from '@/integrations/zero/query-cache-policy'
+import { useAppAuth } from '@/lib/frontend/auth/use-auth'
 import { m } from '@/paraglide/messages.js'
 import { syncThreadGenerationStatuses } from './thread-status-store'
 
@@ -137,7 +138,13 @@ function ThreadRenameInput({
 export function ChatSidebarContent({ pathname }: { pathname: string }) {
   const navigate = useNavigate()
   const z = useZero()
-  const [threads] = useQuery(queries.threads.byUser(), CACHE_CHAT_NAV)
+  const { activeOrganizationId } = useAppAuth()
+  const [threads] = useQuery(
+    queries.threads.byUser({
+      organizationId: activeOrganizationId?.trim() ?? '__missing_org__',
+    }),
+    CACHE_CHAT_NAV,
+  )
   const [optimisticThreads, setOptimisticThreads] = useState<
     readonly OptimisticThread[]
   >([])

@@ -14,6 +14,7 @@ import {
   InvalidRequestError,
   ModelPolicyService,
   StreamResumeService,
+  ThreadService,
   UnauthorizedError,
 } from '@/lib/backend/chat'
 import { handleRouteFailure } from '@/lib/backend/chat/http/route-failure'
@@ -48,6 +49,14 @@ export const Route = createFileRoute('/api/chat')({
           }
 
           const streamResume = yield* StreamResumeService
+          const threads = yield* ThreadService
+          yield* threads.assertThreadAccess({
+            userId: authContext.userId,
+            threadId,
+            requestId,
+            createIfMissing: false,
+            organizationId: authContext.organizationId,
+          })
           const stream = yield* streamResume.resumeStream({
             userId: authContext.userId,
             threadId,

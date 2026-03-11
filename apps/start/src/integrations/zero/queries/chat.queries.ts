@@ -4,25 +4,36 @@ import {
 import { z } from 'zod'
 import { zql } from '../zql'
 
+const orgScopedThreadArgs = z.object({
+  organizationId: z.string().trim().min(1),
+})
+
+const orgScopedThreadByIdArgs = z.object({
+  threadId: z.string(),
+  organizationId: z.string().trim().min(1),
+})
+
 /**
  * Chat query definitions are grouped here to keep thread/message read models
  * cohesive and avoid coupling to organization settings queries.
  */
 export const chatQueryDefinitions = {
   threads: {
-    /** Threads for the current user (ctx.userID). Enforced on server. */
-    byUser: defineQuery(({ ctx }) =>
+    /** Threads for the current user in the active organization. */
+    byUser: defineQuery(orgScopedThreadArgs, ({ args, ctx }) =>
       zql.thread
         .where('userId', ctx.userID)
+        .where('ownerOrgId', args.organizationId)
         .where('visibility', 'visible')
         .orderBy('updatedAt', 'desc'),
     ),
     byId: defineQuery(
-      z.object({ threadId: z.string() }),
+      orgScopedThreadByIdArgs,
       ({ args, ctx }) =>
         zql.thread
           .where('threadId', args.threadId)
           .where('userId', ctx.userID)
+          .where('ownerOrgId', args.organizationId)
           .one(),
     ),
   },

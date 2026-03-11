@@ -80,6 +80,20 @@ export type ThreadServiceShape = {
   >
 }
 
+function isThreadAccessibleForOrganization(input: {
+  readonly threadOwnerOrgId?: string | null
+  readonly activeOrganizationId?: string
+}): boolean {
+  const threadOwnerOrgId = input.threadOwnerOrgId?.trim()
+  const activeOrganizationId = input.activeOrganizationId?.trim()
+
+  if (activeOrganizationId) {
+    return threadOwnerOrgId === activeOrganizationId
+  }
+
+  return !threadOwnerOrgId
+}
+
 export class ThreadService extends ServiceMap.Service<
   ThreadService,
   ThreadServiceShape
@@ -264,6 +278,21 @@ export class ThreadService extends ServiceMap.Service<
               return yield* Effect.fail(
                 new ThreadForbiddenError({
                   message: 'Thread is not owned by user',
+                  requestId,
+                  threadId,
+                  userId,
+                }),
+              )
+            }
+            if (
+              !isThreadAccessibleForOrganization({
+                threadOwnerOrgId: thread.ownerOrgId,
+                activeOrganizationId: organizationId,
+              })
+            ) {
+              return yield* Effect.fail(
+                new ThreadForbiddenError({
+                  message: 'Thread is not available in the active organization',
                   requestId,
                   threadId,
                   userId,

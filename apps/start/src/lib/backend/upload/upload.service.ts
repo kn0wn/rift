@@ -1,5 +1,5 @@
-import { MAX_UPLOAD_SIZE_BYTES } from './upload.model'
-import type { UploadResponseBody } from './upload.model'
+import { MAX_UPLOAD_SIZE_BYTES } from '@/lib/shared/upload/upload.model'
+import type { UploadResponseBody } from '@/lib/shared/upload/upload.model'
 
 const R2_ENV_KEYS = [
   'R2_ACCOUNT_ID',

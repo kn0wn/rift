@@ -63,6 +63,8 @@
     "redis": "^5.10.0",
     "resend": "^6.9.3",
     "resumable-stream": "^2.2.10",
+    "shiki": "^1.29.2",
+    "sonner": "^2.0.4",
     "streamdown": "^2.4.0",
     "stripe": "^20.4.1",
     "tailwindcss": "^4.1.18",
