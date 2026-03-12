@@ -13,14 +13,35 @@ const config = defineConfig(({ command }) => {
   const isDevServer = command === 'serve'
 
   return {
+    resolve: {
+      dedupe: [
+        '@rocicorp/zero',
+        '@rocicorp/zero/react',
+        '@rocicorp/zero-virtual',
+      ],
+    },
     server: {
       allowedHosts: ['omarchy-1.echo-tailor.ts.net'],
     },
     optimizeDeps: {
-      exclude: ['streamdown', '@streamdown/code', '@streamdown/math', '@streamdown/mermaid'],
+      exclude: [
+        'streamdown',
+        '@streamdown/code',
+        '@streamdown/math',
+        '@streamdown/mermaid',
+        '@rocicorp/zero',
+        '@rocicorp/zero/react',
+        '@rocicorp/zero-virtual',
+      ],
     },
     ssr: {
-      noExternal: ['streamdown', '@streamdown/code', '@streamdown/math', '@streamdown/mermaid'],
+      noExternal: [
+        'streamdown',
+        '@streamdown/code',
+        '@streamdown/math',
+        '@streamdown/mermaid',
+        '@rocicorp/zero-virtual',
+      ],
     },
     plugins: [
       ...(isDevServer

@@ -90,6 +90,7 @@ vi.mock('./thread-status-store', () => ({
   subscribeThreadStatuses: () => () => undefined,
   getThreadStatusesVersion: () => 0,
   getThreadGenerationStatus: () => undefined,
+  setThreadGenerationStatus: vi.fn(),
 }))
 
 vi.mock('@/lib/frontend/auth/use-auth', () => ({
@@ -199,7 +200,13 @@ function BranchSwitchConsumer() {
   )
 }
 
-function EditConsumer({ messageId, editedText }: { messageId: string; editedText: string }) {
+function EditConsumer({
+  messageId,
+  editedText,
+}: {
+  messageId: string
+  editedText: string
+}) {
   const { editMessage } = useChat()
   return (
     <button
@@ -324,8 +331,12 @@ describe('ChatProvider', () => {
       fireEvent.click(view.getByRole('button', { name: 'send' }))
     })
 
-    expect(sessions.get('chat-ui:thread-a')?.sendMessage).toHaveBeenCalledTimes(1)
-    expect(sessions.get('chat-ui:thread-b')?.sendMessage).toHaveBeenCalledTimes(1)
+    expect(sessions.get('chat-ui:thread-a')?.sendMessage).toHaveBeenCalledTimes(
+      1,
+    )
+    expect(sessions.get('chat-ui:thread-b')?.sendMessage).toHaveBeenCalledTimes(
+      1,
+    )
   })
 
   it('keeps assistant target row while truncating descendants before regenerate', async () => {
@@ -360,7 +371,8 @@ describe('ChatProvider', () => {
 
     const truncatedHistory = session.messages.slice(0, 4)
     const didTruncateAtAnchor = session.setMessages.mock.calls.some(
-      ([candidate]) => JSON.stringify(candidate) === JSON.stringify(truncatedHistory),
+      ([candidate]) =>
+        JSON.stringify(candidate) === JSON.stringify(truncatedHistory),
     )
     expect(didTruncateAtAnchor).toBe(true)
     expect(session.regenerate).toHaveBeenCalledTimes(1)
@@ -398,7 +410,11 @@ describe('ChatProvider', () => {
     const session: UseAIChatResult = {
       messages: [
         { id: 'u1', role: 'user', parts: [{ type: 'text', text: 'original' }] },
-        { id: 'a1', role: 'assistant', parts: [{ type: 'text', text: 'answer' }] },
+        {
+          id: 'a1',
+          role: 'assistant',
+          parts: [{ type: 'text', text: 'answer' }],
+        },
       ],
       status: 'ready',
       error: null,
@@ -531,9 +547,21 @@ describe('ChatProvider', () => {
     const session: UseAIChatResult = {
       messages: [
         { id: 'u1', role: 'user', parts: [{ type: 'text', text: 'root' }] },
-        { id: 'a1', role: 'assistant', parts: [{ type: 'text', text: 'answer' }] },
-        { id: 'u2', role: 'user', parts: [{ type: 'text', text: 'branch here' }] },
-        { id: 'a2-v1', role: 'assistant', parts: [{ type: 'text', text: 'visible branch' }] },
+        {
+          id: 'a1',
+          role: 'assistant',
+          parts: [{ type: 'text', text: 'answer' }],
+        },
+        {
+          id: 'u2',
+          role: 'user',
+          parts: [{ type: 'text', text: 'branch here' }],
+        },
+        {
+          id: 'a2-v1',
+          role: 'assistant',
+          parts: [{ type: 'text', text: 'visible branch' }],
+        },
       ],
       status: 'ready',
       error: null,
@@ -570,14 +598,19 @@ describe('ChatProvider', () => {
 
     const didPublishCanonicalSnapshot = session.setMessages.mock.calls.some(
       ([candidate]) =>
-        JSON.stringify((candidate as Array<{ id: string }>).map((message) => message.id)) ===
-        JSON.stringify(['u1', 'a1', 'u2', 'a2-v2', 'u3-v2', 'a3-v2b']),
+        JSON.stringify(
+          (candidate as Array<{ id: string }>).map((message) => message.id),
+        ) === JSON.stringify(['u1', 'a1', 'u2', 'a2-v2', 'u3-v2', 'a3-v2b']),
     )
     expect(didPublishCanonicalSnapshot).toBe(true)
 
     expect(view.getByTestId('selectors').textContent).toContain('"u2"')
-    expect(view.getByTestId('selectors').textContent).toContain('"selectedMessageId":"a2-v2"')
+    expect(view.getByTestId('selectors').textContent).toContain(
+      '"selectedMessageId":"a2-v2"',
+    )
     expect(view.getByTestId('selectors').textContent).toContain('"u3-v2"')
-    expect(view.getByTestId('selectors').textContent).toContain('"selectedMessageId":"a3-v2b"')
+    expect(view.getByTestId('selectors').textContent).toContain(
+      '"selectedMessageId":"a3-v2b"',
+    )
   })
 })

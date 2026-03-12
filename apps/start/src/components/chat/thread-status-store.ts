@@ -23,10 +23,8 @@ export function syncThreadGenerationStatuses(
   }[],
 ) {
   let changed = false
-  const nextThreadIds = new Set<string>()
 
   for (const thread of threads) {
-    nextThreadIds.add(thread.threadId)
     const nextStatus = thread.generationStatus
     const currentStatus = threadStatuses.get(thread.threadId)
 
@@ -35,16 +33,28 @@ export function syncThreadGenerationStatuses(
     changed = true
   }
 
-  for (const existingThreadId of Array.from(threadStatuses.keys())) {
-    if (nextThreadIds.has(existingThreadId)) continue
-    threadStatuses.delete(existingThreadId)
-    changed = true
-  }
-
   if (!changed) {
     return
   }
 
+  notify()
+}
+
+/**
+ * Updates a single thread status without clearing the rest of the store.
+ * This is used by focused thread queries so deep-link navigation can still
+ * resume generation even when the sidebar only has a virtualized subset loaded.
+ */
+export function setThreadGenerationStatus(
+  threadId: string,
+  generationStatus: ThreadGenerationStatus,
+) {
+  const currentStatus = threadStatuses.get(threadId)
+  if (currentStatus === generationStatus) {
+    return
+  }
+
+  threadStatuses.set(threadId, generationStatus)
   notify()
 }
 

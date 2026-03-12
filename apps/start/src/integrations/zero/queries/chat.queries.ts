@@ -1,16 +1,27 @@
-import {
-  defineQuery,
-} from '@rocicorp/zero'
+import { defineQuery } from '@rocicorp/zero'
 import { z } from 'zod'
 import { zql } from '../zql'
-
-const orgScopedThreadArgs = z.object({
-  organizationId: z.string().trim().min(1),
-})
 
 const orgScopedThreadByIdArgs = z.object({
   threadId: z.string(),
   organizationId: z.string().trim().min(1),
+})
+
+/**
+ * Cursor used by the sidebar history list. It mirrors the compound ordering so
+ * Zero can continue the query without materializing the entire thread set.
+ */
+export const threadHistoryCursor = z.object({
+  updatedAt: z.number(),
+  threadId: z.string(),
+})
+
+const threadHistoryPageArgs = z.object({
+  organizationId: z.string().trim().min(1),
+  limit: z.number().int().positive(),
+  start: threadHistoryCursor.nullable().optional(),
+  dir: z.enum(['forward', 'backward']),
+  inclusive: z.boolean().optional(),
 })
 
 /**
@@ -19,33 +30,41 @@ const orgScopedThreadByIdArgs = z.object({
  */
 export const chatQueryDefinitions = {
   threads: {
-    /** Threads for the current user in the active organization. */
-    byUser: defineQuery(orgScopedThreadArgs, ({ args, ctx }) =>
-      zql.thread
+    /**
+     * Cursor-based history page used by the virtualized sidebar. This keeps the
+     * client subscribed to only the currently needed thread window.
+     */
+    historyPage: defineQuery(threadHistoryPageArgs, ({ args, ctx }) => {
+      const orderDirection = args.dir === 'forward' ? 'desc' : 'asc'
+      let q = zql.thread
         .where('userId', ctx.userID)
         .where('ownerOrgId', args.organizationId)
         .where('visibility', 'visible')
-        .orderBy('updatedAt', 'desc'),
-    ),
-    byId: defineQuery(
-      orgScopedThreadByIdArgs,
-      ({ args, ctx }) =>
-        zql.thread
-          .where('threadId', args.threadId)
-          .where('userId', ctx.userID)
-          .where('ownerOrgId', args.organizationId)
-          .one(),
+        .orderBy('updatedAt', orderDirection)
+        .orderBy('threadId', orderDirection)
+        .limit(args.limit)
+
+      if (args.start) {
+        q = q.start(args.start, { inclusive: args.inclusive ?? false })
+      }
+
+      return q
+    }),
+    byId: defineQuery(orgScopedThreadByIdArgs, ({ args, ctx }) =>
+      zql.thread
+        .where('threadId', args.threadId)
+        .where('userId', ctx.userID)
+        .where('ownerOrgId', args.organizationId)
+        .one(),
     ),
   },
   messages: {
     /** Messages in a thread, always scoped to the authenticated user context. */
-    byThread: defineQuery(
-      z.object({ threadId: z.string() }),
-      ({ args, ctx }) =>
-        zql.message
-          .where('threadId', args.threadId)
-          .where('userId', ctx.userID)
-          .orderBy('created_at', 'asc'),
+    byThread: defineQuery(z.object({ threadId: z.string() }), ({ args, ctx }) =>
+      zql.message
+        .where('threadId', args.threadId)
+        .where('userId', ctx.userID)
+        .orderBy('created_at', 'asc'),
     ),
   },
 }

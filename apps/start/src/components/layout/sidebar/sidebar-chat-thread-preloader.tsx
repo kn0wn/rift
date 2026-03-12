@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useZero } from '@rocicorp/zero/react'
+import { CHAT_SIDEBAR_PAGE_SIZE } from '@/components/chat/chat-sidebar'
 import { queries } from '@/integrations/zero'
 import { CACHE_CHAT_NAV } from '@/integrations/zero/query-cache-policy'
 import { useAppAuth } from '@/lib/frontend/auth/use-auth'
@@ -16,8 +17,12 @@ export function SidebarChatThreadPreloader() {
 
   useEffect(() => {
     const { cleanup } = z.preload(
-      queries.threads.byUser({
+      queries.threads.historyPage({
         organizationId: activeOrganizationId?.trim() ?? '__missing_org__',
+        limit: CHAT_SIDEBAR_PAGE_SIZE,
+        start: null,
+        dir: 'forward',
+        inclusive: true,
       }),
       CACHE_CHAT_NAV,
     )

@@ -10,6 +10,7 @@ lib/local/
 zero.db*
 effect-smol/
 next/
+zbugs/
 
 # Sentry Config File
 .env.sentry-build-plugin

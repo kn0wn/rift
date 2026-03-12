@@ -18,6 +18,7 @@
     "db:reset": "bun run scripts/db-reset.ts",
     "zero:reset": "bun run scripts/zero-dev-reset.ts",
     "postgres:drop-all-tables": "bun run scripts/postgres-drop-all-tables.ts",
+    "seed:dummy-chats": "bun run scripts/seed-dummy-chats.ts",
     "pretest": "bun run i18n:compile",
     "test": "vitest run"
   },
@@ -39,6 +40,7 @@
     "@rift/ui": "workspace:*",
     "@rift/utils": "workspace:*",
     "@rocicorp/zero": "^0.26.0",
+    "@rocicorp/zero-virtual": "^0.4.0",
     "@streamdown/code": "^1.1.0",
     "@streamdown/math": "^1.0.2",
     "@streamdown/mermaid": "^1.0.2",
