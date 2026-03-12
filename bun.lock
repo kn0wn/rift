@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "Rift",
@@ -48,6 +49,7 @@
         "@tanstack/router-plugin": "^1.132.0",
         "ai": "^6.0.97",
         "better-auth": "^1.5.2",
+        "cmdk": "^1.1.1",
         "effect": "4.0.0-beta.21",
         "input-otp": "^1.4.2",
         "lucide-react": "^0.561.0",
