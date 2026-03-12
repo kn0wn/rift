@@ -128,7 +128,13 @@ function hasVisibleAssistantContent(message: UIMessage | undefined): boolean {
 }
 
 export function ChatThread() {
-  const { messages, status, activeThreadId, branchSelectorsByAnchorMessageId } =
+  const {
+    messages,
+    status,
+    activeThreadId,
+    hasHydratedActiveThread,
+    branchSelectorsByAnchorMessageId,
+  } =
     useChatMessages()
   const {
     regenerateMessage,
@@ -139,6 +145,7 @@ export function ChatThread() {
     useChatMessageActions()
   const { disableInitialAlignment } = useChatSearchReveal({
     activeThreadId,
+    canResolveReveal: hasHydratedActiveThread,
     messages,
     revealMessageBranch,
   })

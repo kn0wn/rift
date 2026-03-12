@@ -20,6 +20,7 @@ vi.mock('./chat-search-highlight', () => ({
 
 function TestHarness(input: {
   readonly activeThreadId?: string
+  readonly canResolveReveal?: boolean
   readonly messages: readonly UIMessage[]
   readonly revealMessageBranch: (input: { messageId: string }) => Promise<boolean>
 }) {
@@ -195,6 +196,68 @@ describe('useChatSearchReveal', () => {
     expect(
       view.getByTestId('disable-initial-alignment').textContent,
     ).toBe('false')
+  })
+
+  it('waits for thread hydration before attempting hidden-branch activation', async () => {
+    const revealMessageBranch = vi.fn(async () => false)
+
+    setPendingChatSearchReveal({
+      threadId: 'thread-5',
+      messageId: 'hydration-wait-message',
+      query: 'target',
+      nonce: '5',
+    })
+
+    const view = render(
+      <TestHarness
+        activeThreadId="thread-5"
+        canResolveReveal={false}
+        messages={[
+          {
+            id: 'visible-message',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'visible' }],
+          },
+        ]}
+        revealMessageBranch={revealMessageBranch}
+      />,
+    )
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(revealMessageBranch).not.toHaveBeenCalled()
+    expect(getPendingChatSearchReveal()).not.toBeNull()
+    expect(
+      view.getByTestId('disable-initial-alignment').textContent,
+    ).toBe('true')
+
+    view.rerender(
+      <TestHarness
+        activeThreadId="thread-5"
+        canResolveReveal
+        messages={[
+          {
+            id: 'visible-message',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'visible' }],
+          },
+        ]}
+        revealMessageBranch={revealMessageBranch}
+      />,
+    )
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(revealMessageBranch).toHaveBeenCalledWith({
+      messageId: 'hydration-wait-message',
+    })
+    expect(getPendingChatSearchReveal()).toBeNull()
   })
 
   it('scrolls with top padding when target is near the top edge of a scroll container', async () => {

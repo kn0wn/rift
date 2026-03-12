@@ -185,6 +185,7 @@ type ChatMessagesContextValue = {
   messages: ChatUIMessage[]
   status: ReturnType<typeof useAIChat<ChatUIMessage>>['status']
   activeThreadId?: string
+  hasHydratedActiveThread: boolean
   branchSelectorsByAnchorMessageId: Record<string, BranchSelectorState>
   branchUsage?: LanguageModelUsage
   branchCost?: number
@@ -690,6 +691,9 @@ export function ChatProvider({
     queries.messages.byThread({ threadId: scopedThreadId }),
     CACHE_CHAT_NAV,
   )
+  const hasHydratedActiveThread = !activeThreadId
+    ? true
+    : storedMessagesResult.type === 'complete'
   const { canonicalStoredMessages, storedBranchSelectorsByAnchorMessageId } =
     useMemo(() => {
       const messageById = new Map(
@@ -1972,6 +1976,7 @@ export function ChatProvider({
       messages,
       status,
       activeThreadId,
+      hasHydratedActiveThread,
       branchSelectorsByAnchorMessageId,
       branchUsage,
       branchCost,
@@ -1981,6 +1986,7 @@ export function ChatProvider({
       messages,
       status,
       activeThreadId,
+      hasHydratedActiveThread,
       branchSelectorsByAnchorMessageId,
       branchUsage,
       branchCost,

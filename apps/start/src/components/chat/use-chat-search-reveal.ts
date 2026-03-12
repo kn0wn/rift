@@ -14,6 +14,7 @@ import {
 
 type UseChatSearchRevealInput = {
   readonly activeThreadId?: string
+  readonly canResolveReveal?: boolean
   readonly messages: readonly UIMessage[]
   readonly revealMessageBranch: (input: { messageId: string }) => Promise<boolean>
 }
@@ -120,6 +121,10 @@ export function useChatSearchReveal(
       (message) => message.id === pendingReveal.messageId,
     )
     if (!targetExists) {
+      if (input.canResolveReveal === false) {
+        return
+      }
+
       // Hidden-branch hits need a branch switch before the canonical message
       // list can contain the searched message. Retry only when resolution
       // failed so we do not spam the branch mutator during query propagation.
@@ -172,7 +177,13 @@ export function useChatSearchReveal(
     return () => {
       window.clearTimeout(clearHighlight)
     }
-  }, [input.activeThreadId, input.messages, input.revealMessageBranch, pendingReveal])
+  }, [
+    input.activeThreadId,
+    input.canResolveReveal,
+    input.messages,
+    input.revealMessageBranch,
+    pendingReveal,
+  ])
 
   return {
     disableInitialAlignment: pendingReveal?.threadId === input.activeThreadId,
