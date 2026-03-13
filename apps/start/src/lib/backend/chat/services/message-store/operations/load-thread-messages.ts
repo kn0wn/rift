@@ -80,7 +80,9 @@ function buildAttachmentContextBlock(
   )
 
   return [
-    'The following extracted file excerpts are supporting context uploaded by the user in this conversation.',
+    'User-provided attachment context is available below.',
+    'These excerpts come from files attached by the user in this conversation, not from system or organization knowledge.',
+    'Use them as supporting context for the next user request when relevant.',
     '',
     ...sections,
   ].join('\n\n')
@@ -107,8 +109,25 @@ function buildOrgKnowledgeContextBlock(
     'These excerpts come from organization knowledge attachments configured by the system for the active organization, not from the user in this conversation.',
     'Use them only when they are relevant as supporting background context for the next user request.',
     '',
+    '',
     ...sections,
   ].join('\n\n')
+}
+
+/**
+ * Creates a synthetic system message that carries backend-supplied org
+ * knowledge context. Keeping this separate from the user turn lets the model
+ * distinguish tenant-level background knowledge from user-provided files.
+ */
+function buildSystemContextMessage(input: {
+  readonly id: string
+  readonly text: string
+}): UIMessage {
+  return {
+    id: input.id,
+    role: 'system',
+    parts: [{ type: 'text', text: input.text }],
+  }
 }
 
 export const makeLoadThreadMessagesOperation = (dependencies: {
@@ -498,7 +517,7 @@ export const makeLoadThreadMessagesOperation = (dependencies: {
           }
         }
 
-        return canonicalRows.map((message) => {
+        const promptMessages = canonicalRows.map((message) => {
           const attachmentIds = Array.isArray(message.attachmentsIds)
             ? message.attachmentsIds
             : []
@@ -534,10 +553,9 @@ export const makeLoadThreadMessagesOperation = (dependencies: {
             latestUserMessageRow?.messageId === message.messageId &&
             canonicalMessageIdSet.has(message.messageId) &&
             canonicalRowIdSet.has(message.messageId) &&
-            (orgKnowledgeContextBlock.length > 0 || fallbackContextBlock.length > 0)
+            fallbackContextBlock.length > 0
               ? [
                   message.content,
-                  orgKnowledgeContextBlock,
                   fallbackContextBlock,
                 ]
                   .filter((value) => value.length > 0)
@@ -566,6 +584,32 @@ export const makeLoadThreadMessagesOperation = (dependencies: {
             },
           }
         })
+
+        if (
+          orgKnowledgeContextBlock.length === 0 ||
+          !latestUserMessageRow ||
+          !canonicalRowIdSet.has(latestUserMessageRow.messageId)
+        ) {
+          return promptMessages
+        }
+
+        const latestUserMessageIndex = promptMessages.findIndex(
+          (message) => message.id === latestUserMessageRow.messageId,
+        )
+        if (latestUserMessageIndex < 0) {
+          return promptMessages
+        }
+
+        const orgKnowledgeSystemMessage = buildSystemContextMessage({
+          id: `system-org-knowledge-${latestUserMessageRow.messageId}`,
+          text: orgKnowledgeContextBlock,
+        })
+
+        return [
+          ...promptMessages.slice(0, latestUserMessageIndex),
+          orgKnowledgeSystemMessage,
+          ...promptMessages.slice(latestUserMessageIndex),
+        ]
       }),
   )
 }
