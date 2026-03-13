@@ -8,21 +8,18 @@ import {
 import { SidebarAreaPanel } from '@/components/layout/sidebar/sidebar-area-panel'
 import {
   ORG_SETTINGS_AREA_KEY,
-  ORG_SETTINGS_HREF,
 } from '@/routes/(app)/_layout/organization/settings/-organization-settings-nav'
 import { UserProfileAvatar } from '@/components/layout/user-profile-avatar'
-import { Avatar, AvatarFallback, AvatarImage } from '@rift/ui/avatar'
 import { Button } from '@rift/ui/button'
 import { directionClass, useDirection } from '@rift/ui/direction'
 import { SidebarGroupTooltip } from '@rift/ui/tooltip'
 import { cn } from '@rift/utils'
-import { useActiveOrganization } from '@/lib/frontend/auth/active-organization'
 import { useAppAuth } from '@/lib/frontend/auth/use-auth'
 import { Link, useRouterState } from '@tanstack/react-router'
 import type { ComponentType } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { m } from '@/paraglide/messages.js'
 import { SidebarChatThreadPreloader } from './sidebar/sidebar-chat-thread-preloader'
+import { SidebarOrganizationMenu } from './sidebar/sidebar-organization-menu'
 import { SidebarUsageMeter } from './sidebar/sidebar-usage-meter'
 import { usePageSidebarVisibility } from './page-sidebar-visibility-context'
 
@@ -84,9 +81,11 @@ export const AppSidebar: ComponentType = () => {
       cancelAnimationFrame(frame)
     }
   }, [effectiveCurrentArea, isTransitionReady])
-  const { user, loading, isAnonymous } = useAppAuth()
-  const { activeOrganization, loading: activeOrganizationLoading } =
-    useActiveOrganization()
+  const {
+    user,
+    loading,
+    isAnonymous,
+  } = useAppAuth()
   const { isChatPageSidebarCollapsed } = usePageSidebarVisibility()
   const direction = useDirection()
   // Keep non-chat areas unchanged. For chat routes, allow collapsing just the
@@ -94,15 +93,6 @@ export const AppSidebar: ComponentType = () => {
   const showAreaPanel =
     effectiveCurrentArea !== null &&
     (effectiveCurrentArea !== CHAT_AREA_KEY || !isChatPageSidebarCollapsed)
-  const organizationFallbackName = isAnonymous
-    ? '?'
-    : activeOrganization?.name ?? undefined
-  const organizationFallbackSeed = isAnonymous
-    ? 'sidebar-anonymous-organization'
-    : undefined
-  const showOrganizationFallback =
-    !activeOrganizationLoading &&
-    (isAnonymous || (!activeOrganization?.logo && !!activeOrganization))
 
   /**
    * Keep a persistent gutter between the sidebar chrome and the main content.
@@ -157,43 +147,9 @@ export const AppSidebar: ComponentType = () => {
           )}
         >
           <div className="flex flex-col items-center gap-3 pt-1">
-            <SidebarGroupTooltip
-              name={
-                activeOrganization?.name ?? m.layout_organization_tooltip_name()
-              }
-              description={m.layout_organization_tooltip_description()}
-            >
-              <Button
-                asChild
-                variant="sidebarIcon"
-                size="iconSidebar"
-                data-active={effectiveCurrentArea === ORG_SETTINGS_AREA_KEY}
-              >
-                <Link
-                  to={isAnonymous ? '/auth/sign-up' : ORG_SETTINGS_HREF}
-                  preload="intent"
-                  aria-label={m.layout_organization_settings_aria_label()}
-                >
-                  <Avatar size="xs">
-                    {activeOrganization?.logo ? (
-                      <AvatarImage
-                        src={activeOrganization.logo}
-                        alt={
-                          activeOrganization.name ??
-                          m.layout_organization_tooltip_name()
-                        }
-                      />
-                    ) : null}
-                    {showOrganizationFallback ? (
-                      <AvatarFallback
-                        name={organizationFallbackName}
-                        seed={organizationFallbackSeed}
-                      />
-                    ) : null}
-                  </Avatar>
-                </Link>
-              </Button>
-            </SidebarGroupTooltip>
+            <SidebarOrganizationMenu
+              isOrgAreaActive={effectiveCurrentArea === ORG_SETTINGS_AREA_KEY}
+            />
             {Object.entries(NAV_AREAS)
               .filter(
                 ([key]) =>

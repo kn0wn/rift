@@ -1,0 +1,522 @@
+import { authClient } from '@/lib/frontend/auth/auth-client'
+import { useActiveOrganization } from '@/lib/frontend/auth/active-organization'
+import { useAppAuth } from '@/lib/frontend/auth/use-auth'
+import { useOrgBillingSummary } from '@/lib/frontend/billing/use-org-billing'
+import {
+  coerceWorkspacePlanId,
+  getWorkspacePlan,
+} from '@/lib/shared/access-control'
+import { isAdminRole } from '@/lib/shared/auth/roles'
+import { ORG_SETTINGS_HREF } from '@/routes/(app)/_layout/organization/settings/-organization-settings-nav'
+import { Avatar, AvatarFallback, AvatarImage } from '@rift/ui/avatar'
+import { Button } from '@rift/ui/button'
+import { FormDialog } from '@rift/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@rift/ui/dropdown-menu'
+import { Input } from '@rift/ui/input'
+import { Label } from '@rift/ui/label'
+import { SidebarGroupTooltip } from '@rift/ui/tooltip'
+import { Check, Plus, Settings } from 'lucide-react'
+import { useNavigate, Link } from '@tanstack/react-router'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { m } from '@/paraglide/messages.js'
+
+type SidebarOrganization = {
+  id: string
+  name: string
+  logo?: string | null
+}
+
+type SidebarOrganizationMenuProps = {
+  isOrgAreaActive: boolean
+}
+
+const MAX_ORGANIZATIONS_PER_USER = 10
+
+function formatMemberCountLabel(memberCount: number | null): string {
+  if (memberCount == null) {
+    return ''
+  }
+
+  return memberCount === 1 ? '1 Member' : `${memberCount} Members`
+}
+
+/**
+ * Organization avatar trigger + management menu for the icon rail.
+ * The menu centralizes org switching, org creation, and admin settings access.
+ */
+export function SidebarOrganizationMenu({
+  isOrgAreaActive,
+}: SidebarOrganizationMenuProps) {
+  const { user, isAnonymous, activeOrganizationId, refetchSession } =
+    useAppAuth()
+  const { activeOrganization, loading: activeOrganizationLoading } =
+    useActiveOrganization()
+  const { entitlement } = useOrgBillingSummary()
+  const navigate = useNavigate()
+  const [organizations, setOrganizations] = useState<SidebarOrganization[]>([])
+  const [organizationsLoading, setOrganizationsLoading] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [switchingOrganizationId, setSwitchingOrganizationId] = useState<
+    string | null
+  >(null)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [createOrganizationName, setCreateOrganizationName] = useState('')
+  const [createOrganizationError, setCreateOrganizationError] = useState<
+    string | null
+  >(null)
+  const [creatingOrganization, setCreatingOrganization] = useState(false)
+  const [canManageOrganizationSettings, setCanManageOrganizationSettings] =
+    useState(false)
+
+  const organizationFallbackName = isAnonymous
+    ? '?'
+    : (activeOrganization?.name ?? undefined)
+  const organizationFallbackSeed = isAnonymous
+    ? 'sidebar-anonymous-organization'
+    : undefined
+  const showOrganizationFallback =
+    !activeOrganizationLoading &&
+    (isAnonymous || (!activeOrganization?.logo && !!activeOrganization))
+
+  const loadOrganizations = useCallback(async () => {
+    if (!user?.id || isAnonymous) {
+      setOrganizations([])
+      setOrganizationsLoading(false)
+      return
+    }
+
+    setOrganizationsLoading(true)
+    try {
+      const { data, error } = await authClient.organization.list()
+      if (error || !data) {
+        setOrganizations([])
+        return
+      }
+
+      setOrganizations(
+        data.map((organization) => ({
+          id: organization.id,
+          name: organization.name,
+          logo: organization.logo ?? null,
+        })),
+      )
+    } finally {
+      setOrganizationsLoading(false)
+    }
+  }, [user?.id, isAnonymous])
+
+  useEffect(() => {
+    void loadOrganizations()
+  }, [loadOrganizations])
+
+  /**
+   * Only owners/admins should see and use the settings entrypoint.
+   * Role is read from Better Auth for the current active organization.
+   */
+  useEffect(() => {
+    let cancelled = false
+
+    if (!user?.id || !activeOrganizationId || isAnonymous) {
+      setCanManageOrganizationSettings(false)
+      return
+    }
+
+    void authClient.organization
+      .getActiveMemberRole({
+        query: {
+          organizationId: activeOrganizationId,
+        },
+      })
+      .then(({ data, error }) => {
+        if (cancelled) {
+          return
+        }
+        if (error || !data?.role) {
+          setCanManageOrganizationSettings(false)
+          return
+        }
+        setCanManageOrganizationSettings(isAdminRole(data.role))
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeOrganizationId, isAnonymous, user?.id])
+
+  /**
+   * Applies org switch in auth session first, then refreshes the shell session
+   * cache so all org-scoped data and routes react to the new organization.
+   */
+  const handleSwitchOrganization = async (organizationId: string) => {
+    if (organizationId === activeOrganizationId || switchingOrganizationId) {
+      return
+    }
+
+    setSwitchingOrganizationId(organizationId)
+    try {
+      const { error } = await authClient.organization.setActive({
+        organizationId,
+      })
+      if (!error) {
+        await refetchSession()
+        await loadOrganizations()
+        setIsMenuOpen(false)
+      }
+    } finally {
+      setSwitchingOrganizationId(null)
+    }
+  }
+
+  const resetCreateOrganizationDialog = useCallback(() => {
+    setCreateOrganizationName('')
+    setCreateOrganizationError(null)
+  }, [])
+
+  /**
+   * Creates a new organization from the dialog and activates it immediately so
+   * the user can continue in the newly created organization context.
+   */
+  const handleCreateOrganizationSubmit = async () => {
+    if (creatingOrganization) {
+      return
+    }
+
+    /**
+     * Frontend guard mirrors backend auth enforcement so stale UI state cannot
+     * enqueue another create request once the user already reached the cap.
+     */
+    if (organizations.length >= MAX_ORGANIZATIONS_PER_USER) {
+      setCreateOrganizationError(
+        `You can create up to ${MAX_ORGANIZATIONS_PER_USER} organizations.`,
+      )
+      return
+    }
+
+    const trimmedName = createOrganizationName.trim()
+    if (!trimmedName) {
+      setCreateOrganizationError(
+        m.layout_organization_create_error_name_required(),
+      )
+      return
+    }
+
+    setCreateOrganizationError(null)
+    setCreatingOrganization(true)
+    try {
+      const uniqueSlug = `organization-${Date.now().toString(36)}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`
+      const { data, error } = await authClient.organization.create({
+        name: trimmedName,
+        slug: uniqueSlug,
+      })
+
+      if (error) {
+        setCreateOrganizationError(
+          error.message ?? m.layout_organization_create_error_failed(),
+        )
+        return
+      }
+
+      const createdOrganizationId =
+        (data as { id?: string } | undefined)?.id ?? null
+
+      if (createdOrganizationId) {
+        const setActiveResult = await authClient.organization.setActive({
+          organizationId: createdOrganizationId,
+        })
+        if (!setActiveResult.error) {
+          await refetchSession()
+          setIsMenuOpen(false)
+          setIsCreateDialogOpen(false)
+          resetCreateOrganizationDialog()
+        } else {
+          setCreateOrganizationError(
+            setActiveResult.error.message ??
+              m.layout_organization_create_error_activate_failed(),
+          )
+        }
+      } else {
+        setCreateOrganizationError(
+          m.layout_organization_create_error_missing_id(),
+        )
+      }
+
+      await loadOrganizations()
+    } finally {
+      setCreatingOrganization(false)
+    }
+  }
+
+  const handleCreateDialogOpenChange = useCallback(
+    (open: boolean) => {
+      setIsCreateDialogOpen(open)
+      if (!open && !creatingOrganization) {
+        resetCreateOrganizationDialog()
+      }
+    },
+    [creatingOrganization, resetCreateOrganizationDialog],
+  )
+
+  const planLabel = useMemo(() => {
+    const plan = getWorkspacePlan(coerceWorkspacePlanId(entitlement?.planId))
+    return plan.name
+  }, [entitlement?.planId])
+
+  const memberCountLabel = formatMemberCountLabel(
+    entitlement?.activeMemberCount ?? null,
+  )
+  const subtitle = memberCountLabel
+    ? `${planLabel} · ${memberCountLabel}`
+    : planLabel
+  const createOrganizationNameTrimmed = createOrganizationName.trim()
+  const hasReachedOrganizationLimit =
+    organizations.length >= MAX_ORGANIZATIONS_PER_USER
+  const createOrganizationSubmitDisabled =
+    creatingOrganization
+    || createOrganizationNameTrimmed.length === 0
+    || hasReachedOrganizationLimit
+
+  return (
+    <>
+      <SidebarGroupTooltip
+        name={activeOrganization?.name ?? m.layout_organization_tooltip_name()}
+        description={m.layout_organization_tooltip_description()}
+      >
+        {isAnonymous ? (
+          <Button
+            asChild
+            variant="sidebarIcon"
+            size="iconSidebar"
+            data-active={isOrgAreaActive}
+          >
+            <Link
+              to="/auth/sign-up"
+              preload="intent"
+              aria-label={m.layout_organization_settings_aria_label()}
+            >
+              <Avatar size="xs">
+                {activeOrganization?.logo ? (
+                  <AvatarImage
+                    src={activeOrganization.logo}
+                    alt={
+                      activeOrganization.name ??
+                      m.layout_organization_tooltip_name()
+                    }
+                  />
+                ) : null}
+                {showOrganizationFallback ? (
+                  <AvatarFallback
+                    name={organizationFallbackName}
+                    seed={organizationFallbackSeed}
+                  />
+                ) : null}
+              </Avatar>
+            </Link>
+          </Button>
+        ) : (
+          <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="sidebarIcon"
+                  size="iconSidebar"
+                  data-active={isOrgAreaActive}
+                  aria-label={m.layout_organization_settings_aria_label()}
+                >
+                  <Avatar size="xs">
+                    {activeOrganization?.logo ? (
+                      <AvatarImage
+                        src={activeOrganization.logo}
+                        alt={
+                          activeOrganization.name ??
+                          m.layout_organization_tooltip_name()
+                        }
+                      />
+                    ) : null}
+                    {showOrganizationFallback ? (
+                      <AvatarFallback
+                        name={organizationFallbackName}
+                        seed={organizationFallbackSeed}
+                      />
+                    ) : null}
+                  </Avatar>
+                </Button>
+              }
+            />
+            <DropdownMenuContent
+              align="start"
+              side="right"
+              sideOffset={10}
+              className="w-72 min-w-72 rounded-xl border border-border-base bg-surface-base p-0"
+            >
+              <div className="flex items-start gap-3 px-4 py-3">
+                <Avatar size="xs">
+                  {activeOrganization?.logo ? (
+                    <AvatarImage
+                      src={activeOrganization.logo}
+                      alt={
+                        activeOrganization.name ??
+                        m.layout_organization_tooltip_name()
+                      }
+                    />
+                  ) : null}
+                  <AvatarFallback
+                    name={organizationFallbackName}
+                    seed={organizationFallbackSeed}
+                  />
+                </Avatar>
+                <div className="min-w-0">
+                  <p className="truncate text-base font-medium text-foreground-primary">
+                    {activeOrganization?.name ??
+                      m.layout_organization_tooltip_name()}
+                  </p>
+                  <p className="text-sm text-foreground-secondary">
+                    {subtitle}
+                  </p>
+                </div>
+              </div>
+
+              {canManageOrganizationSettings ? (
+                <div className="px-4 pb-3">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="default"
+                    className="h-8 w-full justify-center rounded-md border border-border-base px-2 text-sm"
+                    onClick={() => {
+                      void navigate({ to: ORG_SETTINGS_HREF })
+                      setIsMenuOpen(false)
+                    }}
+                  >
+                    <Settings className="size-4" aria-hidden />
+                    Settings
+                  </Button>
+                </div>
+              ) : null}
+
+              <DropdownMenuSeparator className="mx-0 my-0" />
+              <div className="px-4 pt-3 pb-1 text-sm font-medium text-foreground-secondary">
+                Organizations
+              </div>
+
+              <div className="px-2 pb-2">
+                {organizationsLoading ? (
+                  <DropdownMenuItem disabled>
+                    Loading organizations...
+                  </DropdownMenuItem>
+                ) : organizations.length === 0 ? (
+                  <DropdownMenuItem disabled>
+                    No organizations found
+                  </DropdownMenuItem>
+                ) : (
+                  organizations.map((organization) => {
+                    const isCurrent = organization.id === activeOrganizationId
+                    const isSwitching =
+                      organization.id === switchingOrganizationId
+                    return (
+                      <DropdownMenuItem
+                        key={organization.id}
+                        className="mb-0.5 flex min-h-8 items-center justify-between rounded-md px-2 py-1.5 data-[highlighted]:bg-surface-overlay"
+                        disabled={!!switchingOrganizationId}
+                        onClick={() => {
+                          void handleSwitchOrganization(organization.id)
+                        }}
+                      >
+                        <div className="flex min-w-0 items-center gap-2">
+                          <Avatar size="xs" className="size-5">
+                            {organization.logo ? (
+                              <AvatarImage
+                                src={organization.logo}
+                                alt={organization.name}
+                              />
+                            ) : null}
+                            <AvatarFallback name={organization.name} />
+                          </Avatar>
+                          <span className="truncate text-sm text-foreground-primary">
+                            {organization.name}
+                          </span>
+                        </div>
+                        {isSwitching ? (
+                          <span className="text-xs text-foreground-secondary">
+                            Switching...
+                          </span>
+                        ) : isCurrent ? (
+                          <Check
+                            className="size-4 text-foreground-primary"
+                            aria-hidden
+                          />
+                        ) : null}
+                      </DropdownMenuItem>
+                    )
+                  })
+                )}
+
+                <DropdownMenuItem
+                  className="mt-1 flex min-h-8 items-center rounded-md px-2 py-1.5 data-[highlighted]:bg-surface-overlay"
+                  disabled={creatingOrganization || hasReachedOrganizationLimit}
+                  onClick={() => {
+                    if (hasReachedOrganizationLimit) {
+                      return
+                    }
+                    resetCreateOrganizationDialog()
+                    setIsMenuOpen(false)
+                    setIsCreateDialogOpen(true)
+                  }}
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="flex size-7 shrink-0 items-center justify-center">
+                      <Plus className="size-3.5" aria-hidden />
+                    </span>
+                    <span className="truncate text-sm text-foreground-primary">
+                      {m.layout_organization_create_action()}
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </SidebarGroupTooltip>
+      <FormDialog
+        open={isCreateDialogOpen}
+        onOpenChange={handleCreateDialogOpenChange}
+        title={m.layout_organization_create_title()}
+        description={m.layout_organization_create_description()}
+        buttonText={m.layout_organization_create_action()}
+        secondaryButtonText={m.common_cancel()}
+        onSecondaryClick={() => {
+          handleCreateDialogOpenChange(false)
+        }}
+        submitButtonDisabled={createOrganizationSubmitDisabled}
+        secondaryButtonDisabled={creatingOrganization}
+        error={createOrganizationError ?? undefined}
+        handleSubmit={handleCreateOrganizationSubmit}
+      >
+        <div className="space-y-2">
+          <Label htmlFor="create-organization-name">
+            {m.layout_organization_create_name_label()}
+          </Label>
+          <Input
+            id="create-organization-name"
+            value={createOrganizationName}
+            onChange={(event) => {
+              setCreateOrganizationName(event.target.value)
+              setCreateOrganizationError(null)
+            }}
+            placeholder={m.layout_organization_create_name_placeholder()}
+            maxLength={50}
+            disabled={creatingOrganization}
+          />
+        </div>
+      </FormDialog>
+    </>
+  )
+}

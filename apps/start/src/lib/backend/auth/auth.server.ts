@@ -348,6 +348,11 @@ const auth = betterAuth({
     }),
     organizationPlugin({
       allowUserToCreateOrganization: async (user) => !user.isAnonymous,
+      /**
+       * Keep workspace sprawl bounded per account.
+       * Better Auth enforces this during organization creation requests.
+       */
+      organizationLimit: 10,
       membershipLimit: async (_user, organization): Promise<number> =>
         getOrganizationSeatLimit(organization.id),
       requireEmailVerificationOnInvitation: true,
