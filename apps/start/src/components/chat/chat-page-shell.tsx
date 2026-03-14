@@ -32,10 +32,9 @@ export function ChatPageShell() {
     : m.layout_collapse_page_sidebar_aria_label()
 
   return (
-    <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      {/* Action overlay lives at shell level so it is not constrained by chat-content width wrappers. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 px-4 pb-2 pt-3">
-        <div className="flex w-full items-center justify-start gap-2 pointer-events-auto">
+    <div className="relative flex min-h-full flex-1 flex-col overflow-visible">
+      <div className="sticky top-0 z-30 shrink-0 px-4 pb-2 pt-3">
+        <div className="flex w-full items-center justify-start gap-2">
           <Button
             type="button"
             variant="ghost"
@@ -55,8 +54,8 @@ export function ChatPageShell() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
-        <div className="px-4 pt-10">
+      <div className="flex-1 min-h-0 px-4" style={{ scrollbarGutter: 'stable' }}>
+        <div>
           <ChatThread />
         </div>
       </div>
