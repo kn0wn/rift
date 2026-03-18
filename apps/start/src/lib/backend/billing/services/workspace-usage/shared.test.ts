@@ -40,8 +40,8 @@ describe('resolveUsagePolicySnapshot', () => {
     expect(snapshot.planId).toBe('plus')
     expect(snapshot.enabled).toBe(true)
     expect(snapshot.seatMonthlyBudgetNanoUsd).toBe(usdToNanoUsd(6))
-    expect(snapshot.seatOverageBudgetNanoUsd).toBe(usdToNanoUsd(2.4))
-    expect(snapshot.seatWindowBudgetNanoUsd).toBe(20_000_000)
+    expect(snapshot.seatOverageBudgetNanoUsd).toBe(usdToNanoUsd(6))
+    expect(snapshot.seatWindowBudgetNanoUsd).toBe(0)
   })
 })
 

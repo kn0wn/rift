@@ -231,17 +231,14 @@ export function resolveUsagePolicySnapshot(
       usdToNanoUsd(seatPriceUsd) * (10_000 - template.targetMarginRatioBps) / 10_000,
     ),
   )
-  const seatOverageBudgetNanoUsd = Math.max(
-    0,
-    Math.round(seatMonthlyBudgetNanoUsd * template.monthlyOverageRatioBps / 10_000),
-  )
-  const seatWindowBudgetNanoUsd = Math.max(
-    0,
-    Math.round(
-      (seatMonthlyBudgetNanoUsd - seatOverageBudgetNanoUsd)
-      / Math.max(1, template.averageSessionsPerSeatPerMonth),
-    ),
-  )
+  /**
+   * Temporary single-bucket mode:
+   * Route the full margin-adjusted monthly budget into overage so users see a
+   * single quota experience. We keep 4-hour window fields and persistence in
+   * place for future reactivation without a schema refactor.
+   */
+  const seatOverageBudgetNanoUsd = seatMonthlyBudgetNanoUsd
+  const seatWindowBudgetNanoUsd = 0
 
   return {
     featureKey: CHAT_USAGE_FEATURE_KEY,

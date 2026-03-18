@@ -104,31 +104,23 @@ function UsageTooltipBar({
 }
 
 /**
- * Compact usage meter for the icon rail. Both rings represent remaining quota:
- * they start full at the beginning of a cycle and drain down as capacity is
- * consumed. The outer track communicates the active 4 hour reserve and the
- * inner track communicates the monthly reserve so both quotas can be compared
- * in one glance without expanding the
- * sidebar.
+ * Compact usage meter for the icon rail. In the current single-bucket quota
+ * mode, the ring represents monthly remaining budget only.
  */
 export function SidebarUsageMeter() {
   const reducedMotion = useReducedMotion()
   const {
     currentSeatSlot,
-    seatWindowBucket,
     seatOverageBucket,
     loading,
   } = useOrgBillingSummary()
   const model = buildSidebarUsageMeterModel({
     currentSeatSlot,
-    seatWindowBucket,
     seatOverageBucket,
   })
-  const hasUsageData = seatWindowBucket != null || seatOverageBucket != null
-  const outerTrackStroke = 'rgba(16, 185, 129, 0.18)'
-  const outerFillStroke = hasUsageData ? '#10b981' : 'rgba(16, 185, 129, 0.42)'
-  const innerTrackStroke = 'rgba(59, 130, 246, 0.18)'
-  const innerFillStroke = hasUsageData ? '#3b82f6' : 'rgba(59, 130, 246, 0.42)'
+  const hasUsageData = seatOverageBucket != null
+  const trackStroke = 'rgba(59, 130, 246, 0.18)'
+  const fillStroke = hasUsageData ? '#3b82f6' : 'rgba(59, 130, 246, 0.42)'
   const meter = (
     <Link
       to={BILLING_HREF}
@@ -149,17 +141,8 @@ export function SidebarUsageMeter() {
             <UsageRing
               radius={20}
               strokeWidth={4.5}
-              trackStroke={outerTrackStroke}
-              fillStroke={outerFillStroke}
-              percent={loading ? 0 : model.window.remainingPercent}
-              reducedMotion={Boolean(reducedMotion)}
-              minVisiblePercent={10}
-            />
-            <UsageRing
-              radius={13}
-              strokeWidth={4}
-              trackStroke={innerTrackStroke}
-              fillStroke={innerFillStroke}
+              trackStroke={trackStroke}
+              fillStroke={fillStroke}
               percent={loading ? 0 : model.monthly.remainingPercent}
               reducedMotion={Boolean(reducedMotion)}
               minVisiblePercent={10}
@@ -184,15 +167,6 @@ export function SidebarUsageMeter() {
         <div className="space-y-3">
           <div className="font-medium text-sm text-white">Usage</div>
           <div className="space-y-3 text-white/80">
-            <UsageTooltipBar
-              label="4 hour cycle"
-              remainingLabel={model.window.remainingLabel}
-              resetLabel={model.window.resetLabel}
-              resetPrefix="Resets in"
-              percent={model.window.remainingPercent}
-              fillClassName="bg-[#10b981]"
-              trackClassName="bg-[#10b981]/20"
-            />
             <UsageTooltipBar
               label="Monthly cycle"
               remainingLabel={model.monthly.remainingLabel}
