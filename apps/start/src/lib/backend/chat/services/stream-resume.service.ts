@@ -782,6 +782,33 @@ export class StreamResumeService extends ServiceMap.Service<
       'StreamResumeService.releaseLocalStreamMemory',
     )(() => Effect.void),
   })
+
+  /**
+   * Redis-disabled/self-hosted adapter.
+   */
+  static readonly layerDisabled = Layer.succeed(this, {
+    getActiveStreamId: Effect.fn(
+      'StreamResumeService.getActiveStreamIdDisabled',
+    )(() => Effect.succeed(null)),
+    registerActiveStream: Effect.fn(
+      'StreamResumeService.registerActiveStreamDisabled',
+    )(() => Effect.void),
+    persistSseStream: Effect.fn(
+      'StreamResumeService.persistSseStreamDisabled',
+    )(() => Effect.void),
+    resumeStream: Effect.fn('StreamResumeService.resumeStreamDisabled')(() =>
+      Effect.succeed(null),
+    ),
+    stopStream: Effect.fn('StreamResumeService.stopStreamDisabled')(
+      () => Effect.void,
+    ),
+    clearActiveStream: Effect.fn(
+      'StreamResumeService.clearActiveStreamDisabled',
+    )(() => Effect.void),
+    releaseLocalStream: Effect.fn(
+      'StreamResumeService.releaseLocalStreamDisabled',
+    )(() => Effect.void),
+  })
 }
 
 const memoryActiveStreams = new Map<string, string>()

@@ -8,6 +8,7 @@ import {
 import { makeRuntimeRunner } from '@/lib/backend/server-effect'
 import { ZeroDatabaseService } from '@/lib/backend/server-effect/services/zero-database.service'
 import { OrgKnowledgeRepositoryService } from '@/lib/backend/org-knowledge/services/org-knowledge-repository.service'
+import { isRedisDisabled } from '@/utils/app-feature-flags'
 import { AttachmentRecordService } from '../services/attachment-record.service'
 import { ChatOrchestratorService } from '../services/chat-orchestrator.service'
 import { ChatSearchService } from '../services/chat-search.service'
@@ -24,9 +25,16 @@ import { ToolPolicyService } from '../services/tool-policy.service'
 
 /**
  * Dependency graph for chat runtime.
- * Persistence uses Zero/Postgres, stream resume uses Redis, and quota/rate
- * limiting resolve through the shared billing-backed Postgres services.
  */
+const shouldDisableRedisInfrastructure = isRedisDisabled()
+
+const rateLimitLayer = shouldDisableRedisInfrastructure
+  ? RateLimitService.layerDisabled
+  : RateLimitService.layer
+const streamResumeLayer = shouldDisableRedisInfrastructure
+  ? StreamResumeService.layerDisabled
+  : StreamResumeService.layer
+
 const messageStoreLayer = MessageStoreService.layer.pipe(
   Layer.provideMerge(OrgKnowledgeRepositoryService.layer),
   Layer.provideMerge(AttachmentRecordService.layer),
@@ -36,13 +44,13 @@ const dependencyLayer = Layer.mergeAll(
   ThreadService.layer,
   ChatSearchService.layer,
   messageStoreLayer,
-  RateLimitService.layer,
+  rateLimitLayer,
   FreeChatAllowanceService.layer,
   ModelPolicyService.layer,
   ToolPolicyService.layer,
   ToolRegistryService.layer,
   ModelGatewayService.layer,
-  StreamResumeService.layer,
+  streamResumeLayer,
   WorkspaceUsageQuotaService.layer,
   WorkspaceUsageSettlementService.layer,
 ).pipe(

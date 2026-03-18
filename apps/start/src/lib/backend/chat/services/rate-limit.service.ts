@@ -126,4 +126,17 @@ export class RateLimitService extends ServiceMap.Service<
       },
     ),
   })
+
+  /**
+   * Redis-disabled/self-hosted adapter.
+   */
+  static readonly layerDisabled = Layer.succeed(this, {
+    assertAllowed: Effect.fn('RateLimitService.assertAllowedDisabled')(
+      ({ maxRequests }) =>
+        Effect.succeed({
+          allowed: true as const,
+          remaining: maxRequests,
+        }),
+    ),
+  })
 }

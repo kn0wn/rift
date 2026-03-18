@@ -11,6 +11,7 @@ type AppFeatureFlags = {
   readonly enableAdvancedProviderTools: boolean
   readonly enableOrganizationProviderKeys: boolean
   readonly exposeUserCost: boolean
+  readonly disableRedis: boolean
 }
 
 /**
@@ -37,6 +38,7 @@ const APP_FEATURE_FLAGS: AppFeatureFlags = Object.freeze({
     typeof process !== 'undefined'
       ? process.env.ALLOW_USER_COST_DISPLAY === 'true'
       : false,
+  disableRedis: readBooleanEnv('VITE_DISABLE_REDIS', false),
 })
 
 export function getAppFeatureFlags(): AppFeatureFlags {
@@ -61,4 +63,7 @@ export function canUseOrganizationProviderKeys(): boolean {
 
 export function canExposeUserCost(): boolean {
   return APP_FEATURE_FLAGS.exposeUserCost
+}
+export function isRedisDisabled(): boolean {
+  return APP_FEATURE_FLAGS.disableRedis
 }
