@@ -95,9 +95,15 @@ export function PromptInputAttachments({
           {onRemove && !file.uploadError && (
             <Button
               type="button"
-              variant="default"
+              variant="ghost"
               size="iconSmall"
-              className="absolute top-1 ltr:right-1 rtl:left-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+              className={cn(
+                'absolute top-0.5 z-20 ltr:right-0.5 rtl:left-0.5',
+                'size-6 rounded-full bg-black/35 text-white backdrop-blur-sm',
+                'opacity-0 transition-opacity duration-150',
+                'group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100',
+                'hover:bg-black/50 focus-visible:ring-2 focus-visible:ring-white/40',
+              )}
               onClick={() => onRemove(file.id)}
               title={m.chat_prompt_attachment_remove_title({ fileName: file.name })}
               aria-label={m.chat_prompt_attachment_remove_aria_label({ fileName: file.name })}

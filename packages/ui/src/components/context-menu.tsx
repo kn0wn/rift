@@ -52,7 +52,10 @@ function ContextMenuContent({
       >
         <ContextMenuPrimitive.Popup
           data-slot="context-menu-content"
-          className={cn("data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 border-border-faint bg-surface-base text-foreground-primary min-w-36 rounded-md border p-1 shadow-md duration-100 data-[side=inline-start]:slide-in-from-right-2 data-[side=inline-end]:slide-in-from-left-2 z-50 max-h-(--available-height) origin-(--transform-origin) overflow-x-hidden overflow-y-auto outline-none", className )}
+          className={cn(
+            "data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 border-border-light bg-surface-base text-foreground-primary min-w-[120px] rounded-lg border shadow-md duration-100 data-[side=inline-start]:slide-in-from-right-2 data-[side=inline-end]:slide-in-from-left-2 z-50 max-h-(--available-height) origin-(--transform-origin) overflow-x-hidden overflow-y-auto p-1.5 outline-none",
+            className
+          )}
           {...props}
         />
       </ContextMenuPrimitive.Positioner>
@@ -98,7 +101,7 @@ function ContextMenuItem({
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        "focus:bg-surface-overlay focus:text-foreground-primary data-[variant=destructive]:text-foreground-error data-[variant=destructive]:focus:bg-surface-error data-[variant=destructive]:focus:text-foreground-error data-[variant=destructive]:*:[svg]:text-foreground-error gap-2 rounded-sm px-2 py-1.5 text-sm data-inset:ltr:pl-7 data-inset:rtl:pr-7 [&_svg:not([class*='size-'])]:size-4 group/context-menu-item relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "hover:bg-surface-inverse/5 focus:bg-surface-inverse/5 focus:text-foreground-primary active:bg-surface-inverse/10 data-[variant=destructive]:text-foreground-error data-[variant=destructive]:focus:bg-surface-error data-[variant=destructive]:focus:text-foreground-error data-[variant=destructive]:*:[svg]:text-foreground-error gap-2 rounded-lg px-2.5 py-2 text-sm leading-none font-normal transition-[background-color,color,font-weight] duration-0 active:duration-75 data-inset:ltr:pl-7 data-inset:rtl:pr-7 [&_svg:not([class*='size-'])]:size-4 group/context-menu-item relative flex cursor-default items-center outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
         className
       )}
       {...props}
@@ -125,7 +128,7 @@ function ContextMenuSubTrigger({
       data-slot="context-menu-sub-trigger"
       data-inset={inset}
       className={cn(
-        "focus:bg-surface-overlay focus:text-foreground-primary data-open:bg-surface-overlay data-open:text-foreground-primary gap-2 rounded-sm px-2 py-1.5 text-sm data-inset:ltr:pl-7 data-inset:rtl:pr-7 [&_svg:not([class*='size-'])]:size-4 flex cursor-default items-center outline-hidden select-none [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "hover:bg-surface-inverse/5 focus:bg-surface-inverse/5 focus:text-foreground-primary data-open:bg-surface-inverse/5 data-open:text-foreground-primary gap-2 rounded-lg px-2.5 py-2 text-sm leading-none font-normal transition-[background-color,color,font-weight] duration-0 active:duration-75 data-inset:ltr:pl-7 data-inset:rtl:pr-7 [&_svg:not([class*='size-'])]:size-4 flex cursor-default items-center outline-none select-none [&_svg]:pointer-events-none [&_svg]:shrink-0",
         className
       )}
       {...props}
@@ -163,7 +166,7 @@ function ContextMenuCheckboxItem({
       data-slot="context-menu-checkbox-item"
       data-inset={inset}
       className={cn(
-        "focus:bg-surface-overlay focus:text-foreground-primary gap-2 rounded-sm py-1.5 ltr:pr-8 ltr:pl-2 rtl:pl-8 rtl:pr-2 text-sm data-inset:ltr:pl-7 data-inset:rtl:pr-7 [&_svg:not([class*='size-'])]:size-4 relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "hover:bg-surface-inverse/5 focus:bg-surface-inverse/5 focus:text-foreground-primary active:bg-surface-inverse/10 gap-2 rounded-lg py-2 ltr:pr-8 ltr:pl-2.5 rtl:pl-8 rtl:pr-2.5 text-sm leading-none font-normal transition-[background-color,color,font-weight] duration-0 active:duration-75 data-inset:ltr:pl-7 data-inset:rtl:pr-7 [&_svg:not([class*='size-'])]:size-4 relative flex cursor-default items-center outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
         className
       )}
       checked={checked}
@@ -204,7 +207,7 @@ function ContextMenuRadioItem({
       data-slot="context-menu-radio-item"
       data-inset={inset}
       className={cn(
-        "focus:bg-surface-overlay focus:text-foreground-primary gap-2 rounded-sm py-1.5 ltr:pr-8 ltr:pl-2 rtl:pl-8 rtl:pr-2 text-sm data-inset:ltr:pl-7 data-inset:rtl:pr-7 [&_svg:not([class*='size-'])]:size-4 relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "hover:bg-surface-inverse/5 focus:bg-surface-inverse/5 focus:text-foreground-primary active:bg-surface-inverse/10 gap-2 rounded-lg py-2 ltr:pr-8 ltr:pl-2.5 rtl:pl-8 rtl:pr-2.5 text-sm leading-none font-normal transition-[background-color,color,font-weight] duration-0 active:duration-75 data-inset:ltr:pl-7 data-inset:rtl:pr-7 [&_svg:not([class*='size-'])]:size-4 relative flex cursor-default items-center outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
         className
       )}
       {...props}
@@ -227,7 +230,7 @@ function ContextMenuSeparator({
   return (
     <ContextMenuPrimitive.Separator
       data-slot="context-menu-separator"
-      className={cn("bg-border-faint -mx-1 my-1 h-px", className)}
+      className={cn("bg-border-faint -mx-1.5 my-1.5 h-px", className)}
       {...props}
     />
   )

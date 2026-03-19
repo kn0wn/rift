@@ -1,7 +1,7 @@
 // Chat prompt input with error slot and file attachments.
 'use client'
 
-import { memo, useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { BookOpen } from 'lucide-react'
 import { useChatComposer, useChatMessages } from './chat-context'
 import {
@@ -10,6 +10,7 @@ import {
   PromptInputToolbar,
   PromptInputError,
   PromptInputAttachments,
+  PromptInputDropHint,
 } from './prompt-input'
 import {
   ModelSelectorPanel,
@@ -41,6 +42,14 @@ import type {
   ChatAttachmentInput,
 } from '@/lib/shared/chat-contracts/attachments'
 
+function hasDraggedFiles(dataTransfer: DataTransfer | null): boolean {
+  if (!dataTransfer) return false
+  return (
+    Array.from(dataTransfer.types ?? []).includes('Files') ||
+    dataTransfer.files.length > 0
+  )
+}
+
 export function ChatInput() {
   const { branchCost, branchUsage, messages, showBranchCost } = useChatMessages()
   const {
@@ -70,12 +79,22 @@ export function ChatInput() {
   const [uploadErrorDismissed, setUploadErrorDismissed] = useState(false)
 
   // File upload: worker-supported markdown-convertible files, max 10 files.
-  const { files, handleFileSelect, handleRemoveFile, clearFiles, canAddMore } =
+  const {
+    files,
+    handleFileSelect,
+    handleFilesDrop,
+    handleRemoveFile,
+    clearFiles,
+    canAddMore,
+  } =
     useFileAttachments({
       maxFiles: 10,
       enabled: canUploadFiles,
       disabledMessage: uploadUpgradeCallout,
     })
+
+  const [isDraggingFiles, setIsDraggingFiles] = useState(false)
+  const dragDepthRef = useRef(0)
 
   const isBusy = status === 'submitted' || status === 'streaming'
   const hasPendingUploads = files.some((file) => file.isUploading)
@@ -116,6 +135,65 @@ export function ChatInput() {
     () => setUploadErrorDismissed(true),
     [],
   )
+
+  const clearDragState = useCallback(() => {
+    dragDepthRef.current = 0
+    setIsDraggingFiles(false)
+  }, [])
+
+  useEffect(() => {
+    const handleDragEnter = (event: DragEvent) => {
+      if (!hasDraggedFiles(event.dataTransfer)) return
+      dragDepthRef.current += 1
+      setIsDraggingFiles(true)
+    }
+
+    const handleDragOver = (event: DragEvent) => {
+      if (!hasDraggedFiles(event.dataTransfer)) return
+      event.preventDefault()
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect =
+          canUploadFiles && canAddMore ? 'copy' : 'none'
+      }
+      setIsDraggingFiles(true)
+    }
+
+    const handleDragLeave = (event: DragEvent) => {
+      if (!hasDraggedFiles(event.dataTransfer)) return
+      dragDepthRef.current = Math.max(0, dragDepthRef.current - 1)
+      if (dragDepthRef.current === 0) {
+        setIsDraggingFiles(false)
+      }
+    }
+
+    const handleDrop = (event: DragEvent) => {
+      if (!hasDraggedFiles(event.dataTransfer)) return
+      event.preventDefault()
+      const droppedFiles = Array.from(event.dataTransfer?.files ?? [])
+      clearDragState()
+      if (droppedFiles.length > 0) {
+        handleFilesDrop(droppedFiles)
+      }
+    }
+
+    const handleDragEnd = () => {
+      clearDragState()
+    }
+
+    window.addEventListener('dragenter', handleDragEnter)
+    window.addEventListener('dragover', handleDragOver)
+    window.addEventListener('dragleave', handleDragLeave)
+    window.addEventListener('drop', handleDrop)
+    window.addEventListener('dragend', handleDragEnd)
+
+    return () => {
+      window.removeEventListener('dragenter', handleDragEnter)
+      window.removeEventListener('dragover', handleDragOver)
+      window.removeEventListener('dragleave', handleDragLeave)
+      window.removeEventListener('drop', handleDrop)
+      window.removeEventListener('dragend', handleDragEnd)
+    }
+  }, [canAddMore, canUploadFiles, clearDragState, handleFilesDrop])
 
   const buildAttachmentPayload = useCallback(() => {
     const uploadedFiles = files
@@ -262,6 +340,14 @@ export function ChatInput() {
 
   const topSlot = (
     <>
+      {isDraggingFiles ? (
+        <PromptInputDropHint
+          canUploadFiles={canUploadFiles}
+          canAddMore={canAddMore}
+          uploadUpgradeCallout={uploadUpgradeCallout}
+          attachmentCount={files.length}
+        />
+      ) : null}
       {activeErrorMessage ? (
         <PromptInputError
           error={activeErrorMessage}

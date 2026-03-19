@@ -74,33 +74,29 @@ export function useFileAttachments(options: UseFileAttachmentsOptions = {}) {
     [markUploadFailure, markUploadSuccess],
   )
 
-  const handleFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+  const ingestFiles = useCallback(
+    (incomingFiles: readonly File[]) => {
+      if (incomingFiles.length === 0) {
+        return
+      }
+
       if (!enabled) {
-        const selected = Array.from(e.target.files ?? [])
-        if (selected.length > 0) {
-          setFiles((current) => [
-            ...current,
-            ...selected.slice(0, 1).map((file) => ({
-              ...createAttachedFile(file),
-              isUploading: false,
-              uploadError: disabledMessage,
-            })),
-          ])
-        }
-        e.target.value = ''
+        const selected = incomingFiles.slice(0, 1)
+        setFiles((current) => [
+          ...current,
+          ...selected.map((file) => ({
+            ...createAttachedFile(file),
+            isUploading: false,
+            uploadError: disabledMessage,
+          })),
+        ])
         return
       }
-      const selected = Array.from(e.target.files ?? [])
-      if (selected.length === 0) {
-        e.target.value = ''
-        return
-      }
+
       const currentFiles = filesRef.current
       const remaining = maxFiles - currentFiles.length
-      const toConsider = selected.slice(0, Math.max(0, remaining))
+      const toConsider = incomingFiles.slice(0, Math.max(0, remaining))
       if (toConsider.length === 0) {
-        e.target.value = ''
         return
       }
 
@@ -132,10 +128,28 @@ export function useFileAttachments(options: UseFileAttachmentsOptions = {}) {
       for (const item of queue) {
         void uploadAttachment(item.id, item.file)
       }
-
-      e.target.value = ''
     },
     [disabledMessage, enabled, maxFiles, uploadAttachment],
+  )
+
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      ingestFiles(Array.from(e.target.files ?? []))
+      e.target.value = ''
+    },
+    [ingestFiles],
+  )
+
+  /**
+   * Drop handling follows the exact same validation and upload path as the
+   * hidden file input so the composer behaves the same regardless of how the
+   * file reaches it.
+   */
+  const handleFilesDrop = useCallback(
+    (filesToUpload: readonly File[]) => {
+      ingestFiles(filesToUpload)
+    },
+    [ingestFiles],
   )
 
   const handleRemoveFile = useCallback((id: string) => {
@@ -162,6 +176,7 @@ export function useFileAttachments(options: UseFileAttachmentsOptions = {}) {
   return {
     files,
     handleFileSelect,
+    handleFilesDrop,
     handleRemoveFile,
     clearFiles,
     canAddMore: enabled && files.length < maxFiles,

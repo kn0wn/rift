@@ -5,3 +5,5 @@ export type {
   PromptInputAttachmentsProps,
   AttachedFile,
 } from './prompt-input-attachments'
+export { PromptInputDropHint } from './prompt-input-drop-hint'
+export type { PromptInputDropHintProps } from './prompt-input-drop-hint'
