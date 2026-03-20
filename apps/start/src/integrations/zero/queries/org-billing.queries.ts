@@ -8,6 +8,9 @@ import {
 import { zql } from '../zql'
 
 const emptyArgs = z.object({}).optional()
+const orgBillingArgs = z.object({
+  organizationId: z.string(),
+})
 
 /**
  * Billing queries are scoped to the active organization and exposed to any
@@ -15,15 +18,14 @@ const emptyArgs = z.object({}).optional()
  */
 export const orgBillingQueryDefinitions = {
   orgBilling: {
-    currentSummary: defineQuery(emptyArgs, ({ ctx }) => {
+    currentSummary: defineQuery(orgBillingArgs, ({ args, ctx }) => {
       const scoped = getOrgContext(ctx)
-
       if (!scoped) {
         return missingOrganizationQuery()
       }
 
       return zql.organization
-        .where('id', scoped.organizationId)
+        .where('id', args.organizationId)
         .whereExists('members', isOrgMember(scoped.userID))
         .related('subscriptions', (subscriptions) =>
           subscriptions.orderBy('updatedAt', 'desc').limit(1),
@@ -32,10 +34,7 @@ export const orgBillingQueryDefinitions = {
           snapshots.orderBy('computedAt', 'desc').limit(1),
         )
         .related('members', (members) =>
-          members
-            .where('userId', scoped.userID)
-            .limit(1)
-            .related('access'),
+          members.where('userId', scoped.userID).limit(1).related('access'),
         )
         .one()
     }),
@@ -53,10 +52,7 @@ export const orgBillingQueryDefinitions = {
           snapshots.orderBy('computedAt', 'desc').limit(1),
         )
         .related('members', (members) =>
-          members
-            .where('userId', scoped.userID)
-            .limit(1)
-            .related('access'),
+          members.where('userId', scoped.userID).limit(1).related('access'),
         )
         .related('usageSummaries', (usageSummaries) =>
           usageSummaries

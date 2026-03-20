@@ -60,7 +60,7 @@ export function SidebarOrganizationMenu({
     useAppAuth()
   const { activeOrganization, loading: activeOrganizationLoading } =
     useActiveOrganization()
-  const { entitlement } = useOrgBillingSummary()
+  const { entitlement, loading: billingLoading } = useOrgBillingSummary()
   const navigate = useNavigate()
   const direction = useDirection()
   const [organizations, setOrganizations] = useState<SidebarOrganization[]>([])
@@ -271,9 +271,13 @@ export function SidebarOrganizationMenu({
   )
 
   const planLabel = useMemo(() => {
+    if (billingLoading && !entitlement?.planId) {
+      return ''
+    }
+
     const plan = getWorkspacePlan(coerceWorkspacePlanId(entitlement?.planId))
     return plan.name
-  }, [entitlement?.planId])
+  }, [billingLoading, entitlement?.planId])
 
   const memberCountLabel = formatMemberCountLabel(
     entitlement?.activeMemberCount ?? null,

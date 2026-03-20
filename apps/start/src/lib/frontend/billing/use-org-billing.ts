@@ -3,6 +3,7 @@
 import { useQuery } from '@rocicorp/zero/react'
 import { useEffect, useState } from 'react'
 import { authClient } from '@/lib/frontend/auth/auth-client'
+import { useAppAuth } from '@/lib/frontend/auth/use-auth'
 import { queries } from '@/integrations/zero'
 import {
   coerceWorkspacePlanId,
@@ -14,51 +15,89 @@ type BillingSummaryRow = {
   id: string
   name?: string
   slug?: string
-  subscriptions?: Array<{
-    id: string
-    planId: string
-    status: string
-    providerSubscriptionId?: string
-    seatCount?: number
-    billingInterval?: string
-    currentPeriodStart?: number
-    currentPeriodEnd?: number
-    scheduledPlanId?: string
-    scheduledSeatCount?: number
-    scheduledChangeEffectiveAt?: number
-    pendingChangeReason?: string
-  }>
-  entitlementSnapshots?: Array<{
-    planId: string
-    subscriptionStatus: string
-    seatCount?: number
-    activeMemberCount: number
-    pendingInvitationCount: number
-    isOverSeatLimit: boolean
-    effectiveFeatures?: Record<WorkspaceFeatureId, boolean>
-  }>
+  subscriptions?: BillingSubscriptionRow[]
+  entitlementSnapshots?: BillingEntitlementRow[]
   members?: Array<{
-    access?: {
-      status?: string
-      reasonCode?: string | null
-    }
+    access?: BillingMemberAccessRow
   }>
 }
 
+type BillingSubscriptionRow = {
+  id: string
+  planId: string
+  status: string
+  providerSubscriptionId?: string
+  seatCount?: number
+  billingInterval?: string
+  currentPeriodStart?: number
+  currentPeriodEnd?: number
+  scheduledPlanId?: string
+  scheduledSeatCount?: number
+  scheduledChangeEffectiveAt?: number
+  pendingChangeReason?: string
+}
+
+type BillingEntitlementRow = {
+  planId: string
+  subscriptionStatus: string
+  seatCount?: number
+  activeMemberCount: number
+  pendingInvitationCount: number
+  isOverSeatLimit: boolean
+  effectiveFeatures?: Record<WorkspaceFeatureId, boolean>
+}
+
+type BillingMemberAccessRow = {
+  status?: string
+  reasonCode?: string | null
+}
+
+type OrgBillingSummary = {
+  organizationId: string
+  organizationName: string | null
+  organizationSlug: string | null
+  subscription: BillingSubscriptionRow | null
+  entitlement: BillingEntitlementRow | null
+  currentMemberAccess: BillingMemberAccessRow | null
+}
+
+/**
+ * Zero rows are structurally typed. Centralizing the normalization keeps the
+ * hook return stable across billing surfaces that need the same org snapshot.
+ */
+export function toOrgBillingSummary(row: BillingSummaryRow): OrgBillingSummary {
+  return {
+    organizationId: row.id,
+    organizationName: row.name ?? null,
+    organizationSlug: row.slug ?? null,
+    subscription: row.subscriptions?.[0] ?? null,
+    entitlement: row.entitlementSnapshots?.[0] ?? null,
+    currentMemberAccess: row.members?.[0]?.access ?? null,
+  }
+}
+
 export function useOrgBillingSummary() {
-  const [summary, result] = useQuery(queries.orgBilling.currentSummary())
+  const { activeOrganizationId } = useAppAuth()
+  const requestedOrganizationId = activeOrganizationId?.trim() ?? '__missing_org__'
+  const [summary, result] = useQuery(
+    queries.orgBilling.currentSummary({
+      organizationId: requestedOrganizationId,
+    }),
+  )
   const row = (summary as BillingSummaryRow | undefined | null) ?? null
-  const organizationId = row?.id ?? null
-  const currentMemberAccess = row?.members?.[0]?.access ?? null
+  const resolvedSummary =
+    row?.id === activeOrganizationId ? toOrgBillingSummary(row) : null
 
   return {
-    organizationId,
-    organizationName: row?.name ?? null,
-    organizationSlug: row?.slug ?? null,
-    subscription: row?.subscriptions?.[0] ?? null,
-    entitlement: row?.entitlementSnapshots?.[0] ?? null,
-    currentMemberAccess,
-    loading: result.type !== 'complete',
+    organizationId: resolvedSummary?.organizationId ?? null,
+    organizationName: resolvedSummary?.organizationName ?? null,
+    organizationSlug: resolvedSummary?.organizationSlug ?? null,
+    subscription: resolvedSummary?.subscription ?? null,
+    entitlement: resolvedSummary?.entitlement ?? null,
+    currentMemberAccess: resolvedSummary?.currentMemberAccess ?? null,
+    loading:
+      activeOrganizationId != null
+      && (result.type !== 'complete' || resolvedSummary == null),
   }
 }
 

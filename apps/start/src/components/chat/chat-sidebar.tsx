@@ -719,13 +719,15 @@ function ChatSidebarHistory({
 
 export function ChatSidebarContent({ pathname }: { pathname: string }) {
   const { activeOrganizationId, isAnonymous } = useAppAuth()
-  const { entitlement } = useOrgBillingSummary()
+  const { entitlement, loading: billingLoading } = useOrgBillingSummary()
   const normalizedOrganizationId =
     activeOrganizationId?.trim() ?? '__missing_org__'
   const staticSections = useMemo(() => getStaticSections(), [])
   const shouldShowLoginButton = isAnonymous
   const shouldShowUpgradeCta =
-    !isAnonymous && coerceWorkspacePlanId(entitlement?.planId) === 'free'
+    !isAnonymous
+    && !billingLoading
+    && coerceWorkspacePlanId(entitlement?.planId) === 'free'
   const shouldShowBottomPanel = shouldShowLoginButton || shouldShowUpgradeCta
 
   return (
