@@ -8,7 +8,10 @@ import {
   getServerAuthContextFromHeaders,
   requireNonAnonymousUserAuth,
 } from '@/lib/backend/server-effect/http/server-auth'
-import { CHAT_ATTACHMENT_UPLOAD_POLICY } from '@/lib/shared/upload/upload-validation'
+import {
+  AVATAR_UPLOAD_POLICY,
+  CHAT_ATTACHMENT_UPLOAD_POLICY,
+} from '@/lib/shared/upload/upload-validation'
 import {
   FileInvalidRequestError,
   FileForbiddenError,
@@ -33,29 +36,6 @@ export const Route = createFileRoute('/api/files/upload')({
                 requestId,
               }),
           })
-          const accessContext = yield* Effect.tryPromise({
-            try: () => resolveAccessContext({
-              userId: authContext.userId,
-              isAnonymous: authContext.isAnonymous,
-              organizationId: authContext.organizationId,
-            }),
-            catch: () =>
-              new FileInvalidRequestError({
-                message: 'Failed to resolve access policy',
-                requestId,
-              }),
-          })
-          const accessPolicy = resolveChatAccessPolicy(accessContext)
-          if (!accessPolicy.features['chat.fileUpload'].allowed) {
-            return yield* Effect.fail(
-              new FileForbiddenError({
-                message: getFeatureAccessGateMessage(
-                  accessPolicy.features['chat.fileUpload'].minimumPlanId,
-                ),
-                requestId,
-              }),
-            )
-          }
 
           const formData = yield* Effect.tryPromise({
             try: () => request.formData(),
@@ -65,6 +45,34 @@ export const Route = createFileRoute('/api/files/upload')({
                 requestId,
               }),
           })
+          const surfaceRaw = formData.get('surface')
+          const surface = surfaceRaw === 'avatar' ? 'avatar' : 'attachment'
+
+          if (surface === 'attachment') {
+            const accessContext = yield* Effect.tryPromise({
+              try: () => resolveAccessContext({
+                userId: authContext.userId,
+                isAnonymous: authContext.isAnonymous,
+                organizationId: authContext.organizationId,
+              }),
+              catch: () =>
+                new FileInvalidRequestError({
+                  message: 'Failed to resolve access policy',
+                  requestId,
+                }),
+            })
+            const accessPolicy = resolveChatAccessPolicy(accessContext)
+            if (!accessPolicy.features['chat.fileUpload'].allowed) {
+              return yield* Effect.fail(
+                new FileForbiddenError({
+                  message: getFeatureAccessGateMessage(
+                    accessPolicy.features['chat.fileUpload'].minimumPlanId,
+                  ),
+                  requestId,
+                }),
+              )
+            }
+          }
 
           const input = formData.get('file')
           if (!(input instanceof File)) {
@@ -76,10 +84,14 @@ export const Route = createFileRoute('/api/files/upload')({
               }),
             )
           }
-          if (input.size > CHAT_ATTACHMENT_UPLOAD_POLICY.maxSizeBytes) {
+          const uploadPolicy =
+            surface === 'avatar'
+              ? AVATAR_UPLOAD_POLICY
+              : CHAT_ATTACHMENT_UPLOAD_POLICY
+          if (input.size > uploadPolicy.maxSizeBytes) {
             return yield* Effect.fail(
               new FileInvalidRequestError({
-                message: `File exceeds limit of ${Math.floor(CHAT_ATTACHMENT_UPLOAD_POLICY.maxSizeBytes / (1024 * 1024))}MB`,
+                message: `File exceeds limit of ${Math.floor(uploadPolicy.maxSizeBytes / (1024 * 1024))}MB`,
                 requestId,
                 issue: 'file_too_large',
               }),
@@ -94,6 +106,7 @@ export const Route = createFileRoute('/api/files/upload')({
             file: input,
             requestId,
             route,
+            processingMode: surface,
           })
           return new Response(
             JSON.stringify({

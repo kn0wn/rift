@@ -60,11 +60,16 @@ const ORG_KNOWLEDGE_ALLOWED_MIME_TYPES = new Set([
   'text/plain',
 ])
 
-const ORG_KNOWLEDGE_ALLOWED_EXTENSIONS = new Set([
-  'pdf',
-  'md',
-  'markdown',
+const ORG_KNOWLEDGE_ALLOWED_EXTENSIONS = new Set(['pdf', 'md', 'markdown'])
+
+const AVATAR_ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/svg+xml',
 ])
+
+const AVATAR_ALLOWED_EXTENSIONS = new Set(['jpeg', 'jpg', 'png', 'webp', 'svg'])
 
 export const CHAT_ATTACHMENT_UPLOAD_POLICY: UploadValidationPolicy = {
   acceptedFileTypes: [
@@ -104,6 +109,13 @@ export const ORG_KNOWLEDGE_UPLOAD_POLICY: UploadValidationPolicy = {
   allowedMimeTypes: ORG_KNOWLEDGE_ALLOWED_MIME_TYPES,
   allowedExtensions: ORG_KNOWLEDGE_ALLOWED_EXTENSIONS,
   maxSizeBytes: ORG_KNOWLEDGE_MAX_UPLOAD_SIZE_BYTES,
+}
+
+export const AVATAR_UPLOAD_POLICY: UploadValidationPolicy = {
+  acceptedFileTypes: ['.jpeg', '.jpg', '.png', '.webp', '.svg'].join(','),
+  allowedMimeTypes: AVATAR_ALLOWED_MIME_TYPES,
+  allowedExtensions: AVATAR_ALLOWED_EXTENSIONS,
+  maxSizeBytes: CHAT_ATTACHMENT_MAX_UPLOAD_SIZE_BYTES,
 }
 
 function getFileExtension(fileName: string): string {

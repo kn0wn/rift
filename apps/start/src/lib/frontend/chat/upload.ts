@@ -24,6 +24,8 @@ export type UploadedFile = {
   contentType: string
 }
 
+export type UploadSurface = 'attachment' | 'avatar'
+
 export function isAcceptedFile(file: File): boolean {
   return isAcceptedUploadFile(file, CHAT_ATTACHMENT_UPLOAD_POLICY)
 }
@@ -53,9 +55,15 @@ export function createAttachedFile(file: File): {
   }
 }
 
-export async function uploadFileToServer(file: File): Promise<UploadedFile> {
+export async function uploadFileToServer(
+  file: File,
+  options?: {
+    surface?: UploadSurface
+  },
+): Promise<UploadedFile> {
   const formData = new FormData()
   formData.set('file', file)
+  formData.set('surface', options?.surface ?? 'attachment')
 
   const response = await fetch('/api/files/upload', {
     method: 'POST',

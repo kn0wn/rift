@@ -12,7 +12,10 @@ import {
   R2UploadServiceError,
   r2UploadService,
 } from '@/lib/backend/upload/upload.service'
-import { CHAT_ATTACHMENT_UPLOAD_POLICY } from '@/lib/shared/upload/upload-validation'
+import {
+  AVATAR_UPLOAD_POLICY,
+  CHAT_ATTACHMENT_UPLOAD_POLICY,
+} from '@/lib/shared/upload/upload-validation'
 import {
   FileConversionError,
   FilePersistenceError,
@@ -40,6 +43,7 @@ export type FileUploadOrchestratorServiceShape = {
     readonly file: File
     readonly requestId: string
     readonly route: string
+    readonly processingMode?: 'attachment' | 'avatar'
   }) => Effect.Effect<
     UploadedFileResult,
     FileUploadStorageError | FileConversionError | FilePersistenceError
@@ -72,14 +76,19 @@ export class FileUploadOrchestratorService extends ServiceMap.Service<
             file,
             requestId,
             route,
+            processingMode,
           }) =>
             Effect.gen(function* () {
+          const mode = processingMode ?? 'attachment'
           const uploaded = yield* Effect.tryPromise({
             try: () =>
               r2UploadService.upload({
                 userId,
                 file,
-                validationPolicy: CHAT_ATTACHMENT_UPLOAD_POLICY,
+                validationPolicy:
+                  mode === 'avatar'
+                    ? AVATAR_UPLOAD_POLICY
+                    : CHAT_ATTACHMENT_UPLOAD_POLICY,
               }),
             catch: (error) => {
               if (error instanceof R2UploadServiceError) {
@@ -97,6 +106,21 @@ export class FileUploadOrchestratorService extends ServiceMap.Service<
               })
             },
           })
+
+          /**
+           * Avatar/logo uploads should only write to object storage.
+           * They intentionally skip markdown extraction, DB attachment rows, and vector indexing.
+           */
+          if (mode === 'avatar') {
+            return {
+              id: crypto.randomUUID(),
+              key: uploaded.key,
+              url: uploaded.url,
+              name: uploaded.name,
+              size: uploaded.size,
+              contentType: uploaded.contentType,
+            }
+          }
 
           const conversion = yield* markdownConversion.convertFromUrl({
             fileUrl: uploaded.url,
@@ -176,62 +200,71 @@ export class FileUploadOrchestratorService extends ServiceMap.Service<
             ),
           )
 
-          yield* attachmentRag
-            .indexAttachmentChunks({
-              chunks: chunkBuild.chunks.map((chunk) => ({
-                ...chunk,
-                embeddingModel: chunkBuild.metrics.embeddingModel,
-                ownerOrgId,
-                workspaceId,
-                accessScope: accessScope ?? 'user',
-                accessGroupIds: accessGroupIds ?? [],
-              })),
-            })
-            .pipe(
-              Effect.tap(() =>
-                chunkBuild.metrics.embeddingStatus === 'indexed'
-                  ? Effect.tryPromise({
-                      try: () =>
-                        db.transaction(async (tx) => {
-                          await tx.mutate.attachment.update({
-                            id: attachmentId,
-                            vectorIndexedAt: Date.now(),
-                            vectorError: undefined,
-                            updatedAt: Date.now(),
-                          })
-                        }),
-                      catch: () => undefined,
-                    }).pipe(Effect.catch(() => Effect.void))
-                  : Effect.void,
-              ),
-              Effect.catch((error) =>
-                emitWideErrorEvent({
-                  eventName: 'file.upload.vector_index.failed',
-                  route,
-                  requestId,
-                  userId,
-                  errorTag: 'FileVectorIndexError',
-                  message: 'Failed to index file chunks in vector store',
-                  cause: String(error),
-                }).pipe(
-                  Effect.flatMap(() =>
-                    Effect.tryPromise({
-                      try: () =>
-                        db.transaction(async (tx) => {
-                          await tx.mutate.attachment.update({
-                            id: attachmentId,
-                            embeddingStatus: 'failed',
-                            vectorError: String(error),
-                            updatedAt: Date.now(),
-                          })
-                        }),
-                      catch: () => undefined,
-                    }).pipe(Effect.catch(() => Effect.void)),
-                  ),
-                  Effect.asVoid,
+          const hasEmbeddings = chunkBuild.chunks.some(
+            (chunk) =>
+              Array.isArray(chunk.embedding) && chunk.embedding.length > 0,
+          )
+          const shouldIndexVectors =
+            isEmbeddingFeatureEnabled
+            && chunkBuild.metrics.embeddingStatus === 'indexed'
+            && hasEmbeddings
+
+          if (shouldIndexVectors) {
+            yield* attachmentRag
+              .indexAttachmentChunks({
+                chunks: chunkBuild.chunks.map((chunk) => ({
+                  ...chunk,
+                  embeddingModel: chunkBuild.metrics.embeddingModel,
+                  ownerOrgId,
+                  workspaceId,
+                  accessScope: accessScope ?? 'user',
+                  accessGroupIds: accessGroupIds ?? [],
+                })),
+              })
+              .pipe(
+                Effect.tap(() =>
+                  Effect.tryPromise({
+                    try: () =>
+                      db.transaction(async (tx) => {
+                        await tx.mutate.attachment.update({
+                          id: attachmentId,
+                          vectorIndexedAt: Date.now(),
+                          vectorError: undefined,
+                          updatedAt: Date.now(),
+                        })
+                      }),
+                    catch: () => undefined,
+                  }).pipe(Effect.catch(() => Effect.void)),
                 ),
-              ),
-            )
+                Effect.catch((error) =>
+                  emitWideErrorEvent({
+                    eventName: 'file.upload.vector_index.failed',
+                    route,
+                    requestId,
+                    userId,
+                    errorTag: 'FileVectorIndexError',
+                    message: 'Failed to index file chunks in vector store',
+                    cause: String(error),
+                  }).pipe(
+                    Effect.flatMap(() =>
+                      Effect.tryPromise({
+                        try: () =>
+                          db.transaction(async (tx) => {
+                            await tx.mutate.attachment.update({
+                              id: attachmentId,
+                              embeddingStatus: 'failed',
+                              vectorError: String(error),
+                              updatedAt: Date.now(),
+                            })
+                          }),
+                        catch: () => undefined,
+                      }).pipe(Effect.catch(() => Effect.void)),
+                    ),
+                    Effect.asVoid,
+                  ),
+                ),
+              )
+          }
 
               return {
                 id: attachmentId,

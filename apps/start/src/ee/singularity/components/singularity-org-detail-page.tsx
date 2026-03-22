@@ -1,5 +1,8 @@
 'use client'
 
+import { useMemo } from 'react'
+import { DataTable } from '@rift/ui/data-table'
+import type { DataTableColumnDef } from '@rift/ui/data-table'
 import { Avatar, AvatarFallback, AvatarImage } from '@rift/ui/avatar'
 import { Badge } from '@rift/ui/badge'
 import { Button } from '@rift/ui/button'
@@ -9,6 +12,9 @@ import { ContentPage } from '@/components/layout'
 import { WORKSPACE_PLANS } from '@/lib/shared/access-control'
 import type { SingularityOrganizationDetail } from '@/ee/singularity/shared/singularity-admin'
 import { useSingularityOrgDetailPageLogic } from './singularity-org-detail-page.logic'
+
+type SingularityMemberRow = SingularityOrganizationDetail['members'][number]
+type SingularityInvitationRow = SingularityOrganizationDetail['invitations'][number]
 
 export function SingularityOrgDetailPage({
   organization,
@@ -30,6 +36,145 @@ export function SingularityOrgDetailPage({
     handleCancelInvitation,
     handleSetPlan,
   } = useSingularityOrgDetailPageLogic(organization)
+  const memberColumns = useMemo<Array<DataTableColumnDef<SingularityMemberRow>>>(
+    () => [
+      {
+        accessorKey: 'name',
+        header: () => <span className="pl-11">User</span>,
+        cell: ({ row }) => {
+          const member = row.original
+          return (
+            <div className="flex items-center gap-3">
+              <Avatar className="size-9">
+                <AvatarImage src={member.image ?? undefined} alt={member.name} />
+                <AvatarFallback>{member.name.slice(0, 1)}</AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <div className="truncate font-medium text-foreground-primary">
+                  {member.name}
+                </div>
+                <div className="truncate text-sm text-foreground-tertiary">
+                  {member.email}
+                </div>
+              </div>
+            </div>
+          )
+        },
+      },
+      {
+        accessorKey: 'role',
+        header: 'Role',
+        cell: ({ row }) => {
+          const member = row.original
+          const canEditRole = member.role !== 'owner'
+          return (
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">{member.role}</Badge>
+              {canEditRole ? (
+                <select
+                  className="h-8 rounded-md border border-border-base bg-surface-base px-2 text-sm"
+                  value={member.role === 'admin' ? 'admin' : 'member'}
+                  onChange={(event) =>
+                    handleRoleChange(
+                      member.memberId,
+                      event.target.value === 'admin' ? 'admin' : 'member',
+                    )
+                  }
+                  disabled={isPending}
+                >
+                  <option value="member">Member</option>
+                  <option value="admin">Admin</option>
+                </select>
+              ) : null}
+            </div>
+          )
+        },
+      },
+      {
+        accessorKey: 'accessStatus',
+        header: 'Status',
+        cell: ({ row }) => {
+          const member = row.original
+          return (
+            <Badge variant="outline">
+              {member.accessStatus}
+              {member.accessReason ? ` (${member.accessReason})` : ''}
+            </Badge>
+          )
+        },
+      },
+      {
+        id: 'actions',
+        header: () => null,
+        /**
+         * Reserve action-column width so row content remains aligned regardless
+         * of which rows render enabled/disabled controls.
+         */
+        meta: {
+          headerClassName: 'w-28 whitespace-nowrap text-right pr-2',
+          cellClassName: 'w-28 whitespace-nowrap text-right pr-2',
+        },
+        cell: ({ row }) => (
+          <div className="flex justify-end">
+            <Button
+              variant="ghost"
+              onClick={() => handleRemoveMember(row.original.memberId)}
+              disabled={isPending || row.original.role === 'owner'}
+            >
+              Remove
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [handleRemoveMember, handleRoleChange, isPending],
+  )
+  const invitationColumns = useMemo<
+    Array<DataTableColumnDef<SingularityInvitationRow>>
+  >(
+    () => [
+      {
+        accessorKey: 'email',
+        header: 'Email',
+        cell: ({ row }) => (
+          <span className="font-medium text-foreground-primary">
+            {row.original.email}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'role',
+        header: 'Role',
+        cell: ({ row }) => <Badge variant="outline">{row.original.role}</Badge>,
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: ({ row }) => <Badge variant="outline">{row.original.status}</Badge>,
+      },
+      {
+        id: 'actions',
+        header: () => null,
+        /** Keep invitation action controls visually consistent with members table. */
+        meta: {
+          headerClassName: 'w-44 whitespace-nowrap text-right pr-2',
+          cellClassName: 'w-44 whitespace-nowrap text-right pr-2',
+        },
+        cell: ({ row }) => (
+          <div className="flex justify-end">
+            <Button
+              variant="ghost"
+              onClick={() => handleCancelInvitation(row.original.invitationId)}
+              disabled={isPending}
+            >
+              Cancel invitation
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [handleCancelInvitation, isPending],
+  )
 
   return (
     <ContentPage
@@ -115,79 +260,22 @@ export function SingularityOrgDetailPage({
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-border-light">
-              <table className="w-full min-w-[720px] table-fixed border-collapse">
-                <thead className="bg-surface-overlay text-left text-xs uppercase tracking-[0.16em] text-foreground-tertiary">
-                  <tr>
-                    <th className="px-4 py-3 font-medium">User</th>
-                    <th className="px-4 py-3 font-medium">Role</th>
-                    <th className="px-4 py-3 font-medium">Status</th>
-                    <th className="px-4 py-3 font-medium text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {organization.members.map((member) => (
-                    <tr key={member.memberId} className="border-t border-border-light/80">
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="size-9">
-                            <AvatarImage
-                              src={member.image ?? undefined}
-                              alt={member.name}
-                            />
-                            <AvatarFallback>{member.name.slice(0, 1)}</AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0">
-                            <div className="truncate font-medium text-foreground-primary">
-                              {member.name}
-                            </div>
-                            <div className="truncate text-sm text-foreground-tertiary">
-                              {member.email}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{member.role}</Badge>
-                          {member.role !== 'owner' ? (
-                            <select
-                              className="h-8 rounded-md border border-border-base bg-surface-base px-2 text-sm"
-                              value={member.role === 'admin' ? 'admin' : 'member'}
-                              onChange={(event) =>
-                                handleRoleChange(
-                                  member.memberId,
-                                  event.target.value === 'admin' ? 'admin' : 'member',
-                                )
-                              }
-                              disabled={isPending}
-                            >
-                              <option value="member">Member</option>
-                              <option value="admin">Admin</option>
-                            </select>
-                          ) : null}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <Badge variant="outline">
-                          {member.accessStatus}
-                          {member.accessReason ? ` (${member.accessReason})` : ''}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-4 text-right">
-                        <Button
-                          variant="ghost"
-                          onClick={() => handleRemoveMember(member.memberId)}
-                          disabled={isPending || member.role === 'owner'}
-                        >
-                          Remove
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              data={organization.members}
+              columns={memberColumns}
+              pageSize={50}
+              filterColumn="name"
+              filterPlaceholder="Filter members..."
+              messages={{
+                columns: 'Columns',
+                noResults: 'No members found.',
+                loading: 'Loading members...',
+                previous: 'Previous',
+                next: 'Next',
+                rowsSelected: 'row(s) selected.',
+              }}
+              tableWrapperClassName="border-border-base bg-surface-base/95"
+            />
           </section>
 
           <section className="rounded-xl border border-border-light bg-surface-base p-5">
@@ -199,38 +287,22 @@ export function SingularityOrgDetailPage({
                 Review the invitations that have not been accepted yet.
               </p>
             </div>
-            <div className="space-y-3">
-              {organization.invitations.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-border-base p-4 text-sm text-foreground-tertiary">
-                  No pending invitations.
-                </div>
-              ) : (
-                organization.invitations.map((invitation) => (
-                  <div
-                    key={invitation.invitationId}
-                    className="flex flex-col gap-3 rounded-lg border border-border-light p-4 md:flex-row md:items-center md:justify-between"
-                  >
-                    <div>
-                      <div className="font-medium text-foreground-primary">
-                        {invitation.email}
-                      </div>
-                      <div className="text-sm text-foreground-tertiary">
-                        {invitation.role} invitation
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      onClick={() =>
-                        handleCancelInvitation(invitation.invitationId)
-                      }
-                      disabled={isPending}
-                    >
-                      Cancel invitation
-                    </Button>
-                  </div>
-                ))
-              )}
-            </div>
+            <DataTable
+              data={organization.invitations}
+              columns={invitationColumns}
+              pageSize={50}
+              filterColumn="email"
+              filterPlaceholder="Filter invitations..."
+              messages={{
+                columns: 'Columns',
+                noResults: 'No pending invitations.',
+                loading: 'Loading invitations...',
+                previous: 'Previous',
+                next: 'Next',
+                rowsSelected: 'row(s) selected.',
+              }}
+              tableWrapperClassName="border-border-base bg-surface-base/95"
+            />
           </section>
         </div>
 
