@@ -37,11 +37,11 @@ import { mutators, queries } from '@/integrations/zero'
 import { CACHE_CHAT_NAV } from '@/integrations/zero/query-cache-policy'
 import { useAppAuth } from '@/lib/frontend/auth/use-auth'
 import { useOrgBillingSummary } from '@/lib/frontend/billing/use-org-billing'
-import { coerceWorkspacePlanId } from '@/lib/shared/access-control'
 import { m } from '@/paraglide/messages.js'
 import { openChatSearchCommand } from './chat-search-command'
 import { buildRenderableHistoryItems } from './chat-sidebar-history-items'
 import { ChatSidebarUpgradeCta } from './chat-sidebar-upgrade-cta'
+import { resolveChatSidebarBottomPanelVisibility } from './chat-sidebar.logic'
 import { syncThreadGenerationStatuses } from './thread-status-store'
 
 export const CHAT_HREF = '/chat'
@@ -718,17 +718,22 @@ function ChatSidebarHistory({
 }
 
 export function ChatSidebarContent({ pathname }: { pathname: string }) {
-  const { activeOrganizationId, isAnonymous } = useAppAuth()
+  const { activeOrganizationId, isAnonymous, loading, user } = useAppAuth()
   const { entitlement, loading: billingLoading } = useOrgBillingSummary()
   const normalizedOrganizationId =
     activeOrganizationId?.trim() ?? '__missing_org__'
   const staticSections = useMemo(() => getStaticSections(), [])
-  const shouldShowLoginButton = isAnonymous
-  const shouldShowUpgradeCta =
-    !isAnonymous
-    && !billingLoading
-    && coerceWorkspacePlanId(entitlement?.planId) === 'free'
-  const shouldShowBottomPanel = shouldShowLoginButton || shouldShowUpgradeCta
+  const {
+    shouldShowLoginButton,
+    shouldShowUpgradeCta,
+    shouldShowBottomPanel,
+  } = resolveChatSidebarBottomPanelVisibility({
+    loading,
+    user,
+    isAnonymous,
+    billingLoading,
+    planId: entitlement?.planId,
+  })
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">

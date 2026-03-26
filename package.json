@@ -3,7 +3,10 @@
   "version": "1.2.0",
   "private": true,
   "type": "module",
-  "workspaces": ["packages/*", "apps/*"],
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "packageManager": "bun@1.2.23",
   "scripts": {
     "dev": "turbo run dev zero-cache --filter=tanstack --ui tui",
@@ -24,12 +27,10 @@
     "typescript": "^5.9.3"
   },
   "trustedDependencies": [
+    "@rocicorp/zero-sqlite3",
     "@tailwindcss/oxide",
     "core-js",
     "esbuild",
     "unrs-resolver"
-  ],
-  "dependencies": {
-    "resend": "^6.9.3"
-  }
+  ]
 }

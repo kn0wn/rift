@@ -65,7 +65,7 @@ export function PromptInputError({
             <span className="inline-flex items-center shrink-0">
               <Button
                 variant="dangerLight"
-                size="icon"
+                size="iconSmall"
                 onClick={() => setOpen((o) => !o)}
                 title={m.chat_prompt_error_show_trace_id_title()}
               >
@@ -77,7 +77,7 @@ export function PromptInputError({
         {onDismiss && (
           <Button
             variant="dangerLight"
-            size="icon"
+            size="iconSmall"
             onClick={onDismiss}
             title={m.chat_prompt_error_dismiss_title()}
           >
