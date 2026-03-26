@@ -6,8 +6,6 @@ import {
   buildDisabledUsagePolicy,
   isUsagePlanEligible,
   resolveDefaultUsagePolicyTemplate,
-  resolveSeatWindowEndAt,
-  resolveSeatWindowStartAt,
   resolveUsagePolicySnapshot
   
   
@@ -17,7 +15,7 @@ import {
   asNumber,
   asOptionalNumber,
   cycleBounds,
-  prorateOverageBudget,
+  prorateCycleBudget,
 } from './core'
 import type {
   BucketBalanceRow,
@@ -70,10 +68,7 @@ async function readUsagePolicyTemplateRow(
     `select
        plan_id as "planId",
        feature_key as "featureKey",
-       seat_window_duration_ms as "seatWindowDurationMs",
        target_margin_ratio_bps as "targetMarginRatioBps",
-       monthly_overage_ratio_bps as "monthlyOverageRatioBps",
-       average_sessions_per_seat_per_month as "averageSessionsPerSeatPerMonth",
        reserve_headroom_ratio_bps as "reserveHeadroomRatioBps",
        min_reserve_nano_usd as "minReserveNanoUsd",
        enabled
@@ -89,7 +84,6 @@ async function readUsagePolicyTemplateRow(
 
   return {
     ...row,
-    seatWindowDurationMs: asOptionalNumber(row.seatWindowDurationMs) ?? undefined,
     minReserveNanoUsd: asOptionalNumber(row.minReserveNanoUsd) ?? undefined,
   }
 }
@@ -100,10 +94,7 @@ async function readUsagePolicyOverrideRow(
 ): Promise<UsagePolicyOverrideRow | null> {
   const result = await client.query<UsagePolicyOverrideRow>(
     `select
-       seat_window_duration_ms as "seatWindowDurationMs",
        target_margin_ratio_bps as "targetMarginRatioBps",
-       monthly_overage_ratio_bps as "monthlyOverageRatioBps",
-       average_sessions_per_seat_per_month as "averageSessionsPerSeatPerMonth",
        reserve_headroom_ratio_bps as "reserveHeadroomRatioBps",
        min_reserve_nano_usd as "minReserveNanoUsd",
        organization_monthly_budget_nano_usd as "organizationMonthlyBudgetNanoUsd",
@@ -120,7 +111,6 @@ async function readUsagePolicyOverrideRow(
 
   return {
     ...row,
-    seatWindowDurationMs: asOptionalNumber(row.seatWindowDurationMs) ?? undefined,
     minReserveNanoUsd: asOptionalNumber(row.minReserveNanoUsd) ?? undefined,
     organizationMonthlyBudgetNanoUsd:
       asOptionalNumber(row.organizationMonthlyBudgetNanoUsd) ?? undefined,
@@ -131,10 +121,7 @@ function hasUsagePolicyOverrideValues(
   input: UsagePolicyOverrideRow,
 ): boolean {
   return [
-    input.seatWindowDurationMs,
     input.targetMarginRatioBps,
-    input.monthlyOverageRatioBps,
-    input.averageSessionsPerSeatPerMonth,
     input.reserveHeadroomRatioBps,
     input.minReserveNanoUsd,
     input.organizationMonthlyBudgetNanoUsd,
@@ -166,10 +153,7 @@ export async function upsertOrganizationUsagePolicyOverrideRecord(input: {
          id,
          organization_id,
          feature_key,
-         seat_window_duration_ms,
          target_margin_ratio_bps,
-         monthly_overage_ratio_bps,
-         average_sessions_per_seat_per_month,
          reserve_headroom_ratio_bps,
          min_reserve_nano_usd,
          organization_monthly_budget_nano_usd,
@@ -177,12 +161,9 @@ export async function upsertOrganizationUsagePolicyOverrideRecord(input: {
          created_at,
          updated_at
        )
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $12)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)
        on conflict (organization_id, feature_key) do update
-       set seat_window_duration_ms = excluded.seat_window_duration_ms,
-           target_margin_ratio_bps = excluded.target_margin_ratio_bps,
-           monthly_overage_ratio_bps = excluded.monthly_overage_ratio_bps,
-           average_sessions_per_seat_per_month = excluded.average_sessions_per_seat_per_month,
+       set target_margin_ratio_bps = excluded.target_margin_ratio_bps,
            reserve_headroom_ratio_bps = excluded.reserve_headroom_ratio_bps,
            min_reserve_nano_usd = excluded.min_reserve_nano_usd,
            organization_monthly_budget_nano_usd = excluded.organization_monthly_budget_nano_usd,
@@ -192,10 +173,7 @@ export async function upsertOrganizationUsagePolicyOverrideRecord(input: {
         rowId,
         input.organizationId,
         CHAT_USAGE_FEATURE_KEY,
-        input.override.seatWindowDurationMs ?? null,
         input.override.targetMarginRatioBps ?? null,
-        input.override.monthlyOverageRatioBps ?? null,
-        input.override.averageSessionsPerSeatPerMonth ?? null,
         input.override.reserveHeadroomRatioBps ?? null,
         input.override.minReserveNanoUsd ?? null,
         input.override.organizationMonthlyBudgetNanoUsd ?? null,
@@ -387,8 +365,6 @@ async function syncSeatSlotBudgets(
        balance.bucket_type as "bucketType",
        balance.total_nano_usd as "totalNanoUsd",
        balance.remaining_nano_usd as "remainingNanoUsd",
-       balance.current_window_started_at as "currentWindowStartedAt",
-       balance.current_window_ends_at as "currentWindowEndsAt",
        slot.cycle_start_at as "cycleStartAt",
        slot.cycle_end_at as "cycleEndAt"
      from org_seat_bucket_balance balance
@@ -401,51 +377,13 @@ async function syncSeatSlotBudgets(
     ...row,
     totalNanoUsd: asNumber(row.totalNanoUsd),
     remainingNanoUsd: asNumber(row.remainingNanoUsd),
-    currentWindowStartedAt: asOptionalNumber(row.currentWindowStartedAt),
-    currentWindowEndsAt: asOptionalNumber(row.currentWindowEndsAt),
     cycleStartAt: asNumber(row.cycleStartAt),
     cycleEndAt: asNumber(row.cycleEndAt),
   }))
 
-  const currentWindowStartedAt = resolveSeatWindowStartAt(
-    input.now,
-    input.usagePolicy.seatWindowDurationMs,
-  )
-  const currentWindowEndsAt = resolveSeatWindowEndAt(
-    input.now,
-    input.usagePolicy.seatWindowDurationMs,
-  )
-
   for (const row of normalizedBucketRows) {
-    if (row.bucketType === 'seat_window') {
-      const nextTotal = input.usagePolicy.seatWindowBudgetNanoUsd
-      const nextRemaining
-        = row.currentWindowStartedAt !== currentWindowStartedAt
-          ? nextTotal
-          : Math.max(0, Math.min(nextTotal, row.remainingNanoUsd + (nextTotal - row.totalNanoUsd)))
-
-      await client.query(
-        `update org_seat_bucket_balance
-         set total_nano_usd = $2,
-             remaining_nano_usd = $3,
-             current_window_started_at = $4,
-             current_window_ends_at = $5,
-             updated_at = $6
-         where id = $1`,
-        [
-          row.id,
-          nextTotal,
-          nextRemaining,
-          currentWindowStartedAt,
-          currentWindowEndsAt,
-          input.now,
-        ],
-      )
-      continue
-    }
-
-    const nextTotal = prorateOverageBudget({
-      totalNanoUsd: input.usagePolicy.seatOverageBudgetNanoUsd,
+    const nextTotal = prorateCycleBudget({
+      totalNanoUsd: input.usagePolicy.seatCycleBudgetNanoUsd,
       now: input.now,
       cycleStartAt: row.cycleStartAt,
       cycleEndAt: row.cycleEndAt,

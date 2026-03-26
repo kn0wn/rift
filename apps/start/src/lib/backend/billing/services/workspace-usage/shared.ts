@@ -5,23 +5,19 @@ import type { WorkspacePlanId } from '@/lib/shared/access-control'
 import { estimatePromptTokens } from '@/lib/shared/chat-contracts'
 
 export const CHAT_USAGE_FEATURE_KEY = 'chat_message' as const
-export const SEAT_WINDOW_DURATION_MS = 4 * 60 * 60 * 1000
 export const RESERVATION_TTL_MS = 15 * 60 * 1000
 export const RATE_LIMIT_WINDOW_MS = 60_000
 export const RATE_LIMIT_MAX_REQUESTS = 30
 export const RESERVE_HEADROOM_RATIO_BPS = 1000
 export const MIN_RESERVE_NANO_USD = 5_000_000
 
-export type UsageBucketType = 'seat_window' | 'seat_overage'
+export type UsageBucketType = 'seat_cycle'
 export type UsageFeatureKey = typeof CHAT_USAGE_FEATURE_KEY
 
 export type UsagePolicyTemplate = {
   readonly planId: Exclude<WorkspacePlanId, 'free'>
   readonly featureKey: UsageFeatureKey
-  readonly seatWindowDurationMs: number
   readonly targetMarginRatioBps: number
-  readonly monthlyOverageRatioBps: number
-  readonly averageSessionsPerSeatPerMonth: number
   readonly reserveHeadroomRatioBps: number
   readonly minReserveNanoUsd: number
   readonly organizationMonthlyBudgetNanoUsd?: number
@@ -32,18 +28,14 @@ export type UsagePolicySnapshot = {
   readonly featureKey: UsageFeatureKey
   readonly enabled: boolean
   readonly planId: WorkspacePlanId
-  readonly seatWindowDurationMs: number
   readonly targetMarginRatioBps: number
-  readonly monthlyOverageRatioBps: number
-  readonly averageSessionsPerSeatPerMonth: number
   readonly reserveHeadroomRatioBps: number
   readonly minReserveNanoUsd: number
   readonly seatPriceUsd: number
   readonly organizationMonthlyBudgetNanoUsd: number
   readonly hasOrganizationMonthlyBudgetOverride: boolean
   readonly seatMonthlyBudgetNanoUsd: number
-  readonly seatOverageBudgetNanoUsd: number
-  readonly seatWindowBudgetNanoUsd: number
+  readonly seatCycleBudgetNanoUsd: number
 }
 
 type PaidPlanId = Exclude<WorkspacePlanId, 'free'>
@@ -59,22 +51,6 @@ function readNumericEnv(name: string): number {
     throw new Error(`Invalid numeric value for ${name}`)
   }
 
-  return value
-}
-
-function readIntegerEnv(name: string): number {
-  const value = readNumericEnv(name)
-  if (!Number.isInteger(value)) {
-    throw new Error(`Invalid integer for ${name}`)
-  }
-  return value
-}
-
-function readPositiveIntegerEnv(name: string): number {
-  const value = readIntegerEnv(name)
-  if (value <= 0) {
-    throw new Error(`Expected ${name} to be greater than zero`)
-  }
   return value
 }
 
@@ -96,52 +72,30 @@ function readPlanScopedPercentEnv(planId: PaidPlanId, suffix: string): number {
   return readPercentEnv(`WORKSPACE_USAGE_${suffix}`)
 }
 
-function readPlanScopedPositiveIntegerEnv(planId: PaidPlanId, suffix: string): number {
-  const planScopedName = `WORKSPACE_USAGE_${planId.toUpperCase()}_${suffix}`
-  const planScopedValue = process.env[planScopedName]?.trim()
-  if (planScopedValue) {
-    return readPositiveIntegerEnv(planScopedName)
-  }
-
-  return readPositiveIntegerEnv(`WORKSPACE_USAGE_${suffix}`)
-}
-
 const BASE_USAGE_POLICY_TEMPLATES: Record<
   PaidPlanId,
   Omit<UsagePolicyTemplate, 'planId' | 'featureKey'>
 > = {
   plus: {
-    seatWindowDurationMs: SEAT_WINDOW_DURATION_MS,
     targetMarginRatioBps: 0,
-    monthlyOverageRatioBps: 0,
-    averageSessionsPerSeatPerMonth: 0,
     reserveHeadroomRatioBps: RESERVE_HEADROOM_RATIO_BPS,
     minReserveNanoUsd: MIN_RESERVE_NANO_USD,
     enabled: true,
   },
   pro: {
-    seatWindowDurationMs: SEAT_WINDOW_DURATION_MS,
     targetMarginRatioBps: 0,
-    monthlyOverageRatioBps: 0,
-    averageSessionsPerSeatPerMonth: 0,
     reserveHeadroomRatioBps: RESERVE_HEADROOM_RATIO_BPS,
     minReserveNanoUsd: MIN_RESERVE_NANO_USD,
     enabled: true,
   },
   scale: {
-    seatWindowDurationMs: SEAT_WINDOW_DURATION_MS,
     targetMarginRatioBps: 0,
-    monthlyOverageRatioBps: 0,
-    averageSessionsPerSeatPerMonth: 0,
     reserveHeadroomRatioBps: RESERVE_HEADROOM_RATIO_BPS,
     minReserveNanoUsd: MIN_RESERVE_NANO_USD,
     enabled: true,
   },
   enterprise: {
-    seatWindowDurationMs: SEAT_WINDOW_DURATION_MS,
     targetMarginRatioBps: 0,
-    monthlyOverageRatioBps: 0,
-    averageSessionsPerSeatPerMonth: 0,
     reserveHeadroomRatioBps: RESERVE_HEADROOM_RATIO_BPS,
     minReserveNanoUsd: MIN_RESERVE_NANO_USD,
     enabled: true,
@@ -154,11 +108,6 @@ export function resolveDefaultUsagePolicyTemplate(planId: PaidPlanId): UsagePoli
   return {
     ...base,
     targetMarginRatioBps: readPlanScopedPercentEnv(planId, 'TARGET_MARGIN_PERCENT'),
-    monthlyOverageRatioBps: readPlanScopedPercentEnv(planId, 'OVERAGE_PERCENT'),
-    averageSessionsPerSeatPerMonth: readPlanScopedPositiveIntegerEnv(
-      planId,
-      'SESSIONS_PER_MONTH',
-    ),
     planId,
     featureKey: CHAT_USAGE_FEATURE_KEY,
   }
@@ -183,20 +132,6 @@ export function floorDiv(value: number, divisor: number): number {
   return Math.floor(value / divisor)
 }
 
-export function resolveSeatWindowStartAt(
-  now: number,
-  durationMs: number,
-): number {
-  return floorDiv(now, durationMs) * durationMs
-}
-
-export function resolveSeatWindowEndAt(
-  now: number,
-  durationMs: number,
-): number {
-  return resolveSeatWindowStartAt(now, durationMs) + durationMs
-}
-
 export function isUsagePlanEligible(planId: WorkspacePlanId): planId is Exclude<WorkspacePlanId, 'free'> {
   return planId !== 'free'
 }
@@ -208,18 +143,14 @@ export function buildDisabledUsagePolicy(planId: WorkspacePlanId): UsagePolicySn
     featureKey: CHAT_USAGE_FEATURE_KEY,
     enabled: false,
     planId,
-    seatWindowDurationMs: SEAT_WINDOW_DURATION_MS,
     targetMarginRatioBps: 0,
-    monthlyOverageRatioBps: 0,
-    averageSessionsPerSeatPerMonth: 0,
     reserveHeadroomRatioBps: 0,
     minReserveNanoUsd: 0,
     seatPriceUsd,
     organizationMonthlyBudgetNanoUsd: 0,
     hasOrganizationMonthlyBudgetOverride: false,
     seatMonthlyBudgetNanoUsd: 0,
-    seatOverageBudgetNanoUsd: 0,
-    seatWindowBudgetNanoUsd: 0,
+    seatCycleBudgetNanoUsd: 0,
   }
 }
 
@@ -251,31 +182,20 @@ export function resolveUsagePolicySnapshot(
   const seatMonthlyBudgetNanoUsd = hasOrganizationMonthlyBudgetOverride
     ? Math.floor(organizationMonthlyBudgetNanoUsd / seatCount)
     : defaultSeatMonthlyBudgetNanoUsd
-  /**
-   * Temporary single-bucket mode:
-   * Route the full margin-adjusted monthly budget into overage so users see a
-   * single quota experience. We keep 4-hour window fields and persistence in
-   * place for future reactivation without a schema refactor.
-   */
-  const seatOverageBudgetNanoUsd = seatMonthlyBudgetNanoUsd
-  const seatWindowBudgetNanoUsd = 0
+  const seatCycleBudgetNanoUsd = seatMonthlyBudgetNanoUsd
 
   return {
     featureKey: CHAT_USAGE_FEATURE_KEY,
     enabled: true,
     planId,
-    seatWindowDurationMs: template.seatWindowDurationMs,
     targetMarginRatioBps: template.targetMarginRatioBps,
-    monthlyOverageRatioBps: template.monthlyOverageRatioBps,
-    averageSessionsPerSeatPerMonth: template.averageSessionsPerSeatPerMonth,
     reserveHeadroomRatioBps: template.reserveHeadroomRatioBps,
     minReserveNanoUsd: template.minReserveNanoUsd,
     seatPriceUsd,
     organizationMonthlyBudgetNanoUsd,
     hasOrganizationMonthlyBudgetOverride,
     seatMonthlyBudgetNanoUsd,
-    seatOverageBudgetNanoUsd,
-    seatWindowBudgetNanoUsd,
+    seatCycleBudgetNanoUsd,
   }
 }
 

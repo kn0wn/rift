@@ -10,6 +10,7 @@ import {
 } from './shared'
 import {
   asNumber,
+  cycleBounds,
   parseJson,
 } from './core'
 import type {
@@ -25,8 +26,21 @@ import {
   ensureSeatAssignmentWithClient,
   readBucketBalances,
 } from './seat-store'
-import type { QuotaReservationResult } from './types'
+import type { QuotaReservationResult, SeatQuotaState } from './types'
 import { upsertPaidOrgUserUsageSummaryRecordWithClient } from './usage-summary-store'
+
+export function resolveQuotaExhaustion(input: {
+  readonly seatState: SeatQuotaState
+  readonly now: number
+}): {
+  readonly retryAfterMs: number
+  readonly reasonCode: 'seat_quota_exhausted'
+} {
+  return {
+    retryAfterMs: Math.max(1, input.seatState.cycleEndAt - input.now),
+    reasonCode: 'seat_quota_exhausted',
+  }
+}
 
 export async function selectExistingReservation(
   client: PoolClient,
@@ -117,7 +131,6 @@ export async function releaseReservationWithClient(
 
   const balanceRows = await readBucketBalances(client, reservation.seatSlotId)
   const balanceById = new Map(balanceRows.map((row) => [row.id, row]))
-  const skippedBucketIds = new Set<string>()
   const orgResult = await client.query<{ organizationId: string }>(
     `select organization_id as "organizationId"
      from org_seat_slot
@@ -131,28 +144,6 @@ export async function releaseReservationWithClient(
     const balance = balanceById.get(allocation.bucketBalanceId)
     if (!balance) continue
 
-    if (
-      allocation.bucketType === 'seat_window'
-      && allocation.windowStartedAt
-      && balance.currentWindowStartedAt !== allocation.windowStartedAt
-    ) {
-      skippedBucketIds.add(balance.id)
-      await applyLedgerEntry(client, {
-        organizationId,
-        seatSlotId: reservation.seatSlotId,
-        bucketBalanceId: balance.id,
-        reservationId: reservation.id,
-        entryType: 'release_skipped',
-        amountNanoUsd: allocation.amountNanoUsd,
-        metadata: {
-          reasonCode: input.reasonCode,
-          skipped: 'expired_window',
-        },
-        now: input.now,
-      })
-      continue
-    }
-
     await client.query(
       `update org_seat_bucket_balance
        set remaining_nano_usd = least(total_nano_usd, remaining_nano_usd + $2),
@@ -164,7 +155,8 @@ export async function releaseReservationWithClient(
 
   for (const allocation of reservation.allocation) {
     const balance = balanceById.get(allocation.bucketBalanceId)
-    if (!balance || skippedBucketIds.has(balance.id)) continue
+    if (!balance) continue
+
     await applyLedgerEntry(client, {
       organizationId,
       seatSlotId: reservation.seatSlotId,
@@ -294,11 +286,17 @@ export async function reserveChatQuotaRecord(input: {
     })
 
     if (!seatState) {
+      const { cycleEndAt } = cycleBounds({
+        now,
+        currentPeriodStart: currentSubscription.currentPeriodStart,
+        currentPeriodEnd: currentSubscription.currentPeriodEnd,
+      })
+
       throw new WorkspaceUsageQuotaExceededError({
         message: 'No seat quota is currently available for this member.',
         organizationId: input.organizationId,
         userId: input.userId,
-        retryAfterMs: usagePolicy.seatWindowDurationMs,
+        retryAfterMs: Math.max(1, cycleEndAt - now),
         reasonCode: 'seat_quota_exhausted',
       })
     }
@@ -309,29 +307,16 @@ export async function reserveChatQuotaRecord(input: {
       usagePolicy,
     })
 
-    const seatWindowBalance = seatState.seatWindow
-    const seatOverageBalance = seatState.seatOverage
-    const reserveFromWindow = Math.min(
-      Math.max(0, seatWindowBalance.remainingNanoUsd),
+    const reservedNanoUsd = Math.min(
+      Math.max(0, seatState.seatCycle.remainingNanoUsd),
       estimatedNanoUsd,
     )
-    const reserveFromOverage = Math.min(
-      Math.max(0, seatOverageBalance.remainingNanoUsd),
-      Math.max(0, estimatedNanoUsd - reserveFromWindow),
-    )
-    const reservedNanoUsd = reserveFromWindow + reserveFromOverage
 
     if (reservedNanoUsd < estimatedNanoUsd) {
-      const retryAfterMs = Math.max(
-        1,
-        (seatWindowBalance.currentWindowEndsAt ?? (now + usagePolicy.seatWindowDurationMs)) - now,
-      )
-      const reasonCode
-        = seatWindowBalance.remainingNanoUsd <= 0 && seatOverageBalance.remainingNanoUsd <= 0
-          ? 'seat_quota_exhausted'
-          : seatWindowBalance.remainingNanoUsd <= 0
-            ? 'seat_window_exhausted'
-            : 'seat_overage_exhausted'
+      const { retryAfterMs, reasonCode } = resolveQuotaExhaustion({
+        seatState,
+        now,
+      })
 
       throw new WorkspaceUsageQuotaExceededError({
         message: 'This seat has exhausted its current quota.',
@@ -342,71 +327,39 @@ export async function reserveChatQuotaRecord(input: {
       })
     }
 
-    const allocation: ReservationAllocation[] = []
-    if (reserveFromWindow > 0) {
-      const balanceRows = await readBucketBalances(client, seatState.seatSlotId)
-      const seatWindowRow = balanceRows.find((row) => row.bucketType === 'seat_window')
-      if (!seatWindowRow) {
-        throw new Error('seat window bucket missing')
-      }
-      await client.query(
-        `update org_seat_bucket_balance
-         set remaining_nano_usd = remaining_nano_usd - $2,
-             updated_at = $3
-         where id = $1`,
-        [seatWindowRow.id, reserveFromWindow, now],
-      )
-      allocation.push({
-        bucketBalanceId: seatWindowRow.id,
-        bucketType: 'seat_window',
-        amountNanoUsd: reserveFromWindow,
-        windowStartedAt: seatWindowRow.currentWindowStartedAt ?? undefined,
-      })
-      await applyLedgerEntry(client, {
-        organizationId: input.organizationId,
-        seatSlotId: seatState.seatSlotId,
-        bucketBalanceId: seatWindowRow.id,
-        reservationId: `usage_reservation_${input.requestId}`,
-        entryType: 'reserve',
-        amountNanoUsd: reserveFromWindow,
-        metadata: {
-          requestId: input.requestId,
-        },
-        now,
-      })
+    const balanceRows = await readBucketBalances(client, seatState.seatSlotId)
+    const seatCycleRow = balanceRows.find((row) => row.bucketType === 'seat_cycle')
+    if (!seatCycleRow) {
+      throw new Error('seat cycle bucket missing')
     }
 
-    if (reserveFromOverage > 0) {
-      const balanceRows = await readBucketBalances(client, seatState.seatSlotId)
-      const seatOverageRow = balanceRows.find((row) => row.bucketType === 'seat_overage')
-      if (!seatOverageRow) {
-        throw new Error('seat overage bucket missing')
-      }
-      await client.query(
-        `update org_seat_bucket_balance
-         set remaining_nano_usd = remaining_nano_usd - $2,
-             updated_at = $3
-         where id = $1`,
-        [seatOverageRow.id, reserveFromOverage, now],
-      )
-      allocation.push({
-        bucketBalanceId: seatOverageRow.id,
-        bucketType: 'seat_overage',
-        amountNanoUsd: reserveFromOverage,
-      })
-      await applyLedgerEntry(client, {
-        organizationId: input.organizationId,
-        seatSlotId: seatState.seatSlotId,
-        bucketBalanceId: seatOverageRow.id,
-        reservationId: `usage_reservation_${input.requestId}`,
-        entryType: 'reserve',
-        amountNanoUsd: reserveFromOverage,
-        metadata: {
-          requestId: input.requestId,
-        },
-        now,
-      })
-    }
+    await client.query(
+      `update org_seat_bucket_balance
+       set remaining_nano_usd = remaining_nano_usd - $2,
+           updated_at = $3
+       where id = $1`,
+      [seatCycleRow.id, reservedNanoUsd, now],
+    )
+
+    const allocation: ReservationAllocation[] = [
+      {
+        bucketBalanceId: seatCycleRow.id,
+        bucketType: 'seat_cycle',
+        amountNanoUsd: reservedNanoUsd,
+      },
+    ]
+    await applyLedgerEntry(client, {
+      organizationId: input.organizationId,
+      seatSlotId: seatState.seatSlotId,
+      bucketBalanceId: seatCycleRow.id,
+      reservationId: `usage_reservation_${input.requestId}`,
+      entryType: 'reserve',
+      amountNanoUsd: reservedNanoUsd,
+      metadata: {
+        requestId: input.requestId,
+      },
+      now,
+    })
 
     const reservationId = `usage_reservation_${input.requestId}`
     await client.query(

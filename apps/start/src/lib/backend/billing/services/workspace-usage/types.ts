@@ -10,8 +10,6 @@ export type SeatQuotaBucketSnapshot = {
   readonly bucketType: UsageBucketType
   readonly totalNanoUsd: number
   readonly remainingNanoUsd: number
-  readonly currentWindowStartedAt?: number
-  readonly currentWindowEndsAt?: number
 }
 
 export type SeatQuotaState = {
@@ -20,8 +18,7 @@ export type SeatQuotaState = {
   readonly cycleStartAt: number
   readonly cycleEndAt: number
   readonly currentAssigneeUserId?: string
-  readonly seatWindow: SeatQuotaBucketSnapshot
-  readonly seatOverage: SeatQuotaBucketSnapshot
+  readonly seatCycle: SeatQuotaBucketSnapshot
 }
 
 export type QuotaReservationResult = {

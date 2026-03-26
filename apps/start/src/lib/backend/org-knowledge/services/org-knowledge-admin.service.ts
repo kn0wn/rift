@@ -7,6 +7,7 @@ import { OrgKnowledgeRagService } from '@/lib/backend/chat/services/rag'
 import {
   MarkdownConversionService,
 } from '@/lib/backend/file/services/markdown-conversion.service'
+import { readDirectTextFileContent } from '@/lib/backend/file/services/plain-text-file'
 import {
   ORG_KNOWLEDGE_KIND,
   summarizeOrgKnowledgeIndexError,
@@ -88,27 +89,39 @@ export class OrgKnowledgeAdminService extends ServiceMap.Service<
                   }),
               })
 
-              const conversion = yield* markdownConversion
-                .convertFromUrl({
-                  fileUrl: uploaded.url,
-                  fileName: uploaded.name,
-                  requestId,
-                })
-                .pipe(
-                  Effect.mapError(
-                    (error) =>
-                      new OrgKnowledgePersistenceError({
-                        message: error.message,
-                        requestId,
-                        organizationId,
-                        cause: error.cause,
-                      }),
-                  ),
-                )
-
               const attachmentId = crypto.randomUUID()
               const now = Date.now()
-              const markdown = normalizeMarkdownForStorage(conversion.markdown)
+              /**
+               * Text and markdown uploads already contain the content we want to
+               * embed, so bypass conversion and index their original text.
+               */
+              const markdownRaw = yield* Effect.tryPromise({
+                try: async () => {
+                  const directTextContent = await readDirectTextFileContent(file)
+                  if (directTextContent != null) return directTextContent
+
+                  const conversion = await Effect.runPromise(
+                    markdownConversion
+                      .convertFromUrl({
+                        fileUrl: uploaded.url,
+                        fileName: uploaded.name,
+                        requestId,
+                      }),
+                  )
+                  return conversion.markdown
+                },
+                catch: (error) =>
+                  new OrgKnowledgePersistenceError({
+                    message:
+                      error instanceof Error
+                        ? error.message
+                        : 'Failed to extract organization knowledge content',
+                    requestId,
+                    organizationId,
+                    cause: String(error),
+                  }),
+              })
+              const markdown = normalizeMarkdownForStorage(markdownRaw)
               const chunkBuild = yield* Effect.tryPromise({
                 try: () =>
                   buildAttachmentChunkRows({

@@ -1,6 +1,7 @@
 // Chat prompt input with error slot and file attachments.
 'use client'
 
+import type { ClipboardEvent as ReactClipboardEvent } from 'react'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { BookOpen } from 'lucide-react'
 import { useChatComposer, useChatMessages } from './chat-context'
@@ -41,6 +42,9 @@ import type {
   ChatAttachment,
   ChatAttachmentInput,
 } from '@/lib/shared/chat-contracts/attachments'
+import { isEmbeddingFeatureEnabled } from '@/utils/app-feature-flags'
+
+const LONG_PASTE_ATTACHMENT_THRESHOLD_CHARS = 2_000
 
 function hasDraggedFiles(dataTransfer: DataTransfer | null): boolean {
   if (!dataTransfer) return false
@@ -48,6 +52,29 @@ function hasDraggedFiles(dataTransfer: DataTransfer | null): boolean {
     Array.from(dataTransfer.types ?? []).includes('Files') ||
     dataTransfer.files.length > 0
   )
+}
+
+function clipboardContainsFiles(dataTransfer: DataTransfer | null): boolean {
+  if (!dataTransfer) return false
+  return Array.from(dataTransfer.items ?? []).some(
+    (item) => item.kind === 'file',
+  )
+}
+
+function clipboardLooksRichText(dataTransfer: DataTransfer | null): boolean {
+  if (!dataTransfer) return false
+  return Array.from(dataTransfer.types ?? []).includes('text/html')
+}
+
+function buildPastedTextFileName(now = new Date()): string {
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  const seconds = String(now.getSeconds()).padStart(2, '0')
+
+  return `pasted-text-${year}-${month}-${day}-${hours}-${minutes}-${seconds}.txt`
 }
 
 export function ChatInput() {
@@ -83,6 +110,7 @@ export function ChatInput() {
   // File upload: worker-supported markdown-convertible files, max 10 files.
   const {
     files,
+    addFiles,
     handleFileSelect,
     handleFilesDrop,
     handleRemoveFile,
@@ -262,6 +290,33 @@ export function ChatInput() {
     [isSendBlocked, sendMessage, buildAttachmentPayload, clearFiles],
   )
 
+  /**
+   * Large plain-text pastes become `.txt` attachments so users can share long
+   * raw text without overwhelming the composer UI. Rich text and file clipboard
+   * payloads keep their existing browser behavior.
+   */
+  const handleComposerPaste = useCallback(
+    (event: ReactClipboardEvent<HTMLTextAreaElement>) => {
+      if (!isEmbeddingFeatureEnabled) return
+
+      const clipboardData = event.clipboardData
+      if (clipboardContainsFiles(clipboardData)) return
+      if (clipboardLooksRichText(clipboardData)) return
+
+      const pastedText = clipboardData.getData('text/plain')
+      if (pastedText.length < LONG_PASTE_ATTACHMENT_THRESHOLD_CHARS) return
+
+      event.preventDefault()
+      addFiles([
+        new File([pastedText], buildPastedTextFileName(), {
+          type: 'text/plain;charset=utf-8',
+          lastModified: Date.now(),
+        }),
+      ])
+    },
+    [addFiles],
+  )
+
   const selectedModel = visibleModels.find((m) => m.id === selectedModelId)
   const isStudyModeEnabled = selectedModeId === 'study'
   const studyModeDefinition = getChatModeDefinition('study')
@@ -387,18 +442,24 @@ export function ChatInput() {
         selectedContextWindowMode={selectedContextWindowMode}
         setSelectedContextWindowMode={setSelectedContextWindowMode}
         contextWindowSupportsMaxMode={contextWindowSupportsMaxMode}
+        onPaste={handleComposerPaste}
       />
     </PromptInputRoot>
   )
 }
 
-const ComposerTextarea = memo(function ComposerTextarea() {
+const ComposerTextarea = memo(function ComposerTextarea({
+  onPaste,
+}: {
+  onPaste: (event: ReactClipboardEvent<HTMLTextAreaElement>) => void
+}) {
   const composerInput = useComposerDraftValue()
 
   return (
     <PromptInputTextarea
       value={composerInput}
       onChange={(e) => setComposerDraft(e.target.value)}
+      onPaste={onPaste}
       aria-label={m.chat_input_message_aria_label()}
       placeholder={m.chat_prompt_placeholder()}
       className="placeholder:text-foreground-primary/65"
@@ -422,6 +483,7 @@ const ComposerToolbar = memo(function ComposerToolbar({
   selectedContextWindowMode,
   setSelectedContextWindowMode,
   contextWindowSupportsMaxMode,
+  onPaste,
 }: {
   canAddMore: boolean
   canUploadFiles: boolean
@@ -438,6 +500,7 @@ const ComposerToolbar = memo(function ComposerToolbar({
   selectedContextWindowMode: ReturnType<typeof useChatComposer>['selectedContextWindowMode']
   setSelectedContextWindowMode: ReturnType<typeof useChatComposer>['setSelectedContextWindowMode']
   contextWindowSupportsMaxMode: ReturnType<typeof useChatComposer>['contextWindowSupportsMaxMode']
+  onPaste: (event: ReactClipboardEvent<HTMLTextAreaElement>) => void
 }) {
   const composerInput = useComposerDraftValue()
   const isEmpty = !composerInput.trim()
@@ -465,7 +528,7 @@ const ComposerToolbar = memo(function ComposerToolbar({
       onMaxContextChange={(enabled) =>
         void setSelectedContextWindowMode(enabled ? 'max' : 'standard')
       }
-      middle={<ComposerTextarea />}
+      middle={<ComposerTextarea onPaste={onPaste} />}
     />
   )
 })

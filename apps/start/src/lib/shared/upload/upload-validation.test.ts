@@ -7,6 +7,28 @@ import {
 } from './upload-validation'
 
 describe('upload validation policies', () => {
+  it('accepts plain text files for general chat attachments', () => {
+    const file = {
+      name: 'pasted-notes.txt',
+      type: 'text/plain',
+      size: 2048,
+    } satisfies Pick<File, 'name' | 'type' | 'size'>
+
+    expect(isAcceptedUploadFile(file, CHAT_ATTACHMENT_UPLOAD_POLICY)).toBe(true)
+    expect(getUploadValidationError(file, CHAT_ATTACHMENT_UPLOAD_POLICY)).toBeNull()
+  })
+
+  it('accepts plain text mime types with charset parameters', () => {
+    const file = {
+      name: 'pasted-notes.txt',
+      type: 'text/plain;charset=utf-8',
+      size: 2048,
+    } satisfies Pick<File, 'name' | 'type' | 'size'>
+
+    expect(isAcceptedUploadFile(file, CHAT_ATTACHMENT_UPLOAD_POLICY)).toBe(true)
+    expect(getUploadValidationError(file, CHAT_ATTACHMENT_UPLOAD_POLICY)).toBeNull()
+  })
+
   it('accepts markdown files for org knowledge uploads', () => {
     const file = {
       name: 'handbook.md',

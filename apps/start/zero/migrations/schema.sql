@@ -430,10 +430,7 @@ CREATE TABLE IF NOT EXISTS usage_policy_template (
   id TEXT PRIMARY KEY,
   plan_id TEXT NOT NULL,
   feature_key TEXT NOT NULL,
-  seat_window_duration_ms BIGINT NOT NULL,
   target_margin_ratio_bps INTEGER NOT NULL,
-  monthly_overage_ratio_bps INTEGER NOT NULL,
-  average_sessions_per_seat_per_month INTEGER NOT NULL,
   reserve_headroom_ratio_bps INTEGER NOT NULL,
   min_reserve_nano_usd BIGINT NOT NULL,
   max_reserve_nano_usd BIGINT NOT NULL,
@@ -448,10 +445,7 @@ CREATE TABLE IF NOT EXISTS org_usage_policy_override (
   id TEXT PRIMARY KEY,
   organization_id TEXT NOT NULL,
   feature_key TEXT NOT NULL,
-  seat_window_duration_ms BIGINT,
   target_margin_ratio_bps INTEGER,
-  monthly_overage_ratio_bps INTEGER,
-  average_sessions_per_seat_per_month INTEGER,
   reserve_headroom_ratio_bps INTEGER,
   min_reserve_nano_usd BIGINT,
   organization_monthly_budget_nano_usd BIGINT,
@@ -506,8 +500,6 @@ CREATE TABLE IF NOT EXISTS org_seat_bucket_balance (
   bucket_type TEXT NOT NULL,
   total_nano_usd BIGINT NOT NULL,
   remaining_nano_usd BIGINT NOT NULL,
-  current_window_started_at BIGINT,
-  current_window_ends_at BIGINT,
   created_at BIGINT NOT NULL,
   updated_at BIGINT NOT NULL
 );
@@ -595,9 +587,6 @@ CREATE TABLE IF NOT EXISTS org_user_usage_summary (
   monthly_used_percent BIGINT NOT NULL,
   monthly_remaining_percent BIGINT NOT NULL,
   monthly_reset_at BIGINT NOT NULL,
-  window_used_percent BIGINT,
-  window_remaining_percent BIGINT,
-  window_reset_at BIGINT,
   created_at BIGINT NOT NULL,
   updated_at BIGINT NOT NULL
 );

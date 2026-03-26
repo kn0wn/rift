@@ -216,26 +216,6 @@ export async function settleMonetizationEventRecord(input: {
       if (!balance) continue
 
       const refundable = Math.min(remainingRefund, allocation.amountNanoUsd)
-      if (
-        allocation.bucketType === 'seat_window'
-        && allocation.windowStartedAt
-        && balance.currentWindowStartedAt !== allocation.windowStartedAt
-      ) {
-        refundedNanoUsd += refundable
-        remainingRefund -= refundable
-        await applyLedgerEntry(client, {
-          organizationId,
-          seatSlotId: reservation.seatSlotId,
-          bucketBalanceId: balance.id,
-          reservationId: reservation.id,
-          monetizationEventId: monetization.id,
-          entryType: 'refund_expired_window',
-          amountNanoUsd: refundable,
-          metadata: { requestId: input.requestId },
-          now,
-        })
-        continue
-      }
 
       await client.query(
         `update org_seat_bucket_balance
@@ -265,13 +245,6 @@ export async function settleMonetizationEventRecord(input: {
       if (remainingCapture <= 0) break
       const balance = balanceById.get(allocation.bucketBalanceId)
       if (!balance) continue
-      if (
-        allocation.bucketType === 'seat_window'
-        && allocation.windowStartedAt
-        && balance.currentWindowStartedAt !== allocation.windowStartedAt
-      ) {
-        continue
-      }
 
       const captureAmount = Math.min(remainingCapture, balance.remainingNanoUsd)
       if (captureAmount <= 0) continue
@@ -297,9 +270,9 @@ export async function settleMonetizationEventRecord(input: {
     }
 
     if (remainingCapture > 0) {
-      const overageBalance = bucketRows.find((bucket) => bucket.bucketType === 'seat_overage')
-      if (!overageBalance) {
-        throw new Error('seat overage bucket missing')
+      const cycleBalance = bucketRows.find((bucket) => bucket.bucketType === 'seat_cycle')
+      if (!cycleBalance) {
+        throw new Error('seat cycle bucket missing')
       }
 
       await client.query(
@@ -307,12 +280,12 @@ export async function settleMonetizationEventRecord(input: {
          set remaining_nano_usd = remaining_nano_usd - $2,
              updated_at = $3
          where id = $1`,
-        [overageBalance.id, remainingCapture, now],
+        [cycleBalance.id, remainingCapture, now],
       )
       await applyLedgerEntry(client, {
         organizationId,
         seatSlotId: reservation.seatSlotId,
-        bucketBalanceId: overageBalance.id,
+        bucketBalanceId: cycleBalance.id,
         reservationId: reservation.id,
         monetizationEventId: monetization.id,
         entryType: 'capture_debt',

@@ -23,6 +23,7 @@ import {
 } from '../domain/errors'
 import { requireFilePersistenceDb } from './file-persistence-db'
 import { MarkdownConversionService } from './markdown-conversion.service'
+import { readDirectTextFileContent } from './plain-text-file'
 
 type UploadedFileResult = {
   readonly id: string
@@ -122,12 +123,35 @@ export class FileUploadOrchestratorService extends ServiceMap.Service<
             }
           }
 
-          const conversion = yield* markdownConversion.convertFromUrl({
-            fileUrl: uploaded.url,
-            fileName: uploaded.name,
-            requestId,
+          /**
+           * Plain-text uploads are already in their final searchable form, so
+           * we can skip the external markdown worker and index the file bytes
+           * directly after normalization.
+           */
+          const markdownRaw = yield* Effect.tryPromise({
+            try: async () => {
+              const directTextContent = await readDirectTextFileContent(file)
+              if (directTextContent != null) return directTextContent
+
+              const conversion = await Effect.runPromise(
+                markdownConversion.convertFromUrl({
+                  fileUrl: uploaded.url,
+                  fileName: uploaded.name,
+                  requestId,
+                }),
+              )
+              return conversion.markdown
+            },
+            catch: (error) =>
+              error instanceof FileConversionError
+                ? error
+                : new FileConversionError({
+                    message: 'Failed to extract uploaded file content',
+                    requestId,
+                    statusCode: 502,
+                    cause: String(error),
+                  }),
           })
-          const markdownRaw = conversion.markdown
 
           const markdown = normalizeMarkdownForStorage(markdownRaw)
           const now = Date.now()

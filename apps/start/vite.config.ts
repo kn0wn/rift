@@ -13,6 +13,11 @@ const config = defineConfig(({ command }) => {
   const isDevServer = command === 'serve'
 
   return {
+    /**
+     * Expose non-secret feature-flag env vars to the client so browser code
+     * and server code resolve the same runtime flag values.
+     */
+    envPrefix: ['VITE_', 'ENABLE_'],
     resolve: {
       dedupe: [
         '@rocicorp/zero',

@@ -4,8 +4,6 @@ import type { ChatMessageMetadata } from '@/lib/shared/chat-contracts/message-me
 import {
   estimateReservedCostNanoUsd,
   resolveDefaultUsagePolicyTemplate,
-  resolveSeatWindowEndAt,
-  resolveSeatWindowStartAt,
   resolveUsagePolicySnapshot,
   selectSeatSlotCandidate,
   usdToNanoUsd,
@@ -13,20 +11,9 @@ import {
 
 function stubUsagePolicyEnv(): void {
   vi.stubEnv('WORKSPACE_USAGE_TARGET_MARGIN_PERCENT', '25')
-  vi.stubEnv('WORKSPACE_USAGE_OVERAGE_PERCENT', '40')
-  vi.stubEnv('WORKSPACE_USAGE_SESSIONS_PER_MONTH', '180')
-
   vi.stubEnv('WORKSPACE_USAGE_PRO_TARGET_MARGIN_PERCENT', '30')
-  vi.stubEnv('WORKSPACE_USAGE_PRO_OVERAGE_PERCENT', '45')
-  vi.stubEnv('WORKSPACE_USAGE_PRO_SESSIONS_PER_MONTH', '240')
-
   vi.stubEnv('WORKSPACE_USAGE_SCALE_TARGET_MARGIN_PERCENT', '32')
-  vi.stubEnv('WORKSPACE_USAGE_SCALE_OVERAGE_PERCENT', '50')
-  vi.stubEnv('WORKSPACE_USAGE_SCALE_SESSIONS_PER_MONTH', '300')
-
   vi.stubEnv('WORKSPACE_USAGE_ENTERPRISE_TARGET_MARGIN_PERCENT', '20')
-  vi.stubEnv('WORKSPACE_USAGE_ENTERPRISE_OVERAGE_PERCENT', '50')
-  vi.stubEnv('WORKSPACE_USAGE_ENTERPRISE_SESSIONS_PER_MONTH', '360')
 }
 
 beforeEach(() => {
@@ -42,8 +29,7 @@ describe('resolveUsagePolicySnapshot', () => {
     expect(snapshot.organizationMonthlyBudgetNanoUsd).toBe(usdToNanoUsd(6))
     expect(snapshot.hasOrganizationMonthlyBudgetOverride).toBe(false)
     expect(snapshot.seatMonthlyBudgetNanoUsd).toBe(usdToNanoUsd(6))
-    expect(snapshot.seatOverageBudgetNanoUsd).toBe(usdToNanoUsd(6))
-    expect(snapshot.seatWindowBudgetNanoUsd).toBe(0)
+    expect(snapshot.seatCycleBudgetNanoUsd).toBe(usdToNanoUsd(6))
   })
 
   it('supports an explicit organization monthly budget override', () => {
@@ -59,7 +45,7 @@ describe('resolveUsagePolicySnapshot', () => {
     expect(snapshot.organizationMonthlyBudgetNanoUsd).toBe(usdToNanoUsd(1200))
     expect(snapshot.hasOrganizationMonthlyBudgetOverride).toBe(true)
     expect(snapshot.seatMonthlyBudgetNanoUsd).toBe(usdToNanoUsd(100))
-    expect(snapshot.seatOverageBudgetNanoUsd).toBe(usdToNanoUsd(100))
+    expect(snapshot.seatCycleBudgetNanoUsd).toBe(usdToNanoUsd(100))
   })
 })
 
@@ -97,18 +83,6 @@ describe('selectSeatSlotCandidate', () => {
     })
 
     expect(slot?.id).toBe('seat-existing')
-  })
-})
-
-describe('seat window helpers', () => {
-  it('uses deterministic UTC-aligned 4 hour windows', () => {
-    const now = Date.UTC(2026, 2, 9, 10, 37, 0)
-    expect(resolveSeatWindowStartAt(now, 4 * 60 * 60 * 1000)).toBe(
-      Date.UTC(2026, 2, 9, 8, 0, 0),
-    )
-    expect(resolveSeatWindowEndAt(now, 4 * 60 * 60 * 1000)).toBe(
-      Date.UTC(2026, 2, 9, 12, 0, 0),
-    )
   })
 })
 

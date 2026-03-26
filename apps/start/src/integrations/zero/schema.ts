@@ -177,9 +177,6 @@ const orgUserUsageSummary = table('orgUserUsageSummary')
     monthlyUsedPercent: number().from('monthly_used_percent'),
     monthlyRemainingPercent: number().from('monthly_remaining_percent'),
     monthlyResetAt: number().from('monthly_reset_at'),
-    windowUsedPercent: number().from('window_used_percent').optional(),
-    windowRemainingPercent: number().from('window_remaining_percent').optional(),
-    windowResetAt: number().from('window_reset_at').optional(),
     createdAt: number().from('created_at'),
     updatedAt: number().from('updated_at'),
   })

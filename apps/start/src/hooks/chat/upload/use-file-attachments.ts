@@ -22,7 +22,8 @@ export type UseFileAttachmentsOptions = {
 
 /**
  * Hook for managing file attachments in the chat input.
- * Handles validation (images + PDF only), max count, and object URL cleanup on remove.
+ * Handles validation, upload orchestration, and object URL cleanup so every
+ * ingestion source behaves the same once it becomes a File object.
  */
 export function useFileAttachments(options: UseFileAttachmentsOptions = {}) {
   const {
@@ -74,7 +75,11 @@ export function useFileAttachments(options: UseFileAttachmentsOptions = {}) {
     [markUploadFailure, markUploadSuccess],
   )
 
-  const ingestFiles = useCallback(
+  /**
+   * Shared ingestion path for picker, drag/drop, and synthetic files such as
+   * long pasted text converted into a `.txt` attachment.
+   */
+  const addFiles = useCallback(
     (incomingFiles: readonly File[]) => {
       if (incomingFiles.length === 0) {
         return
@@ -134,10 +139,10 @@ export function useFileAttachments(options: UseFileAttachmentsOptions = {}) {
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      ingestFiles(Array.from(e.target.files ?? []))
+      addFiles(Array.from(e.target.files ?? []))
       e.target.value = ''
     },
-    [ingestFiles],
+    [addFiles],
   )
 
   /**
@@ -147,9 +152,9 @@ export function useFileAttachments(options: UseFileAttachmentsOptions = {}) {
    */
   const handleFilesDrop = useCallback(
     (filesToUpload: readonly File[]) => {
-      ingestFiles(filesToUpload)
+      addFiles(filesToUpload)
     },
-    [ingestFiles],
+    [addFiles],
   )
 
   const handleRemoveFile = useCallback((id: string) => {
@@ -175,6 +180,7 @@ export function useFileAttachments(options: UseFileAttachmentsOptions = {}) {
 
   return {
     files,
+    addFiles,
     handleFileSelect,
     handleFilesDrop,
     handleRemoveFile,

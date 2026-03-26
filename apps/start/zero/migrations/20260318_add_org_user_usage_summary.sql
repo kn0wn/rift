@@ -7,9 +7,6 @@ CREATE TABLE IF NOT EXISTS org_user_usage_summary (
   monthly_used_percent bigint NOT NULL,
   monthly_remaining_percent bigint NOT NULL,
   monthly_reset_at bigint NOT NULL,
-  window_used_percent bigint,
-  window_remaining_percent bigint,
-  window_reset_at bigint,
   created_at bigint NOT NULL,
   updated_at bigint NOT NULL
 );

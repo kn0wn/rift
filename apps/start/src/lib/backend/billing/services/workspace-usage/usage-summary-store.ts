@@ -1,50 +1,27 @@
 import { authPool } from '@/lib/backend/auth/auth-pool'
 import { resolveAccessContext, resolveChatAccessPolicy } from '@/lib/backend/access-control'
 import type { PoolClient } from 'pg'
-import { asOptionalNumber, cycleBounds, prorateOverageBudget } from './core'
+import { asOptionalNumber, cycleBounds, prorateCycleBudget } from './core'
 import type { CurrentUsageSubscription, SeatSlotRow } from './core'
 import { recomputeEntitlementSnapshotRecord } from '../workspace-billing/entitlement'
 import { readEntitlementSnapshot } from '../workspace-billing/persistence'
 import { readCurrentUsageSubscription, resolveEffectiveUsagePolicyRecord } from './policy-store'
 import { readBucketBalances } from './seat-store'
-import {
-  resolveSeatWindowEndAt,
-  resolveSeatWindowStartAt,
-} from './shared'
 import type { UsagePolicySnapshot } from './shared'
 import { coerceWorkspacePlanId } from '@/lib/shared/access-control'
 
-export type OrgUserUsageSummaryRecord =
-  | {
-      id: string
-      organizationId: string
-      userId: string
-      kind: 'free'
-      monthlyUsedPercent: number
-      monthlyRemainingPercent: number
-      monthlyResetAt: number
-      seatIndex: null
-      windowUsedPercent: null
-      windowRemainingPercent: null
-      windowResetAt: null
-      createdAt: number
-      updatedAt: number
-    }
-  | {
-      id: string
-      organizationId: string
-      userId: string
-      kind: 'paid'
-      seatIndex: number | null
-      monthlyUsedPercent: number
-      monthlyRemainingPercent: number
-      monthlyResetAt: number
-      windowUsedPercent: number
-      windowRemainingPercent: number
-      windowResetAt: number
-      createdAt: number
-      updatedAt: number
-    }
+export type OrgUserUsageSummaryRecord = {
+  id: string
+  organizationId: string
+  userId: string
+  kind: 'free' | 'paid'
+  seatIndex: number | null
+  monthlyUsedPercent: number
+  monthlyRemainingPercent: number
+  monthlyResetAt: number
+  createdAt: number
+  updatedAt: number
+}
 
 function summaryId(input: { organizationId: string; userId: string }) {
   return `org_user_usage_summary:${input.organizationId}:${input.userId}`
@@ -88,10 +65,9 @@ function buildFreeUsageSummary(input: {
     input.allowance.maxRequests,
     Math.max(0, input.allowance.maxRequests - input.hits),
   )
-  const id = summaryId(input)
 
   return {
-    id,
+    id: summaryId(input),
     organizationId: input.organizationId,
     userId: input.userId,
     kind: 'free',
@@ -99,61 +75,12 @@ function buildFreeUsageSummary(input: {
     monthlyUsedPercent: percent.usedPercent,
     monthlyRemainingPercent: percent.remainingPercent,
     monthlyResetAt,
-    windowUsedPercent: null,
-    windowRemainingPercent: null,
-    windowResetAt: null,
     createdAt: input.now,
     updatedAt: input.now,
   }
 }
 
-export function projectSeatWindowBucket(input: {
-  totalNanoUsd: number
-  remainingNanoUsd: number
-  currentWindowStartedAt: number | null
-  currentWindowEndsAt: number | null
-  usagePolicy: UsagePolicySnapshot
-  now: number
-}): {
-  totalNanoUsd: number
-  remainingNanoUsd: number
-  currentWindowStartedAt: number
-  currentWindowEndsAt: number
-} {
-  const totalNanoUsd = input.usagePolicy.seatWindowBudgetNanoUsd
-  const currentWindowStartedAt = resolveSeatWindowStartAt(
-    input.now,
-    input.usagePolicy.seatWindowDurationMs,
-  )
-  const currentWindowEndsAt = resolveSeatWindowEndAt(
-    input.now,
-    input.usagePolicy.seatWindowDurationMs,
-  )
-
-  if (
-    input.currentWindowStartedAt === currentWindowStartedAt
-    && input.currentWindowEndsAt === currentWindowEndsAt
-  ) {
-    return {
-      totalNanoUsd,
-      remainingNanoUsd: Math.max(
-        0,
-        Math.min(totalNanoUsd, input.remainingNanoUsd + (totalNanoUsd - input.totalNanoUsd)),
-      ),
-      currentWindowStartedAt,
-      currentWindowEndsAt,
-    }
-  }
-
-  return {
-    totalNanoUsd,
-    remainingNanoUsd: totalNanoUsd,
-    currentWindowStartedAt,
-    currentWindowEndsAt,
-  }
-}
-
-export function projectSeatOverageBucket(input: {
+export function projectSeatCycleBucket(input: {
   totalNanoUsd: number
   remainingNanoUsd: number
   cycleStartAt: number
@@ -164,8 +91,8 @@ export function projectSeatOverageBucket(input: {
   totalNanoUsd: number
   remainingNanoUsd: number
 } {
-  const totalNanoUsd = prorateOverageBudget({
-    totalNanoUsd: input.usagePolicy.seatOverageBudgetNanoUsd,
+  const totalNanoUsd = prorateCycleBudget({
+    totalNanoUsd: input.usagePolicy.seatCycleBudgetNanoUsd,
     now: input.now,
     cycleStartAt: input.cycleStartAt,
     cycleEndAt: input.cycleEndAt,
@@ -188,7 +115,6 @@ function buildUnassignedPaidUsageSummary(input: {
   organizationId: string
   userId: string
   currentSubscription: CurrentUsageSubscription | null
-  usagePolicy: UsagePolicySnapshot
   now: number
 }): OrgUserUsageSummaryRecord {
   const { cycleEndAt } = cycleBounds({
@@ -206,9 +132,6 @@ function buildUnassignedPaidUsageSummary(input: {
     monthlyUsedPercent: 0,
     monthlyRemainingPercent: 100,
     monthlyResetAt: cycleEndAt,
-    windowUsedPercent: 0,
-    windowRemainingPercent: 100,
-    windowResetAt: resolveSeatWindowEndAt(input.now, input.usagePolicy.seatWindowDurationMs),
     createdAt: input.now,
     updatedAt: input.now,
   }
@@ -230,13 +153,10 @@ async function persistOrgUserUsageSummaryRecord(input: {
        monthly_used_percent,
        monthly_remaining_percent,
        monthly_reset_at,
-       window_used_percent,
-       window_remaining_percent,
-       window_reset_at,
        created_at,
        updated_at
      )
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      on conflict (organization_id, user_id) do update
      set id = excluded.id,
          kind = excluded.kind,
@@ -244,9 +164,6 @@ async function persistOrgUserUsageSummaryRecord(input: {
          monthly_used_percent = excluded.monthly_used_percent,
          monthly_remaining_percent = excluded.monthly_remaining_percent,
          monthly_reset_at = excluded.monthly_reset_at,
-         window_used_percent = excluded.window_used_percent,
-         window_remaining_percent = excluded.window_remaining_percent,
-         window_reset_at = excluded.window_reset_at,
          updated_at = excluded.updated_at`,
     [
       input.summary.id,
@@ -257,9 +174,6 @@ async function persistOrgUserUsageSummaryRecord(input: {
       input.summary.monthlyUsedPercent,
       input.summary.monthlyRemainingPercent,
       input.summary.monthlyResetAt,
-      input.summary.windowUsedPercent,
-      input.summary.windowRemainingPercent,
-      input.summary.windowResetAt,
       input.summary.createdAt,
       input.summary.updatedAt,
     ],
@@ -331,7 +245,6 @@ async function readPaidUsageSummaryWithClient(input: {
     return buildUnassignedPaidUsageSummary({
       ...input,
       currentSubscription,
-      usagePolicy,
     })
   }
 
@@ -347,45 +260,30 @@ async function readPaidUsageSummaryWithClient(input: {
     return buildUnassignedPaidUsageSummary({
       ...input,
       currentSubscription,
-      usagePolicy,
     })
   }
 
   const bucketRows = await readBucketBalances(input.client, assignedSeat.id)
-  const seatWindow = bucketRows.find((bucket) => bucket.bucketType === 'seat_window')
-  const seatOverage = bucketRows.find((bucket) => bucket.bucketType === 'seat_overage')
+  const seatCycle = bucketRows.find((bucket) => bucket.bucketType === 'seat_cycle')
 
-  if (!seatWindow || !seatOverage) {
+  if (!seatCycle) {
     return buildUnassignedPaidUsageSummary({
       ...input,
       currentSubscription,
-      usagePolicy,
     })
   }
 
-  const projectedSeatWindow = projectSeatWindowBucket({
-    totalNanoUsd: seatWindow.totalNanoUsd,
-    remainingNanoUsd: seatWindow.remainingNanoUsd,
-    currentWindowStartedAt: seatWindow.currentWindowStartedAt,
-    currentWindowEndsAt: seatWindow.currentWindowEndsAt,
-    usagePolicy,
-    now: input.now,
-  })
-  const projectedSeatOverage = projectSeatOverageBucket({
-    totalNanoUsd: seatOverage.totalNanoUsd,
-    remainingNanoUsd: seatOverage.remainingNanoUsd,
+  const projectedSeatCycle = projectSeatCycleBucket({
+    totalNanoUsd: seatCycle.totalNanoUsd,
+    remainingNanoUsd: seatCycle.remainingNanoUsd,
     cycleStartAt: assignedSeat.cycleStartAt,
     cycleEndAt: assignedSeat.cycleEndAt,
     usagePolicy,
     now: input.now,
   })
   const monthly = toPercentSnapshot(
-    projectedSeatOverage.totalNanoUsd,
-    projectedSeatOverage.remainingNanoUsd,
-  )
-  const window = toPercentSnapshot(
-    projectedSeatWindow.totalNanoUsd,
-    projectedSeatWindow.remainingNanoUsd,
+    projectedSeatCycle.totalNanoUsd,
+    projectedSeatCycle.remainingNanoUsd,
   )
 
   return {
@@ -397,9 +295,6 @@ async function readPaidUsageSummaryWithClient(input: {
     monthlyUsedPercent: monthly.usedPercent,
     monthlyRemainingPercent: monthly.remainingPercent,
     monthlyResetAt: assignedSeat.cycleEndAt,
-    windowUsedPercent: window.usedPercent,
-    windowRemainingPercent: window.remainingPercent,
-    windowResetAt: projectedSeatWindow.currentWindowEndsAt,
     createdAt: input.now,
     updatedAt: input.now,
   }
@@ -518,11 +413,6 @@ export async function upsertPaidOrgUserUsageSummaryRecordWithClient(input: {
   return summary
 }
 
-/**
- * This row is a UI projection, not the billing source of truth. The fallback
- * server read path uses this helper to persist a fresh projection without
- * touching seat assignment or any quota write-side behavior.
- */
 export async function materializeOrgUserUsageSummaryRecord(input: {
   organizationId: string
   userId: string

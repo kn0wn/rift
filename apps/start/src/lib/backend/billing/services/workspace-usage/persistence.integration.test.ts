@@ -37,7 +37,7 @@ type MonetizationDbRow = {
 }
 
 type BucketDbRow = {
-  bucketType: 'seat_window' | 'seat_overage'
+  bucketType: 'seat_cycle'
   totalNanoUsd: number
   remainingNanoUsd: number
 }
@@ -73,12 +73,8 @@ async function loadHarness() {
 
 function seedUsageEnv(input: {
   readonly targetMarginPercent: string
-  readonly overagePercent: string
-  readonly sessionsPerMonth: string
 }): void {
   vi.stubEnv('WORKSPACE_USAGE_TARGET_MARGIN_PERCENT', input.targetMarginPercent)
-  vi.stubEnv('WORKSPACE_USAGE_OVERAGE_PERCENT', input.overagePercent)
-  vi.stubEnv('WORKSPACE_USAGE_SESSIONS_PER_MONTH', input.sessionsPerMonth)
 }
 
 async function createVerifiedUser(label: string) {
@@ -310,8 +306,6 @@ beforeAll(async () => {
 beforeEach(() => {
   seedUsageEnv({
     targetMarginPercent: '99.25',
-    overagePercent: '0',
-    sessionsPerMonth: '1',
   })
 })
 
@@ -437,8 +431,6 @@ describeIfDb('workspace usage persistence integration', () => {
   it('turns underestimated real usage into overage debt instead of forgiving it', async () => {
     seedUsageEnv({
       targetMarginPercent: '99',
-      overagePercent: '25',
-      sessionsPerMonth: '1',
     })
 
     const owner = await createVerifiedUser('usage-debt-owner')
@@ -481,7 +473,7 @@ describeIfDb('workspace usage persistence integration', () => {
       requestId,
       entryType: 'capture_debt',
     })
-    const overageBucket = buckets.find((bucket) => bucket.bucketType === 'seat_overage')
+    const cycleBucket = buckets.find((bucket) => bucket.bucketType === 'seat_cycle')
 
     expect(monetization).toMatchObject({
       status: 'settled',
@@ -490,7 +482,7 @@ describeIfDb('workspace usage persistence integration', () => {
       forgivenNanoUsd: 0,
     })
     expect(captureDebtAmounts).toEqual([30_000_000])
-    expect(overageBucket).toMatchObject({
+    expect(cycleBucket).toMatchObject({
       totalNanoUsd: 20_000_000,
       remainingNanoUsd: -10_000_000,
     })

@@ -2,8 +2,7 @@
  * App-level feature flags.
  *
  * Uses VITE_ prefixed env vars so both client and server can use the same
- * environment variable. This simplifies self-hosting - users only need to
- * set one env var per feature.
+ * environment variable.
  */
 type AppFeatureFlags = {
   readonly enableEmbedding: boolean
@@ -27,7 +26,7 @@ function readBooleanEnv(key: string, defaultValue: boolean): boolean {
 }
 
 const APP_FEATURE_FLAGS: AppFeatureFlags = Object.freeze({
-  enableEmbedding: readBooleanEnv('ENABLE_EMBEDDING', true),
+  enableEmbedding: readBooleanEnv('VITE_ENABLE_EMBEDDING', true),
   enableReasoningControls: true,
   enableAdvancedProviderTools: true,
   enableOrganizationProviderKeys: readBooleanEnv(

@@ -17,6 +17,7 @@ const CHAT_ATTACHMENT_ALLOWED_MIME_TYPES = new Set([
   'image/png',
   'image/webp',
   'image/svg+xml',
+  'text/plain',
   'text/html',
   'application/xml',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -37,6 +38,7 @@ const CHAT_ATTACHMENT_ALLOWED_EXTENSIONS = new Set([
   'png',
   'webp',
   'svg',
+  'txt',
   'html',
   'htm',
   'xml',
@@ -79,6 +81,7 @@ export const CHAT_ATTACHMENT_UPLOAD_POLICY: UploadValidationPolicy = {
     '.png',
     '.webp',
     '.svg',
+    '.txt',
     '.html',
     '.htm',
     '.xml',
@@ -125,6 +128,13 @@ function getFileExtension(fileName: string): string {
   return normalized.slice(dot + 1)
 }
 
+function normalizeMimeType(type: string): string {
+  return type
+    .trim()
+    .toLowerCase()
+    .split(';', 1)[0] ?? ''
+}
+
 /**
  * Upload validation is shared by browser UIs and backend services so the same
  * policy decides which file types are accepted for each upload surface.
@@ -133,7 +143,7 @@ export function isAcceptedUploadFile(
   file: Pick<File, 'name' | 'type'>,
   policy: UploadValidationPolicy,
 ): boolean {
-  const type = file.type.trim().toLowerCase()
+  const type = normalizeMimeType(file.type)
   if (policy.allowedMimeTypes.has(type)) return true
   if (type && type !== 'application/octet-stream') return false
 

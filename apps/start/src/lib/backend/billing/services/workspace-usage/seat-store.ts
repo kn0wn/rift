@@ -1,17 +1,11 @@
 import type { PoolClient } from 'pg'
-import {
-  resolveSeatWindowEndAt,
-  resolveSeatWindowStartAt,
-  selectSeatSlotCandidate
-  
-  
-} from './shared'
-import type {SeatSlotCandidate, UsagePolicySnapshot} from './shared';
+import { selectSeatSlotCandidate } from './shared'
+import type { SeatSlotCandidate, UsagePolicySnapshot } from './shared'
 import {
   asNumber,
   asOptionalNumber,
   cycleBounds,
-  prorateOverageBudget,
+  prorateCycleBudget,
 } from './core'
 import type {
   BucketBalanceRow,
@@ -76,9 +70,7 @@ export async function readBucketBalances(
        id,
        bucket_type as "bucketType",
        total_nano_usd as "totalNanoUsd",
-       remaining_nano_usd as "remainingNanoUsd",
-       current_window_started_at as "currentWindowStartedAt",
-       current_window_ends_at as "currentWindowEndsAt"
+       remaining_nano_usd as "remainingNanoUsd"
      from org_seat_bucket_balance
      where seat_slot_id = $1`,
     [seatSlotId],
@@ -88,8 +80,6 @@ export async function readBucketBalances(
     ...row,
     totalNanoUsd: asNumber(row.totalNanoUsd),
     remainingNanoUsd: asNumber(row.remainingNanoUsd),
-    currentWindowStartedAt: asOptionalNumber(row.currentWindowStartedAt),
-    currentWindowEndsAt: asOptionalNumber(row.currentWindowEndsAt),
   }))
 }
 
@@ -174,9 +164,8 @@ export async function createSeatSlot(
 }
 
 /**
- * Each seat always carries exactly two balances: the active 4-hour window and
- * the monthly overage bucket. Keeping both rows materialized avoids dynamic
- * inserts during the request hot path once the cycle scaffold exists.
+ * Each seat carries a single cycle-scoped balance that tracks the remaining
+ * paid quota for the current subscription period.
  */
 export async function ensureSeatSlotBalanceRows(
   client: PoolClient,
@@ -189,16 +178,7 @@ export async function ensureSeatSlotBalanceRows(
     readonly now: number
   },
 ): Promise<void> {
-  const seatWindowBucketId = `seat_bucket_${input.seatSlotId}_seat_window`
-  const seatOverageBucketId = `seat_bucket_${input.seatSlotId}_seat_overage`
-  const currentWindowStartedAt = resolveSeatWindowStartAt(
-    input.now,
-    input.usagePolicy.seatWindowDurationMs,
-  )
-  const currentWindowEndsAt = resolveSeatWindowEndAt(
-    input.now,
-    input.usagePolicy.seatWindowDurationMs,
-  )
+  const seatCycleBucketId = `seat_bucket_${input.seatSlotId}_seat_cycle`
 
   await client.query(
     `insert into org_seat_bucket_balance (
@@ -208,128 +188,27 @@ export async function ensureSeatSlotBalanceRows(
        bucket_type,
        total_nano_usd,
        remaining_nano_usd,
-       current_window_started_at,
-       current_window_ends_at,
        created_at,
        updated_at
      )
-     values
-       ($1, $2, $3, 'seat_window', $4, $4, $5, $6, $7, $7),
-       ($8, $2, $3, 'seat_overage', $9, $9, null, null, $7, $7)
+     values ($1, $2, $3, 'seat_cycle', $4, $4, $5, $5)
      on conflict (seat_slot_id, bucket_type) do nothing`,
     [
-      seatWindowBucketId,
+      seatCycleBucketId,
       input.organizationId,
       input.seatSlotId,
-      input.usagePolicy.seatWindowBudgetNanoUsd,
-      currentWindowStartedAt,
-      currentWindowEndsAt,
-      input.now,
-      seatOverageBucketId,
-      prorateOverageBudget({
-        totalNanoUsd: input.usagePolicy.seatOverageBudgetNanoUsd,
+      prorateCycleBudget({
+        totalNanoUsd: input.usagePolicy.seatCycleBudgetNanoUsd,
         now: input.now,
         cycleStartAt: input.cycleStartAt,
         cycleEndAt: input.cycleEndAt,
       }),
+      input.now,
     ],
   )
 }
 
-async function ensureCurrentSeatWindow(
-  client: PoolClient,
-  input: {
-    readonly bucket: BucketBalanceRow
-    readonly usagePolicy: UsagePolicySnapshot
-    readonly now: number
-  },
-): Promise<BucketBalanceRow> {
-  if (input.bucket.bucketType !== 'seat_window') {
-    return input.bucket
-  }
-
-  const currentWindowStartedAt = resolveSeatWindowStartAt(
-    input.now,
-    input.usagePolicy.seatWindowDurationMs,
-  )
-  const currentWindowEndsAt = resolveSeatWindowEndAt(
-    input.now,
-    input.usagePolicy.seatWindowDurationMs,
-  )
-
-  if (
-    input.bucket.currentWindowStartedAt === currentWindowStartedAt
-    && input.bucket.currentWindowEndsAt === currentWindowEndsAt
-    && input.bucket.totalNanoUsd === input.usagePolicy.seatWindowBudgetNanoUsd
-  ) {
-    return input.bucket
-  }
-
-  const refreshed: BucketBalanceRow = {
-    ...input.bucket,
-    totalNanoUsd: input.usagePolicy.seatWindowBudgetNanoUsd,
-    remainingNanoUsd: input.usagePolicy.seatWindowBudgetNanoUsd,
-    currentWindowStartedAt,
-    currentWindowEndsAt,
-  }
-
-  await client.query(
-    `update org_seat_bucket_balance
-     set total_nano_usd = $2,
-         remaining_nano_usd = $3,
-         current_window_started_at = $4,
-         current_window_ends_at = $5,
-         updated_at = $6
-     where id = $1`,
-    [
-      input.bucket.id,
-      refreshed.totalNanoUsd,
-      refreshed.remainingNanoUsd,
-      refreshed.currentWindowStartedAt,
-      refreshed.currentWindowEndsAt,
-      input.now,
-    ],
-  )
-
-  await client.query(
-    `insert into org_seat_bucket_ledger (
-       id,
-       organization_id,
-       seat_slot_id,
-       bucket_balance_id,
-       entry_type,
-       amount_nano_usd,
-       metadata,
-       created_at
-     )
-     select
-       $1,
-       organization_id,
-       seat_slot_id,
-       id,
-       'reset',
-       $2,
-       $3::jsonb,
-       $4
-     from org_seat_bucket_balance
-     where id = $5
-     on conflict (id) do nothing`,
-    [
-      `seat_bucket_reset_${input.bucket.id}_${currentWindowStartedAt}`,
-      refreshed.totalNanoUsd,
-      JSON.stringify({
-        windowStartedAt: currentWindowStartedAt,
-        windowEndsAt: currentWindowEndsAt,
-      }),
-      input.now,
-      input.bucket.id,
-    ],
-  )
-
-  return refreshed
-}
-
-async function ensureCurrentOverageBucket(
+async function ensureCurrentCycleBucket(
   client: PoolClient,
   input: {
     readonly bucket: BucketBalanceRow
@@ -339,12 +218,12 @@ async function ensureCurrentOverageBucket(
     readonly now: number
   },
 ): Promise<BucketBalanceRow> {
-  if (input.bucket.bucketType !== 'seat_overage') {
+  if (input.bucket.bucketType !== 'seat_cycle') {
     return input.bucket
   }
 
-  const nextTotal = prorateOverageBudget({
-    totalNanoUsd: input.usagePolicy.seatOverageBudgetNanoUsd,
+  const nextTotal = prorateCycleBudget({
+    totalNanoUsd: input.usagePolicy.seatCycleBudgetNanoUsd,
     now: input.now,
     cycleStartAt: input.seatCycleStartAt,
     cycleEndAt: input.seatCycleEndAt,
@@ -416,17 +295,14 @@ export async function hydrateSeatQuotaState(
        id,
        bucket_type as "bucketType",
        total_nano_usd as "totalNanoUsd",
-       remaining_nano_usd as "remainingNanoUsd",
-       current_window_started_at as "currentWindowStartedAt",
-       current_window_ends_at as "currentWindowEndsAt"
+       remaining_nano_usd as "remainingNanoUsd"
      from org_seat_bucket_balance
      where seat_slot_id = $1
      ${input.forUpdate ? 'for update' : ''}`
   const bucketRows = await client.query<BucketBalanceRow>(bucketQuery, [input.seatSlotId])
-  const windowBucket = bucketRows.rows.find((bucket) => bucket.bucketType === 'seat_window')
-  const overageBucket = bucketRows.rows.find((bucket) => bucket.bucketType === 'seat_overage')
+  const cycleBucket = bucketRows.rows.find((bucket) => bucket.bucketType === 'seat_cycle')
 
-  if (!windowBucket || !overageBucket) {
+  if (!cycleBucket) {
     await ensureSeatSlotBalanceRows(client, {
       organizationId: slot.organizationId ?? '',
       seatSlotId: slot.id,
@@ -438,20 +314,14 @@ export async function hydrateSeatQuotaState(
   }
 
   const refreshedBucketRows = await readBucketBalances(client, input.seatSlotId)
-  const resolvedWindowBucket = refreshedBucketRows.find((bucket) => bucket.bucketType === 'seat_window')
-  const resolvedOverageBucket = refreshedBucketRows.find((bucket) => bucket.bucketType === 'seat_overage')
+  const resolvedCycleBucket = refreshedBucketRows.find((bucket) => bucket.bucketType === 'seat_cycle')
 
-  if (!resolvedWindowBucket || !resolvedOverageBucket) {
+  if (!resolvedCycleBucket) {
     throw new Error('seat slot balances not found')
   }
 
-  const refreshedWindowBucket = await ensureCurrentSeatWindow(client, {
-    bucket: resolvedWindowBucket,
-    usagePolicy: input.usagePolicy,
-    now: input.now,
-  })
-  const refreshedOverageBucket = await ensureCurrentOverageBucket(client, {
-    bucket: resolvedOverageBucket,
+  const refreshedCycleBucket = await ensureCurrentCycleBucket(client, {
+    bucket: resolvedCycleBucket,
     seatCycleStartAt: slot.cycleStartAt,
     seatCycleEndAt: slot.cycleEndAt,
     usagePolicy: input.usagePolicy,
@@ -464,8 +334,7 @@ export async function hydrateSeatQuotaState(
     cycleStartAt: slot.cycleStartAt,
     cycleEndAt: slot.cycleEndAt,
     currentAssigneeUserId: slot.currentAssigneeUserId ?? undefined,
-    seatWindow: toBucketSnapshot(refreshedWindowBucket),
-    seatOverage: toBucketSnapshot(refreshedOverageBucket),
+    seatCycle: toBucketSnapshot(refreshedCycleBucket),
   }
 }
 
@@ -474,8 +343,6 @@ function toBucketSnapshot(bucket: BucketBalanceRow): SeatQuotaBucketSnapshot {
     bucketType: bucket.bucketType,
     totalNanoUsd: bucket.totalNanoUsd,
     remainingNanoUsd: bucket.remainingNanoUsd,
-    currentWindowStartedAt: bucket.currentWindowStartedAt ?? undefined,
-    currentWindowEndsAt: bucket.currentWindowEndsAt ?? undefined,
   }
 }
 

@@ -39,15 +39,12 @@ export type BucketBalanceRow = {
   bucketType: UsageBucketType
   totalNanoUsd: number
   remainingNanoUsd: number
-  currentWindowStartedAt: number | null
-  currentWindowEndsAt: number | null
 }
 
 export type ReservationAllocation = {
   readonly bucketBalanceId: string
   readonly bucketType: UsageBucketType
   readonly amountNanoUsd: number
-  readonly windowStartedAt?: number
 }
 
 export type UsageReservationRow = {
@@ -108,7 +105,7 @@ export function cycleBounds(input: {
   }
 }
 
-export function prorateOverageBudget(input: {
+export function prorateCycleBudget(input: {
   readonly totalNanoUsd: number
   readonly now: number
   readonly cycleStartAt: number
