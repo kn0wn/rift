@@ -4,10 +4,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { useServerFn } from '@tanstack/react-start'
 import { PricingSection } from './pricing-section'
 import { PricingComparisonTable } from './pricing-comparison-table'
+import { BillingChangeDialog } from '@/components/organization/settings/billing/billing-change-dialog'
 import {
-  openWorkspaceBillingPortal,
-  startWorkspaceSubscriptionCheckout,
+  changeWorkspaceSubscription,
 } from '@/lib/frontend/billing/billing.functions'
+import { coerceWorkspacePlanId } from '@/lib/shared/access-control'
 import type { StripeManagedWorkspacePlanId } from '@/lib/shared/access-control'
 import { useOrgBillingSummary } from '@/lib/frontend/billing/use-org-billing'
 import { isAdminRole } from '@/lib/shared/auth/roles'
@@ -16,6 +17,15 @@ import { authClient } from '@/lib/frontend/auth/auth-client'
 import type { PricingPlanActionOverride } from './pricing-card'
 import { m } from '@/paraglide/messages.js'
 
+function formatUnixDate(timestampMs?: number): string | null {
+  if (timestampMs == null || !Number.isFinite(timestampMs)) return null
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(timestampMs))
+}
+
 /**
  * Pricing page content. Renders the pricing cards followed by the comparative
  * matrix so users can scan plan differences without leaving the pricing view.
@@ -23,11 +33,12 @@ import { m } from '@/paraglide/messages.js'
 export function PricingPage() {
   const { user, activeOrganizationId } = useAppAuth()
   const { subscription, entitlement } = useOrgBillingSummary()
-  const openPortal = useServerFn(openWorkspaceBillingPortal)
-  const startCheckout = useServerFn(startWorkspaceSubscriptionCheckout)
+  const mutateSubscription = useServerFn(changeWorkspaceSubscription)
   const [billingActionError, setBillingActionError] = useState<string | null>(
     null,
   )
+  const [dialogPlanId, setDialogPlanId] = useState<StripeManagedWorkspacePlanId | null>(null)
+  const [pendingActionKey, setPendingActionKey] = useState<string | null>(null)
   const [canManageBilling, setCanManageBilling] = useState(false)
   const [billingRoleLoading, setBillingRoleLoading] = useState(false)
 
@@ -67,10 +78,42 @@ export function PricingPage() {
     }
   }, [activeOrganizationId, user])
 
+  const currentPlanId = coerceWorkspacePlanId(entitlement?.planId ?? subscription?.planId)
+  const currentSeatCount = subscription?.seatCount ?? entitlement?.seatCount ?? 1
+  const activeMembers = entitlement?.activeMemberCount ?? 0
+  const currentPeriodEndLabel = formatUnixDate(subscription?.currentPeriodEnd)
+  const hasManagedSubscription = Boolean(subscription?.providerSubscriptionId)
+
+  async function runSubscriptionChange(input: {
+    targetPlanId: StripeManagedWorkspacePlanId
+    seats: number
+    actionKey: string
+  }) {
+    setBillingActionError(null)
+    setPendingActionKey(input.actionKey)
+
+    try {
+      const result = await mutateSubscription({
+        data: {
+          targetPlanId: input.targetPlanId,
+          seats: input.seats,
+        },
+      })
+      window.location.assign(result.url)
+    } catch (error) {
+      setBillingActionError(
+        error instanceof Error
+          ? error.message
+          : m.org_billing_error_change_subscription(),
+      )
+    } finally {
+      setPendingActionKey(null)
+    }
+  }
+
   const resolvePlanAction = useMemo(() => {
     const hasActiveWorkspace = Boolean(activeOrganizationId)
     const isSignedIn = Boolean(user)
-    const seatCount = subscription?.seatCount ?? entitlement?.seatCount ?? 1
     const stripePlanByName: Record<string, StripeManagedWorkspacePlanId> = {
       Plus: 'plus',
       Pro: 'pro',
@@ -114,7 +157,7 @@ export function PricingPage() {
       if (!isStripeManagedPlan && !isEnterprisePlan) return undefined
 
       if (isCurrentPlan) {
-        if (!billingRoleLoading && !canManageBilling) {
+        if (billingRoleLoading || !canManageBilling) {
           return {
             buttonText: m.pricing_manage_billing(),
             disabled: true,
@@ -123,47 +166,22 @@ export function PricingPage() {
 
         return {
           buttonText: m.pricing_manage_billing(),
-          onSelect: async () => {
-            setBillingActionError(null)
-            try {
-              const result = await openPortal({ data: {} })
-              window.location.assign(result.url)
-            } catch (error) {
-              setBillingActionError(
-                error instanceof Error
-                  ? error.message
-                  : m.pricing_error_billing_portal(),
-              )
-            }
-          },
+          href: '/organization/settings/billing',
         }
       }
 
       if (isStripeManagedPlan) {
-        if (!billingRoleLoading && !canManageBilling) {
+        if (billingRoleLoading || !canManageBilling) {
           return {
             disabled: true,
           }
         }
 
         return {
-          onSelect: async () => {
+          disabled: pendingActionKey != null,
+          onSelect: () => {
             setBillingActionError(null)
-            try {
-              const result = await startCheckout({
-                data: {
-                  planId: stripePlanId,
-                  seats: seatCount,
-                },
-              })
-              window.location.assign(result.url)
-            } catch (error) {
-              setBillingActionError(
-                error instanceof Error
-                  ? error.message
-                  : m.pricing_error_billing_portal(),
-              )
-            }
+            setDialogPlanId(stripePlanId)
           },
         }
       }
@@ -172,10 +190,8 @@ export function PricingPage() {
     activeOrganizationId,
     canManageBilling,
     billingRoleLoading,
-    openPortal,
-    startCheckout,
+    pendingActionKey,
     subscription,
-    entitlement,
     user,
   ])
 
@@ -188,6 +204,30 @@ export function PricingPage() {
       ) : null}
       <PricingSection resolvePlanAction={resolvePlanAction} />
       <PricingComparisonTable resolvePlanAction={resolvePlanAction} />
+      <BillingChangeDialog
+        open={dialogPlanId != null}
+        onOpenChange={(open) => {
+          if (!open && pendingActionKey == null) {
+            setDialogPlanId(null)
+            setBillingActionError(null)
+          }
+        }}
+        targetPlanId={dialogPlanId}
+        currentPlanId={currentPlanId}
+        currentSeatCount={currentSeatCount}
+        activeMembers={activeMembers}
+        hasManagedSubscription={hasManagedSubscription}
+        scheduledPlanId={subscription?.scheduledPlanId ?? null}
+        scheduledSeatCount={
+          dialogPlanId != null && subscription?.scheduledPlanId === dialogPlanId
+            ? subscription?.scheduledSeatCount ?? null
+            : null
+        }
+        billingCycleEndLabel={currentPeriodEndLabel}
+        submitError={billingActionError}
+        submitting={pendingActionKey != null}
+        onConfirm={runSubscriptionChange}
+      />
     </div>
   )
 }

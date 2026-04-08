@@ -143,13 +143,18 @@ const stripePlugin
               stripeSubscription,
             })
           },
-          onSubscriptionUpdate: async ({ subscription }) => {
+          onSubscriptionUpdate: async (data) => {
             await syncWorkspaceSubscription({
-              subscription,
+              subscription: data.subscription,
+              stripeSubscription:
+                (data as { stripeSubscription?: Stripe.Subscription }).stripeSubscription,
             })
           },
-          onSubscriptionCancel: async ({ subscription }) => {
-            await markWorkspaceSubscriptionCanceled(subscription)
+          onSubscriptionCancel: async ({ subscription, stripeSubscription }) => {
+            await syncWorkspaceSubscription({
+              subscription,
+              stripeSubscription,
+            })
           },
           onSubscriptionDeleted: async ({ subscription }) => {
             await markWorkspaceSubscriptionCanceled(subscription)

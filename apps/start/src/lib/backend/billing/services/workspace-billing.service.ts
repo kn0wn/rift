@@ -8,7 +8,11 @@ import {
   WorkspaceBillingForbiddenError,
   WorkspaceBillingSeatLimitExceededError,
 } from '../domain/errors'
-import { startCheckoutOperation, openBillingPortalOperation } from './workspace-billing/checkout'
+import {
+  changeWorkspaceSubscriptionOperation,
+  openBillingPortalOperation,
+  startCheckoutOperation,
+} from './workspace-billing/checkout'
 import { recomputeEntitlementSnapshotEffect, recomputeEntitlementSnapshotRecord } from './workspace-billing/entitlement'
 import {
   readCurrentOrgSubscriptionEffect,
@@ -17,7 +21,7 @@ import {
 } from './workspace-billing/persistence'
 import {
   markWorkspaceSubscriptionCanceledRecordEffect,
-  syncWorkspaceSubscriptionRecordEffect,
+  syncWorkspaceSubscriptionRecord,
 } from './workspace-billing/subscription-sync'
 import { toPersistenceError } from './workspace-billing/shared'
 import type {
@@ -158,6 +162,30 @@ export class WorkspaceBillingService extends ServiceMap.Service<
           }),
         ),
 
+        changeSubscription: Effect.fn('WorkspaceBillingService.changeSubscription')((input) =>
+          Effect.tryPromise({
+            try: async () => {
+              const result = await changeWorkspaceSubscriptionOperation(input)
+              await recomputeEntitlementSnapshotRecord(input.organizationId)
+              return result
+            },
+            catch: (cause) => {
+              if (
+                cause instanceof WorkspaceBillingForbiddenError
+                || cause instanceof WorkspaceBillingConfigurationError
+              ) {
+                return cause
+              }
+
+              return toPersistenceError('Failed to change workspace subscription', {
+                organizationId: input.organizationId,
+                userId: input.userId,
+                cause,
+              })
+            },
+          }),
+        ),
+
         openBillingPortal: Effect.fn('WorkspaceBillingService.openBillingPortal')((input) =>
           Effect.tryPromise({
             try: () => openBillingPortalOperation(input),
@@ -174,14 +202,14 @@ export class WorkspaceBillingService extends ServiceMap.Service<
 
         syncWorkspaceSubscription: Effect.fn('WorkspaceBillingService.syncWorkspaceSubscription')(
           (input) =>
-            provideSql(syncWorkspaceSubscriptionRecordEffect(input)).pipe(
-              Effect.mapError((cause) =>
+            Effect.tryPromise({
+              try: () => syncWorkspaceSubscriptionRecord(input),
+              catch: (cause) =>
                 toPersistenceError('Failed to sync workspace subscription', {
                   organizationId: input.subscription.referenceId,
                   cause,
-                })
-              ),
-            ),
+                }),
+            }),
         ),
 
         markWorkspaceSubscriptionCanceled: Effect.fn('WorkspaceBillingService.markWorkspaceSubscriptionCanceled')(

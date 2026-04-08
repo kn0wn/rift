@@ -1,4 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { recomputeOrgEntitlementSnapshot } from '@/lib/backend/billing/integrations/auth-billing-hooks'
 
 process.env.VITEST ??= 'true'
 
@@ -399,5 +400,63 @@ describeIfDb('organization billing integration', () => {
         role: 'member',
       }),
     ).rejects.toThrow(/seat limit reached/i)
+  })
+
+  it('keeps the current plan active until renewal, then restricts excess members after a seat reduction', async () => {
+    const owner = await createVerifiedUser('owner-downgrade')
+    const firstMember = await createVerifiedUser('member-first')
+    const secondMember = await createVerifiedUser('member-second')
+    const { testHelpers } = await loadHarness()
+    const { organization } = await createOrganizationForUser({
+      userId: owner.id,
+      name: 'Seat Reduction Workspace',
+    })
+
+    await seedSeatCount({
+      organizationId: organization.id,
+      seatCount: 3,
+    })
+
+    await testHelpers.addMember?.({
+      userId: firstMember.id,
+      organizationId: organization.id,
+      role: 'member',
+    })
+    await testHelpers.addMember?.({
+      userId: secondMember.id,
+      organizationId: organization.id,
+      role: 'member',
+    })
+
+    await seedSeatCount({
+      organizationId: organization.id,
+      seatCount: 1,
+    })
+
+    const snapshot = await recomputeOrgEntitlementSnapshot(organization.id)
+    const firstMemberAccess = await readMemberAccess({
+      organizationId: organization.id,
+      userId: firstMember.id,
+    })
+    const secondMemberAccess = await readMemberAccess({
+      organizationId: organization.id,
+      userId: secondMember.id,
+    })
+
+    expect(snapshot).toMatchObject({
+      planId: 'plus',
+      subscriptionStatus: 'active',
+      seatCount: 1,
+      activeMemberCount: 3,
+      isOverSeatLimit: true,
+    })
+    expect(firstMemberAccess).toEqual({
+      userId: firstMember.id,
+      status: 'restricted',
+    })
+    expect(secondMemberAccess).toEqual({
+      userId: secondMember.id,
+      status: 'restricted',
+    })
   })
 })

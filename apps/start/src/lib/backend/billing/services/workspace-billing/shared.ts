@@ -1,10 +1,11 @@
 import Stripe from 'stripe'
 import {
+  WORKSPACE_FEATURE_IDS,
   coerceWorkspacePlanId,
-  getWorkspacePlanRank
+  getWorkspacePlanRank,
 } from '@/lib/shared/access-control'
-import { WORKSPACE_FEATURE_IDS } from '@/lib/shared/access-control'
 import type {
+  SelfServeWorkspacePlanId,
   StripeManagedWorkspacePlanId,
   WorkspaceFeatureId,
   WorkspacePlanId,
@@ -24,6 +25,15 @@ export type OrgSubscriptionBillingInterval =
   | 'day'
   | 'week'
   | ManualBillingInterval
+export type ScheduledWorkspaceChangeReason =
+  | 'scheduled_cancel'
+  | 'scheduled_downgrade'
+export type WorkspaceSubscriptionChangeKind =
+  | 'apply_immediately'
+  | 'checkout'
+  | 'noop'
+  | 'schedule_cancel'
+  | 'schedule_downgrade'
 
 export type ManualSubscriptionMetadata = {
   overrideSource?: string
@@ -137,4 +147,42 @@ export function isScheduledDowngrade(input: {
 
   return nextPriority < currentPriority
     || (nextPriority === currentPriority && input.nextSeats < currentSeats)
+}
+
+/**
+ * Subscription mutations collapse to one of a small number of app-owned flows.
+ * Centralizing the classification keeps the billing page, service layer, and
+ * checkout operations aligned as self-serve cases expand.
+ */
+export function classifyWorkspaceSubscriptionChange(input: {
+  currentPlanId: string | null | undefined
+  currentSeats: number | null | undefined
+  hasActiveSubscription: boolean
+  targetPlanId: SelfServeWorkspacePlanId
+  seats?: number | null | undefined
+}): WorkspaceSubscriptionChangeKind {
+  if (!input.hasActiveSubscription) {
+    return input.targetPlanId === 'free' ? 'noop' : 'checkout'
+  }
+
+  if (input.targetPlanId === 'free') {
+    return 'schedule_cancel'
+  }
+
+  const nextSeats = Math.max(1, input.seats ?? input.currentSeats ?? 1)
+  const currentPlanId = normalizePlanId(input.currentPlanId)
+  const currentSeats = Math.max(1, input.currentSeats ?? 1)
+
+  if (currentPlanId === input.targetPlanId && currentSeats === nextSeats) {
+    return 'noop'
+  }
+
+  return isScheduledDowngrade({
+    currentPlan: currentPlanId,
+    currentSeats,
+    nextPlanId: input.targetPlanId,
+    nextSeats,
+  })
+    ? 'schedule_downgrade'
+    : 'apply_immediately'
 }

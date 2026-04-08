@@ -13,6 +13,7 @@ import type {
   WorkspaceBillingSeatLimitExceededError,
 } from '../../domain/errors'
 import type {
+  SelfServeWorkspacePlanId,
   StripeManagedWorkspacePlanId,
   WorkspaceFeatureId,
   WorkspacePlanId,
@@ -100,6 +101,18 @@ export type WorkspaceBillingServiceShape = {
     | WorkspaceBillingForbiddenError
     | WorkspaceBillingConfigurationError
   >
+  readonly changeSubscription: (input: {
+    headers: Headers
+    organizationId: string
+    userId: string
+    targetPlanId: SelfServeWorkspacePlanId
+    seats?: number
+  }) => Effect.Effect<
+    { url: string },
+    | WorkspaceBillingPersistenceError
+    | WorkspaceBillingForbiddenError
+    | WorkspaceBillingConfigurationError
+  >
   readonly openBillingPortal: (input: {
     headers: Headers
     organizationId: string
@@ -112,6 +125,7 @@ export type WorkspaceBillingServiceShape = {
   readonly syncWorkspaceSubscription: (input: {
     subscription: BetterAuthStripeSubscription
     stripeSubscription?: Stripe.Subscription
+    stripeSchedule?: Stripe.SubscriptionSchedule | null
     billingProvider?: 'stripe' | 'manual'
   }) => Effect.Effect<void, WorkspaceBillingPersistenceError>
   readonly markWorkspaceSubscriptionCanceled: (input: {

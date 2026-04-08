@@ -1,7 +1,10 @@
 import { PgClient } from '@effect/sql-pg'
 import { Effect } from 'effect'
 import { resolveWorkspaceEffectiveFeatures } from '@/lib/shared/access-control'
-import type { StripeManagedWorkspacePlanId } from '@/lib/shared/access-control'
+import type {
+  SelfServeWorkspacePlanId,
+  WorkspacePlanId,
+} from '@/lib/shared/access-control'
 import { selectRestrictedMembersForSeatLimit } from '@/lib/shared/billing/member-seat-restrictions'
 import type { SeatReconciliationMember } from '@/lib/shared/billing/member-seat-restrictions'
 import {
@@ -28,7 +31,10 @@ import {
   coerceManualSubscriptionMetadata,
   normalizePlanId,
 } from './shared'
-import type { OrgSubscriptionBillingInterval } from './shared'
+import type {
+  OrgSubscriptionBillingInterval,
+  ScheduledWorkspaceChangeReason,
+} from './shared'
 
 type EntitlementSnapshotRow = {
   planId: string
@@ -688,6 +694,10 @@ export const upsertOrgSubscriptionEffect = Effect.fn(
     readonly periodStart: number | null
     readonly periodEnd: number | null
     readonly cancelAtPeriodEnd: boolean
+    readonly scheduledPlanId?: SelfServeWorkspacePlanId | null
+    readonly scheduledSeatCount?: number | null
+    readonly scheduledChangeEffectiveAt?: number | null
+    readonly pendingChangeReason?: ScheduledWorkspaceChangeReason | null
     readonly metadata: Record<string, unknown>
     readonly now: number
     readonly client?: BillingPersistenceClient
@@ -707,6 +717,10 @@ export const upsertOrgSubscriptionEffect = Effect.fn(
           current_period_start,
           current_period_end,
           cancel_at_period_end,
+          scheduled_plan_id,
+          scheduled_seat_count,
+          scheduled_change_effective_at,
+          pending_change_reason,
           metadata,
           created_at,
           updated_at
@@ -723,6 +737,10 @@ export const upsertOrgSubscriptionEffect = Effect.fn(
           ${input.periodStart},
           ${input.periodEnd},
           ${input.cancelAtPeriodEnd},
+          ${input.scheduledPlanId ?? null},
+          ${input.scheduledSeatCount ?? null},
+          ${input.scheduledChangeEffectiveAt ?? null},
+          ${input.pendingChangeReason ?? null},
           ${sqlJson(client, input.metadata)},
           ${input.now},
           ${input.now}
@@ -736,10 +754,10 @@ export const upsertOrgSubscriptionEffect = Effect.fn(
             current_period_start = excluded.current_period_start,
             current_period_end = excluded.current_period_end,
             cancel_at_period_end = excluded.cancel_at_period_end,
-            scheduled_plan_id = null,
-            scheduled_seat_count = null,
-            scheduled_change_effective_at = null,
-            pending_change_reason = null,
+            scheduled_plan_id = excluded.scheduled_plan_id,
+            scheduled_seat_count = excluded.scheduled_seat_count,
+            scheduled_change_effective_at = excluded.scheduled_change_effective_at,
+            pending_change_reason = excluded.pending_change_reason,
             metadata = excluded.metadata,
             updated_at = excluded.updated_at
       `
@@ -758,6 +776,10 @@ export async function upsertOrgSubscription(input: {
   periodStart: number | null
   periodEnd: number | null
   cancelAtPeriodEnd: boolean
+  scheduledPlanId?: SelfServeWorkspacePlanId | null
+  scheduledSeatCount?: number | null
+  scheduledChangeEffectiveAt?: number | null
+  pendingChangeReason?: ScheduledWorkspaceChangeReason | null
   metadata: Record<string, unknown>
   now: number
   client?: BillingPersistenceClient
@@ -800,9 +822,10 @@ export const recordScheduledOrgSubscriptionChangeEffect = Effect.fn(
 )(
   (input: {
     readonly organizationId: string
-    readonly nextPlanId: StripeManagedWorkspacePlanId
-    readonly seats: number
+    readonly nextPlanId: SelfServeWorkspacePlanId
+    readonly seats: number | null
     readonly effectiveAt: number
+    readonly pendingChangeReason: ScheduledWorkspaceChangeReason
     readonly now: number
     readonly client?: BillingPersistenceClient
   }): Effect.Effect<void, unknown, PgClient.PgClient> =>
@@ -813,7 +836,7 @@ export const recordScheduledOrgSubscriptionChangeEffect = Effect.fn(
         set scheduled_plan_id = ${input.nextPlanId},
             scheduled_seat_count = ${input.seats},
             scheduled_change_effective_at = ${input.effectiveAt},
-            pending_change_reason = 'scheduled_downgrade',
+            pending_change_reason = ${input.pendingChangeReason},
             updated_at = ${input.now}
         where organization_id = ${input.organizationId}
       `
@@ -822,13 +845,83 @@ export const recordScheduledOrgSubscriptionChangeEffect = Effect.fn(
 
 export async function recordScheduledOrgSubscriptionChange(input: {
   organizationId: string
-  nextPlanId: StripeManagedWorkspacePlanId
-  seats: number
+  nextPlanId: SelfServeWorkspacePlanId
+  seats: number | null
   effectiveAt: number
+  pendingChangeReason: ScheduledWorkspaceChangeReason
   now: number
   client?: BillingPersistenceClient
 }): Promise<void> {
   await runBillingSqlEffect(recordScheduledOrgSubscriptionChangeEffect(input))
+}
+
+/**
+ * Direct Stripe mutations should update the org-owned mirror immediately so the
+ * billing page and entitlement snapshot do not lag behind webhook delivery.
+ */
+export const updateOrgSubscriptionMirrorEffect = Effect.fn(
+  'WorkspaceBillingPersistence.updateOrgSubscriptionMirror',
+)(
+  (input: {
+    readonly organizationId: string
+    readonly planId: WorkspacePlanId
+    readonly seatCount: number
+    readonly status: string
+    readonly periodStart: number | null
+    readonly periodEnd: number | null
+    readonly cancelAtPeriodEnd: boolean
+    readonly billingInterval: OrgSubscriptionBillingInterval
+    readonly scheduledPlanId?: SelfServeWorkspacePlanId | null
+    readonly scheduledSeatCount?: number | null
+    readonly scheduledChangeEffectiveAt?: number | null
+    readonly pendingChangeReason?: ScheduledWorkspaceChangeReason | null
+    readonly metadata?: Record<string, unknown>
+    readonly now: number
+    readonly client?: BillingPersistenceClient
+  }): Effect.Effect<void, unknown, PgClient.PgClient> =>
+    Effect.gen(function* () {
+      const client = yield* resolveBillingSqlClient(input.client)
+      yield* client`
+        update org_subscription
+        set plan_id = ${input.planId},
+            seat_count = ${input.seatCount},
+            status = ${input.status},
+            current_period_start = ${input.periodStart},
+            current_period_end = ${input.periodEnd},
+            cancel_at_period_end = ${input.cancelAtPeriodEnd},
+            billing_interval = ${input.billingInterval},
+            scheduled_plan_id = ${input.scheduledPlanId ?? null},
+            scheduled_seat_count = ${input.scheduledSeatCount ?? null},
+            scheduled_change_effective_at = ${input.scheduledChangeEffectiveAt ?? null},
+            pending_change_reason = ${input.pendingChangeReason ?? null},
+            metadata = coalesce(
+              ${input.metadata ? sqlJson(client, input.metadata) : null}::jsonb,
+              metadata
+            ),
+            updated_at = ${input.now}
+        where organization_id = ${input.organizationId}
+      `
+    }),
+)
+
+export async function updateOrgSubscriptionMirror(input: {
+  organizationId: string
+  planId: WorkspacePlanId
+  seatCount: number
+  status: string
+  periodStart: number | null
+  periodEnd: number | null
+  cancelAtPeriodEnd: boolean
+  billingInterval: OrgSubscriptionBillingInterval
+  scheduledPlanId?: SelfServeWorkspacePlanId | null
+  scheduledSeatCount?: number | null
+  scheduledChangeEffectiveAt?: number | null
+  pendingChangeReason?: ScheduledWorkspaceChangeReason | null
+  metadata?: Record<string, unknown>
+  now: number
+  client?: BillingPersistenceClient
+}): Promise<void> {
+  await runBillingSqlEffect(updateOrgSubscriptionMirrorEffect(input))
 }
 
 export const updateSubscriptionMirrorEffect = Effect.fn(
@@ -836,7 +929,7 @@ export const updateSubscriptionMirrorEffect = Effect.fn(
 )(
   (input: {
     readonly id: string
-    readonly planId: StripeManagedWorkspacePlanId
+    readonly planId: WorkspacePlanId
     readonly seats: number
     readonly status: string
     readonly periodStart: number | null
@@ -865,7 +958,7 @@ export const updateSubscriptionMirrorEffect = Effect.fn(
 
 export async function updateSubscriptionMirror(input: {
   id: string
-  planId: StripeManagedWorkspacePlanId
+  planId: WorkspacePlanId
   seats: number
   status: string
   periodStart: number | null
@@ -883,7 +976,7 @@ export const updateSubscriptionScheduleIdEffect = Effect.fn(
 )(
   (input: {
     readonly id: string
-    readonly stripeScheduleId: string
+    readonly stripeScheduleId: string | null
     readonly client?: BillingPersistenceClient
   }): Effect.Effect<void, unknown, PgClient.PgClient> =>
     Effect.gen(function* () {
@@ -898,7 +991,7 @@ export const updateSubscriptionScheduleIdEffect = Effect.fn(
 
 export async function updateSubscriptionScheduleId(input: {
   id: string
-  stripeScheduleId: string
+  stripeScheduleId: string | null
   client?: BillingPersistenceClient
 }): Promise<void> {
   await runBillingSqlEffect(updateSubscriptionScheduleIdEffect(input))
@@ -920,6 +1013,10 @@ export const markOrgSubscriptionCanceledEffect = Effect.fn(
         update org_subscription
         set status = ${input.status},
             cancel_at_period_end = ${input.cancelAtPeriodEnd},
+            scheduled_plan_id = null,
+            scheduled_seat_count = null,
+            scheduled_change_effective_at = null,
+            pending_change_reason = null,
             updated_at = ${input.now}
         where organization_id = ${input.organizationId}
       `

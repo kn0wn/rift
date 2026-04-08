@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { isScheduledDowngrade, normalizePlanId } from './shared'
+import {
+  classifyWorkspaceSubscriptionChange,
+  isScheduledDowngrade,
+  normalizePlanId,
+} from './shared'
 
 describe('normalizePlanId', () => {
   it('keeps paid plans intact and collapses unknown plans to free', () => {
@@ -59,5 +63,86 @@ describe('isScheduledDowngrade', () => {
         nextSeats: 5,
       }),
     ).toBe(false)
+  })
+})
+
+describe('classifyWorkspaceSubscriptionChange', () => {
+  it('classifies first-time paid plan selection as checkout', () => {
+    expect(
+      classifyWorkspaceSubscriptionChange({
+        currentPlanId: 'free',
+        currentSeats: 1,
+        hasActiveSubscription: false,
+        targetPlanId: 'plus',
+        seats: 3,
+      }),
+    ).toBe('checkout')
+  })
+
+  it('classifies seat increases and plan upgrades as immediate', () => {
+    expect(
+      classifyWorkspaceSubscriptionChange({
+        currentPlanId: 'plus',
+        currentSeats: 3,
+        hasActiveSubscription: true,
+        targetPlanId: 'plus',
+        seats: 4,
+      }),
+    ).toBe('apply_immediately')
+
+    expect(
+      classifyWorkspaceSubscriptionChange({
+        currentPlanId: 'plus',
+        currentSeats: 3,
+        hasActiveSubscription: true,
+        targetPlanId: 'pro',
+        seats: 3,
+      }),
+    ).toBe('apply_immediately')
+  })
+
+  it('classifies plan downgrades and seat reductions as scheduled', () => {
+    expect(
+      classifyWorkspaceSubscriptionChange({
+        currentPlanId: 'pro',
+        currentSeats: 3,
+        hasActiveSubscription: true,
+        targetPlanId: 'plus',
+        seats: 3,
+      }),
+    ).toBe('schedule_downgrade')
+
+    expect(
+      classifyWorkspaceSubscriptionChange({
+        currentPlanId: 'pro',
+        currentSeats: 3,
+        hasActiveSubscription: true,
+        targetPlanId: 'pro',
+        seats: 2,
+      }),
+    ).toBe('schedule_downgrade')
+  })
+
+  it('classifies cancel-to-free separately from paid downgrades', () => {
+    expect(
+      classifyWorkspaceSubscriptionChange({
+        currentPlanId: 'pro',
+        currentSeats: 3,
+        hasActiveSubscription: true,
+        targetPlanId: 'free',
+      }),
+    ).toBe('schedule_cancel')
+  })
+
+  it('treats identical active selections as noop', () => {
+    expect(
+      classifyWorkspaceSubscriptionChange({
+        currentPlanId: 'pro',
+        currentSeats: 3,
+        hasActiveSubscription: true,
+        targetPlanId: 'pro',
+        seats: 3,
+      }),
+    ).toBe('noop')
   })
 })

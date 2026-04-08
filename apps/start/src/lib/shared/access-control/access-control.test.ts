@@ -5,6 +5,7 @@ import {
   getModelAccess,
   getWorkspaceFeatureAccessState,
   hasFeatureAccess,
+  resolveWorkspacePlanIdFromStripePriceId,
 } from './index'
 
 describe('access-control', () => {
@@ -123,5 +124,14 @@ describe('access-control', () => {
       allowed: true,
       minimumPlanId: 'pro',
     })
+  })
+
+  it('maps Stripe price ids back to managed workspace plans', () => {
+    process.env.STRIPE_PRICE_PLUS_MONTHLY = 'price_plus_test'
+    process.env.STRIPE_PRICE_PRO_MONTHLY = 'price_pro_test'
+
+    expect(resolveWorkspacePlanIdFromStripePriceId('price_plus_test')).toBe('plus')
+    expect(resolveWorkspacePlanIdFromStripePriceId('price_pro_test')).toBe('pro')
+    expect(resolveWorkspacePlanIdFromStripePriceId('price_unknown')).toBeNull()
   })
 })

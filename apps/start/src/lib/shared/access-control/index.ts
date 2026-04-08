@@ -2,6 +2,7 @@ import { AI_CATALOG } from '@/lib/shared/ai-catalog'
 
 export type WorkspacePlanId = 'free' | 'plus' | 'pro' | 'scale' | 'enterprise'
 export type PaidWorkspacePlanId = Exclude<WorkspacePlanId, 'free'>
+export type SelfServeWorkspacePlanId = Exclude<WorkspacePlanId, 'enterprise'>
 export type StripeManagedWorkspacePlanId = Exclude<PaidWorkspacePlanId, 'enterprise'>
 export type WorkspaceFeatureId =
   | 'byok'
@@ -202,6 +203,33 @@ export function resolveStripePlanPriceId(planId: StripeManagedWorkspacePlanId): 
   }
 
   return value
+}
+
+/**
+ * Stripe schedules only expose future price ids. The billing sync mirrors those
+ * schedules back into app plan ids so the billing page can render the pending
+ * change without waiting for a human-maintained lookup table elsewhere.
+ */
+export function resolveWorkspacePlanIdFromStripePriceId(
+  priceId: string,
+): StripeManagedWorkspacePlanId | null {
+  const normalizedPriceId = priceId.trim()
+  if (!normalizedPriceId) {
+    return null
+  }
+
+  const matchingPlan = WORKSPACE_PLANS
+    .filter(isStripeManagedWorkspacePlan)
+    .find((plan) => {
+      const envKey = plan.stripePriceEnvKey
+      if (!envKey) {
+        return false
+      }
+
+      return process.env[envKey]?.trim() === normalizedPriceId
+    })
+
+  return matchingPlan?.id ?? null
 }
 
 export function getMinimumPlanIdForFeature(

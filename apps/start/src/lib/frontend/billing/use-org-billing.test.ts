@@ -12,6 +12,7 @@ describe('toOrgBillingSummary', () => {
           id: 'sub-b',
           planId: 'pro',
           status: 'active',
+          cancelAtPeriodEnd: true,
         },
       ],
       entitlementSnapshots: [
@@ -28,6 +29,7 @@ describe('toOrgBillingSummary', () => {
 
     expect(summary.organizationId).toBe('org-b')
     expect(summary.subscription?.planId).toBe('pro')
+    expect(summary.subscription?.cancelAtPeriodEnd).toBe(true)
     expect(summary.entitlement?.activeMemberCount).toBe(7)
   })
 

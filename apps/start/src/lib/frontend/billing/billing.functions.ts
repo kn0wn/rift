@@ -8,6 +8,11 @@ const StartSubscriptionCheckoutInputSchema = z.object({
   planId: CheckoutPlanSchema,
   seats: z.number().int().min(1).max(500),
 })
+const ManagedWorkspacePlanSchema = z.enum(['free', 'plus', 'pro', 'scale'])
+const ChangeWorkspaceSubscriptionInputSchema = z.object({
+  targetPlanId: ManagedWorkspacePlanSchema,
+  seats: z.number().int().min(1).max(500).optional(),
+})
 
 const OpenBillingPortalInputSchema = z.object({}).optional()
 
@@ -21,6 +26,16 @@ export const startWorkspaceSubscriptionCheckout = createServerFn({ method: 'POST
     const { startWorkspaceSubscriptionCheckoutAction } = await import('./billing.server')
     return startWorkspaceSubscriptionCheckoutAction({
       planId: data.planId as StripeManagedWorkspacePlanId,
+      seats: data.seats,
+    })
+  })
+
+export const changeWorkspaceSubscription = createServerFn({ method: 'POST' })
+  .inputValidator((input: unknown) => ChangeWorkspaceSubscriptionInputSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { changeWorkspaceSubscriptionAction } = await import('./billing.server')
+    return changeWorkspaceSubscriptionAction({
+      targetPlanId: data.targetPlanId,
       seats: data.seats,
     })
   })

@@ -10,7 +10,7 @@ import {
 } from '../services/workspace-billing/persistence'
 import {
   markWorkspaceSubscriptionCanceledRecordEffect,
-  syncWorkspaceSubscriptionRecordEffect,
+  syncWorkspaceSubscriptionRecord,
 } from '../services/workspace-billing/subscription-sync'
 import type { OrgSeatAvailability } from '../services/workspace-billing/types'
 
@@ -31,9 +31,10 @@ export async function recomputeOrgEntitlementSnapshot(
 export async function syncWorkspaceSubscriptionFromAuth(input: {
   subscription: BetterAuthStripeSubscription
   stripeSubscription?: Stripe.Subscription
+  stripeSchedule?: Stripe.SubscriptionSchedule | null
   billingProvider?: 'stripe' | 'manual'
 }): Promise<void> {
-  await runBillingSqlEffect(syncWorkspaceSubscriptionRecordEffect(input))
+  await syncWorkspaceSubscriptionRecord(input)
 }
 
 /**

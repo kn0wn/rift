@@ -7,7 +7,10 @@ import {
 } from '@/lib/backend/billing/domain/errors'
 import { WorkspaceBillingService } from '@/lib/backend/billing/services/workspace-billing.service'
 import { requireOrgAuth } from '@/lib/backend/server-effect/http/server-auth'
-import type { StripeManagedWorkspacePlanId } from '@/lib/shared/access-control'
+import type {
+  SelfServeWorkspacePlanId,
+  StripeManagedWorkspacePlanId,
+} from '@/lib/shared/access-control'
 
 export async function startWorkspaceSubscriptionCheckoutAction(input: {
   readonly planId: StripeManagedWorkspacePlanId
@@ -33,6 +36,36 @@ export async function startWorkspaceSubscriptionCheckoutAction(input: {
         organizationId: authContext.organizationId,
         userId: authContext.userId,
         planId: input.planId,
+        seats: input.seats,
+      })
+    }),
+  )
+}
+
+export async function changeWorkspaceSubscriptionAction(input: {
+  readonly targetPlanId: SelfServeWorkspacePlanId
+  readonly seats?: number
+}): Promise<{ url: string }> {
+  return WorkspaceBillingRuntime.run(
+    Effect.gen(function* () {
+      const headers = getRequestHeaders()
+      const authContext = yield* requireOrgAuth({
+        headers,
+        onUnauthorized: () =>
+          new WorkspaceBillingUnauthorizedError({
+            message: 'Unauthorized',
+          }),
+        onMissingOrg: () =>
+          new WorkspaceBillingMissingOrgContextError({
+            message: 'No active workspace selected',
+          }),
+      })
+      const service = yield* WorkspaceBillingService
+      return yield* service.changeSubscription({
+        headers,
+        organizationId: authContext.organizationId,
+        userId: authContext.userId,
+        targetPlanId: input.targetPlanId,
         seats: input.seats,
       })
     }),

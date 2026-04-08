@@ -9,7 +9,12 @@ import {
   coerceWorkspacePlanId,
   getWorkspaceFeatureAccessState
 } from '@/lib/shared/access-control'
-import type { WorkspaceFeatureAccessState, WorkspaceFeatureId } from '@/lib/shared/access-control'
+import type {
+  SelfServeWorkspacePlanId,
+  WorkspaceFeatureAccessState,
+  WorkspaceFeatureId,
+  WorkspacePlanId,
+} from '@/lib/shared/access-control'
 
 type BillingSummaryRow = {
   id: string
@@ -24,14 +29,15 @@ type BillingSummaryRow = {
 
 type BillingSubscriptionRow = {
   id: string
-  planId: string
+  planId: WorkspacePlanId
   status: string
   providerSubscriptionId?: string
   seatCount?: number
   billingInterval?: string
   currentPeriodStart?: number
   currentPeriodEnd?: number
-  scheduledPlanId?: string
+  cancelAtPeriodEnd?: boolean
+  scheduledPlanId?: SelfServeWorkspacePlanId
   scheduledSeatCount?: number
   scheduledChangeEffectiveAt?: number
   pendingChangeReason?: string
