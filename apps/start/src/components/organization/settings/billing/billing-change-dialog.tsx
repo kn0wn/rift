@@ -42,6 +42,7 @@ type BillingChangeDialogProps = {
   hasManagedSubscription: boolean
   scheduledPlanId?: SelfServeWorkspacePlanId | null
   scheduledSeatCount?: number | null
+  defaultSeatCountOverride?: number | null
   billingCycleEndLabel?: string | null
   submitError?: string | null
   submitting?: boolean
@@ -62,11 +63,13 @@ export function BillingChangeDialog(props: BillingChangeDialogProps) {
 
   const targetPlan = props.targetPlanId ? getWorkspacePlan(props.targetPlanId) : null
   const currentPlan = getWorkspacePlan(props.currentPlanId)
-  const defaultSeatCount = props.targetPlanId != null
-    && props.scheduledPlanId === props.targetPlanId
-    && props.scheduledSeatCount != null
-    ? props.scheduledSeatCount
-    : props.currentSeatCount
+  const defaultSeatCount = props.defaultSeatCountOverride != null
+    ? props.defaultSeatCountOverride
+    : props.targetPlanId != null
+      && props.scheduledPlanId === props.targetPlanId
+      && props.scheduledSeatCount != null
+      ? props.scheduledSeatCount
+      : props.currentSeatCount
 
   useEffect(() => {
     if (!props.open) {

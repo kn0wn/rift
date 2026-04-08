@@ -1,10 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useServerFn } from '@tanstack/react-start'
+import { useNavigate } from '@tanstack/react-router'
+import { toast } from 'sonner'
 import { PricingSection } from './pricing-section'
 import { PricingComparisonTable } from './pricing-comparison-table'
 import { BillingChangeDialog } from '@/components/organization/settings/billing/billing-change-dialog'
+import { resolveBillingPlanCardActionState } from '@/components/organization/settings/billing/billing-page.logic'
 import {
   changeWorkspaceSubscription,
 } from '@/lib/frontend/billing/billing.functions'
@@ -26,21 +29,30 @@ function formatUnixDate(timestampMs?: number): string | null {
   }).format(new Date(timestampMs))
 }
 
+type PricingCheckoutIntent = {
+  checkoutPlan?: StripeManagedWorkspacePlanId
+  checkoutSeats?: number
+  resumeCheckout?: '1'
+}
+
 /**
  * Pricing page content. Renders the pricing cards followed by the comparative
  * matrix so users can scan plan differences without leaving the pricing view.
  */
-export function PricingPage() {
+export function PricingPage(props: {
+  checkoutIntent?: PricingCheckoutIntent
+}) {
+  const navigate = useNavigate()
   const { user, activeOrganizationId } = useAppAuth()
   const { subscription, entitlement } = useOrgBillingSummary()
   const mutateSubscription = useServerFn(changeWorkspaceSubscription)
-  const [billingActionError, setBillingActionError] = useState<string | null>(
-    null,
-  )
   const [dialogPlanId, setDialogPlanId] = useState<StripeManagedWorkspacePlanId | null>(null)
+  const [dialogErrorMessage, setDialogErrorMessage] = useState<string | null>(null)
+  const [dialogDefaultSeatCount, setDialogDefaultSeatCount] = useState<number | null>(null)
   const [pendingActionKey, setPendingActionKey] = useState<string | null>(null)
   const [canManageBilling, setCanManageBilling] = useState(false)
   const [billingRoleLoading, setBillingRoleLoading] = useState(false)
+  const attemptedCheckoutResumeRef = useRef<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -88,8 +100,9 @@ export function PricingPage() {
     targetPlanId: StripeManagedWorkspacePlanId
     seats: number
     actionKey: string
+    source?: 'dialog' | 'resume'
   }) {
-    setBillingActionError(null)
+    setDialogErrorMessage(null)
     setPendingActionKey(input.actionKey)
 
     try {
@@ -101,15 +114,62 @@ export function PricingPage() {
       })
       window.location.assign(result.url)
     } catch (error) {
-      setBillingActionError(
-        error instanceof Error
-          ? error.message
-          : m.org_billing_error_change_subscription(),
-      )
+      const message = error instanceof Error
+        ? error.message
+        : m.org_billing_error_change_subscription()
+
+      if (input.source === 'dialog') {
+        setDialogErrorMessage(message)
+      } else {
+        toast.error(message)
+      }
     } finally {
       setPendingActionKey(null)
     }
   }
+
+  useEffect(() => {
+    const checkoutPlan = props.checkoutIntent?.checkoutPlan
+    const checkoutSeats = props.checkoutIntent?.checkoutSeats
+    const shouldResume = props.checkoutIntent?.resumeCheckout === '1'
+
+    if (!checkoutPlan || !checkoutSeats || !shouldResume) {
+      return
+    }
+
+    if (
+      !user
+      || !activeOrganizationId
+      || pendingActionKey != null
+      || billingRoleLoading
+      || !canManageBilling
+    ) {
+      return
+    }
+
+    const attemptKey = `${checkoutPlan}:${checkoutSeats}:${activeOrganizationId}`
+    if (attemptedCheckoutResumeRef.current === attemptKey) {
+      return
+    }
+
+    attemptedCheckoutResumeRef.current = attemptKey
+
+    void runSubscriptionChange({
+      targetPlanId: checkoutPlan,
+      seats: checkoutSeats,
+      actionKey: `resume:${attemptKey}`,
+      source: 'resume',
+    })
+  }, [
+    activeOrganizationId,
+    billingRoleLoading,
+    canManageBilling,
+    pendingActionKey,
+    props.checkoutIntent?.checkoutPlan,
+    props.checkoutIntent?.checkoutSeats,
+    props.checkoutIntent?.resumeCheckout,
+    user,
+  ])
 
   const resolvePlanAction = useMemo(() => {
     const hasActiveWorkspace = Boolean(activeOrganizationId)
@@ -152,9 +212,20 @@ export function PricingPage() {
         }
       }
 
-      if (!isSignedIn || !hasActiveWorkspace) return undefined
-
       if (!isStripeManagedPlan && !isEnterprisePlan) return undefined
+
+      if (!isSignedIn && isStripeManagedPlan) {
+        return {
+          disabled: pendingActionKey != null,
+          onSelect: () => {
+            setDialogErrorMessage(null)
+            setDialogDefaultSeatCount(1)
+            setDialogPlanId(stripePlanId)
+          },
+        }
+      }
+
+      if (!hasActiveWorkspace) return undefined
 
       if (isCurrentPlan) {
         if (billingRoleLoading || !canManageBilling) {
@@ -177,10 +248,26 @@ export function PricingPage() {
           }
         }
 
+        const actionState = resolveBillingPlanCardActionState({
+          targetPlanId: stripePlanId,
+          currentPlanId,
+          hasManagedSubscription,
+          scheduledPlanId: subscription?.scheduledPlanId ?? null,
+        })
+
         return {
-          disabled: pendingActionKey != null,
+          buttonText:
+            actionState === 'scheduled'
+              ? m.org_billing_scheduled_button()
+              : actionState === 'downgrade'
+                ? m.org_billing_schedule_downgrade_button()
+                : actionState === 'upgrade'
+                  ? m.org_billing_upgrade_now_button()
+                  : m.pricing_subscribe(),
+          disabled: actionState === 'scheduled' || pendingActionKey != null,
           onSelect: () => {
-            setBillingActionError(null)
+            setDialogErrorMessage(null)
+            setDialogDefaultSeatCount(null)
             setDialogPlanId(stripePlanId)
           },
         }
@@ -190,6 +277,8 @@ export function PricingPage() {
     activeOrganizationId,
     canManageBilling,
     billingRoleLoading,
+    currentPlanId,
+    hasManagedSubscription,
     pendingActionKey,
     subscription,
     user,
@@ -197,11 +286,6 @@ export function PricingPage() {
 
   return (
     <div className="w-full max-w-[1400px] mx-auto px-4">
-      {billingActionError ? (
-        <div className="mb-4 rounded-lg border border-border-faint bg-surface-raised px-4 py-3 text-sm text-foreground-secondary">
-          {billingActionError}
-        </div>
-      ) : null}
       <PricingSection resolvePlanAction={resolvePlanAction} />
       <PricingComparisonTable resolvePlanAction={resolvePlanAction} />
       <BillingChangeDialog
@@ -209,7 +293,8 @@ export function PricingPage() {
         onOpenChange={(open) => {
           if (!open && pendingActionKey == null) {
             setDialogPlanId(null)
-            setBillingActionError(null)
+            setDialogDefaultSeatCount(null)
+            setDialogErrorMessage(null)
           }
         }}
         targetPlanId={dialogPlanId}
@@ -223,10 +308,30 @@ export function PricingPage() {
             ? subscription?.scheduledSeatCount ?? null
             : null
         }
+        defaultSeatCountOverride={dialogDefaultSeatCount}
         billingCycleEndLabel={currentPeriodEndLabel}
-        submitError={billingActionError}
+        submitError={dialogErrorMessage}
         submitting={pendingActionKey != null}
-        onConfirm={runSubscriptionChange}
+        onConfirm={async ({ targetPlanId, seats, actionKey }) => {
+          if (!user) {
+            const redirectTarget =
+              `/pricing?checkoutPlan=${targetPlanId}&checkoutSeats=${seats}&resumeCheckout=1`
+            await navigate({
+              to: '/auth/sign-up',
+              search: {
+                redirect: redirectTarget,
+              },
+            })
+            return
+          }
+
+          await runSubscriptionChange({
+            targetPlanId,
+            seats,
+            actionKey,
+            source: 'dialog',
+          })
+        }}
       />
     </div>
   )

@@ -2,6 +2,7 @@
 
 import { useServerFn } from '@tanstack/react-start'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@rift/ui/button'
 import { Form } from '@rift/ui/form'
 import { ContentPage } from '@/components/layout'
@@ -141,7 +142,6 @@ export function BillingPage() {
   const openPortal = useServerFn(openWorkspaceBillingPortal)
   const reconcileBilling = useServerFn(reconcileActiveWorkspaceBilling)
   const mutateSubscription = useServerFn(changeWorkspaceSubscription)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [dialogErrorMessage, setDialogErrorMessage] = useState<string | null>(null)
   const [pendingActionKey, setPendingActionKey] = useState<string | null>(null)
   const [dialogPlanId, setDialogPlanId] = useState<StripeManagedWorkspacePlanId | null>(null)
@@ -222,13 +222,9 @@ export function BillingPage() {
     targetPlanId: 'free' | StripeManagedWorkspacePlanId
     seats?: number
     actionKey: string
-    source?: 'dialog' | 'page'
+    source?: 'dialog'
   }) {
-    if (input.source === 'dialog') {
-      setDialogErrorMessage(null)
-    } else {
-      setErrorMessage(null)
-    }
+    setDialogErrorMessage(null)
     setPendingActionKey(input.actionKey)
 
     try {
@@ -246,7 +242,7 @@ export function BillingPage() {
       if (input.source === 'dialog') {
         setDialogErrorMessage(message)
       } else {
-        setErrorMessage(message)
+        toast.error(message)
       }
     } finally {
       setPendingActionKey(null)
@@ -254,13 +250,12 @@ export function BillingPage() {
   }
 
   async function handleOpenPortal() {
-    setErrorMessage(null)
     setPendingActionKey('portal')
     try {
       const result = await openPortal({ data: {} })
       window.location.assign(result.url)
     } catch (error) {
-      setErrorMessage(
+      toast.error(
         error instanceof Error ? error.message : m.pricing_error_billing_portal(),
       )
     } finally {
@@ -296,34 +291,17 @@ export function BillingPage() {
       hasManagedSubscription,
     })
 
-    const actionLabel = actionState === 'manage'
-      ? m.org_billing_manage_seats_button()
-      : actionState === 'scheduled'
-        ? m.org_billing_scheduled_button()
-        : actionState === 'subscribe'
-          ? m.org_billing_dialog_confirm_subscribe()
-        : actionState === 'downgrade'
-          ? m.org_billing_open_downgrade_dialog_help()
-          : m.org_billing_open_upgrade_dialog_help()
-    const actionDescription = actionState === 'manage'
-      ? m.org_billing_manage_seats_help()
-      : actionState === 'scheduled'
-        ? formatScheduledChangeLabel({
-            scheduledPlanId: subscription?.scheduledPlanId
-              ? coerceWorkspacePlanId(subscription.scheduledPlanId)
-              : null,
-            scheduledSeatCount: subscription?.scheduledSeatCount ?? null,
-          }) ?? undefined
-        : actionLabel
-
     return {
       buttonText:
-        actionState === 'downgrade'
+        actionState === 'manage'
+          ? m.org_billing_manage_seats_button()
+          : actionState === 'scheduled'
+            ? m.org_billing_scheduled_button()
+          : actionState === 'downgrade'
           ? m.org_billing_schedule_downgrade_button()
           : actionState === 'upgrade'
             ? m.org_billing_upgrade_now_button()
-            : actionLabel,
-      description: actionDescription,
+            : m.org_billing_dialog_confirm_subscribe(),
       disabled:
         actionState === 'scheduled'
         || actionsDisabled,
@@ -341,12 +319,6 @@ export function BillingPage() {
       title={m.org_billing_page_title()}
       description={m.org_billing_page_description()}
     >
-      {errorMessage ? (
-        <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">
-          {errorMessage}
-        </div>
-      ) : null}
-
       <Form
         title={m.org_billing_summary_title({ planName: plan.name })}
         description={billingCycle || m.org_billing_summary_description_fallback()}
