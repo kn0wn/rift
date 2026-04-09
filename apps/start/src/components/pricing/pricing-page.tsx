@@ -7,7 +7,10 @@ import { toast } from 'sonner'
 import { PricingSection } from './pricing-section'
 import { PricingComparisonTable } from './pricing-comparison-table'
 import { BillingChangeDialog } from '@/components/organization/settings/billing/billing-change-dialog'
-import { resolveBillingPlanCardActionState } from '@/components/organization/settings/billing/billing-page.logic'
+import { resolveBillingManagementUiState } from '@/components/organization/settings/billing/billing-ui-policy'
+import {
+  resolveBillingPlanCardActionState,
+} from '@/components/organization/settings/billing/billing-page.logic'
 import {
   markBillingReconcileOnReturnIfNeeded,
 } from '@/lib/frontend/billing/billing-return-reconcile'
@@ -18,7 +21,6 @@ import { coerceWorkspacePlanId, getWorkspacePlan, isStripeManagedWorkspacePlan }
 import type { StripeManagedWorkspacePlanId } from '@/lib/shared/access-control'
 import { useOrgBillingSummary } from '@/lib/frontend/billing/use-org-billing'
 import { useAppAuth } from '@/lib/frontend/auth/use-auth'
-import { isAdminRole } from '@/lib/shared/auth/roles'
 import type { PricingPlanActionOverride } from './pricing-card'
 import type { LandingPlan } from '@/lib/shared/pricing'
 import { m } from '@/paraglide/messages.js'
@@ -67,7 +69,11 @@ export function PricingPage(props: {
   const [pendingActionKey, setPendingActionKey] = useState<string | null>(null)
   const attemptedCheckoutResumeRef = useRef<string | null>(null)
   const billingActionInFlightRef = useRef(false)
-  const canManageBilling = isAdminRole(activeOrganizationRole ?? '')
+  const billingManagementUiState = resolveBillingManagementUiState({
+    activeOrganizationId,
+    activeOrganizationRole,
+  })
+  const hasExplicitNonAdminRole = billingManagementUiState.showAdminOnlyNotice
 
   const currentPlanId = coerceWorkspacePlanId(entitlement?.planId ?? subscription?.planId)
   const currentSeatCount = subscription?.seatCount ?? entitlement?.seatCount ?? 1
@@ -128,7 +134,7 @@ export function PricingPage(props: {
       !userId
       || !activeOrganizationId
       || pendingActionKey != null
-      || !canManageBilling
+      || hasExplicitNonAdminRole
     ) {
       return
     }
@@ -148,7 +154,7 @@ export function PricingPage(props: {
     })
   }, [
     activeOrganizationId,
-    canManageBilling,
+    hasExplicitNonAdminRole,
     pendingActionKey,
     props.checkoutIntent?.checkoutPlan,
     props.checkoutIntent?.checkoutSeats,
@@ -209,7 +215,7 @@ export function PricingPage(props: {
       if (!hasActiveWorkspace) return undefined
 
       if (isCurrentPlan) {
-        if (!canManageBilling) {
+        if (hasExplicitNonAdminRole) {
           return {
             buttonText: m.pricing_manage_billing(),
             disabled: true,
@@ -223,7 +229,7 @@ export function PricingPage(props: {
       }
 
       if (isStripeManagedPlan) {
-        if (!canManageBilling) {
+        if (hasExplicitNonAdminRole) {
           return {
             disabled: true,
           }
@@ -256,7 +262,7 @@ export function PricingPage(props: {
     }
   }, [
     activeOrganizationId,
-    canManageBilling,
+    hasExplicitNonAdminRole,
     currentPlanId,
     hasManagedSubscription,
     isSignedIn,

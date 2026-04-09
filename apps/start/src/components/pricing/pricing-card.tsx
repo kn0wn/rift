@@ -65,6 +65,8 @@ export type PricingCardProps = {
   locale?: string
   /** When true, uses fixed width for secondary row (Enterprise, Self-hosting). */
   fixedWidth?: boolean
+  /** Allows parent layouts to keep every card on the same width system. */
+  className?: string
   actionOverride?: PricingPlanActionOverride
 }
 
@@ -85,6 +87,7 @@ export function PricingCard({
   plan,
   locale = 'en',
   fixedWidth = false,
+  className,
   actionOverride,
 }: PricingCardProps) {
   const useUsd =
@@ -113,6 +116,7 @@ export function PricingCard({
         // decorative SVG can intensify and drift without affecting other cards.
         'pricing-card group/pricing-card relative z-[2] flex flex-col items-center gap-6 overflow-hidden bg-surface-base px-6 py-12',
         fixedWidth ? 'w-[320px] flex-shrink-0' : 'w-full',
+        className,
       )}
     >
       <CardDashedBorder />

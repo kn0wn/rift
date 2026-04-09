@@ -132,26 +132,23 @@ export function BillingPage() {
           </p>
         </div>
 
-        <div className="relative">
-          <DashedBorderFrame>
-            <div className="relative flex w-full items-stretch justify-center gap-6 overflow-hidden p-4 max-lg:flex-col lg:p-8">
-              {planCards.map(({ plan, actionOverride }) => (
-                <PricingCard
-                  key={plan.name}
-                  plan={plan}
-                  actionOverride={actionOverride}
-                />
-              ))}
-            </div>
-          </DashedBorderFrame>
+        <div className="grid gap-6 sm:px-4 lg:grid-cols-2 lg:px-0 xl:grid-cols-3">
+          {planCards.map(({ plan, actionOverride }) => (
+            <PricingCard
+              key={plan.name}
+              plan={plan}
+              className="mx-auto h-full max-w-[22rem]"
+              actionOverride={actionOverride}
+            />
+          ))}
         </div>
 
-        <div className="relative w-fit">
-          <DashedBorderFrame>
-            <div className="relative p-4 lg:p-8">
+        <div className="relative mx-auto w-full max-w-[26rem]">
+          <DashedBorderFrame frameClassName="inset-4 sm:inset-6 lg:inset-8">
+            <div className="relative p-4 sm:p-6 lg:p-8">
               <PricingCard
                 plan={enterprisePlan}
-                fixedWidth
+                className="mx-auto h-full w-full max-w-[22rem]"
               />
             </div>
           </DashedBorderFrame>

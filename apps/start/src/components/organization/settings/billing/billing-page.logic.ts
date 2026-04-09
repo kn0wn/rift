@@ -4,6 +4,7 @@ import { useServerFn } from '@tanstack/react-start'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type { PricingPlanActionOverride } from '@/components/pricing/pricing-card'
+import { resolveBillingManagementUiState } from './billing-ui-policy'
 import { useAppAuth } from '@/lib/frontend/auth/use-auth'
 import {
   consumeBillingReconcileOnReturnFlag,
@@ -28,7 +29,6 @@ import type {
   StripeManagedWorkspacePlanId,
   WorkspacePlanId,
 } from '@/lib/shared/access-control'
-import { isAdminRole } from '@/lib/shared/auth/roles'
 import { m } from '@/paraglide/messages.js'
 
 const PAID_PLAN_CARDS = mainPlans.filter(
@@ -181,13 +181,10 @@ function resolvePlanActionButtonText(
   if (actionState === 'scheduled') {
     return m.org_billing_scheduled_button()
   }
-  if (actionState === 'downgrade') {
-    return m.org_billing_schedule_downgrade_button()
-  }
-  if (actionState === 'upgrade') {
+  if (actionState === 'upgrade' || actionState === 'subscribe') {
     return m.org_billing_upgrade_now_button()
   }
-  return m.org_billing_dialog_confirm_subscribe()
+  return m.org_billing_schedule_downgrade_button()
 }
 
 function resolveStripePlanIdForCard(
@@ -299,7 +296,11 @@ export function useBillingPageLogic(): BillingPageLogicResult {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [shouldReconcileOnMount] = useState(() => consumeBillingReconcileOnReturnFlag())
   const billingActionInFlightRef = useRef(false)
-  const canManageBilling = isAdminRole(activeOrganizationRole ?? '')
+  const billingManagementUiState = resolveBillingManagementUiState({
+    activeOrganizationId,
+    activeOrganizationRole,
+  })
+  const canManageBilling = billingManagementUiState.canManageBilling
 
   useEffect(() => {
     if (!shouldReconcileOnMount || !activeOrganizationId) {
@@ -489,7 +490,7 @@ export function useBillingPageLogic(): BillingPageLogicResult {
             seatCount: currentSeatCount,
           },
       scheduledChangeLabel,
-      showAdminOnlyNotice: !canManageBilling,
+      showAdminOnlyNotice: billingManagementUiState.showAdminOnlyNotice,
       manageDetailsDisabled: actionsDisabled,
     },
     planCards: PAID_PLAN_CARDS.map((plan) => ({

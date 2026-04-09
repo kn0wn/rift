@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { resolveBillingManagementUiState } from './billing-ui-policy'
 import {
   isScheduledCancelToFree,
   resolveBillingPlanChangeActionState,
@@ -135,5 +136,31 @@ describe('isScheduledCancelToFree', () => {
         cancelAtPeriodEnd: true,
       }),
     ).toBe(true)
+  })
+})
+
+describe('resolveBillingManagementUiState', () => {
+  it('stays permissive when the session has an active org but no resolved role yet', () => {
+    expect(
+      resolveBillingManagementUiState({
+        activeOrganizationId: 'org_123',
+        activeOrganizationRole: null,
+      }),
+    ).toEqual({
+      canManageBilling: true,
+      showAdminOnlyNotice: false,
+    })
+  })
+
+  it('shows the non-admin UI only for explicit non-admin roles', () => {
+    expect(
+      resolveBillingManagementUiState({
+        activeOrganizationId: 'org_123',
+        activeOrganizationRole: 'member',
+      }),
+    ).toEqual({
+      canManageBilling: false,
+      showAdminOnlyNotice: true,
+    })
   })
 })
