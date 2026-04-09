@@ -30,7 +30,7 @@ type ComparisonSection = {
 
 type ComparisonPlan = Pick<
   LandingPlan,
-  'name' | 'buttonText' | 'href' | 'gradientId'
+  'name' | 'buttonText' | 'href' | 'gradientId' | 'workspacePlanId'
 >
 
 /**
@@ -41,19 +41,22 @@ type ComparisonPlan = Pick<
 const comparisonPlans: ComparisonPlan[] = [
   ...mainPlans
     .filter((plan) => plan.name !== 'Free')
-    .map(({ name, buttonText, href, gradientId }) => ({
+    .map(({ name, buttonText, href, gradientId, workspacePlanId }) => ({
+      workspacePlanId,
       name,
       buttonText,
       href,
       gradientId,
     })),
   {
+    workspacePlanId: enterprisePlan.workspacePlanId,
     name: enterprisePlan.name,
     buttonText: enterprisePlan.buttonText,
     href: enterprisePlan.href,
     gradientId: enterprisePlan.gradientId,
   },
   {
+    workspacePlanId: selfHostingPlan.workspacePlanId,
     name: selfHostingPlan.name,
     buttonText: selfHostingPlan.buttonText,
     href: selfHostingPlan.href,
@@ -214,7 +217,9 @@ function ComparisonValue({ value }: { value: ComparisonCell }) {
  * as a compact card so the section feels like part of the same pricing system.
  */
 export function PricingComparisonTable(props: {
-  resolvePlanAction?: (planName: string) => PricingPlanActionOverride | undefined
+  resolvePlanAction?: (
+    plan: Pick<LandingPlan, 'name' | 'workspacePlanId'>,
+  ) => PricingPlanActionOverride | undefined
 }) {
   return (
     <>
@@ -274,7 +279,7 @@ export function PricingComparisonTable(props: {
                               }}
                             >
                               {comparisonPlans.map((plan) => {
-                                const actionOverride = props.resolvePlanAction?.(plan.name)
+                                const actionOverride = props.resolvePlanAction?.(plan)
                                 const buttonText = actionOverride?.buttonText ?? plan.buttonText
                                 const href = actionOverride?.href ?? plan.href
                                 const isDisabled = actionOverride?.disabled ?? false

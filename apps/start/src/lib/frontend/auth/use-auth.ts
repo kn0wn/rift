@@ -21,6 +21,12 @@ function readEmailVerified(user: AppSession['user'] | undefined): boolean {
   return typeof value === 'boolean' ? value : false
 }
 
+function readActiveOrganizationRole(session: AppSession['session'] | undefined): string | null {
+  const value = (session as { activeOrganizationRole?: unknown } | undefined)
+    ?.activeOrganizationRole
+  return typeof value === 'string' && value.trim().length > 0 ? value : null
+}
+
 /**
  * App-level auth hook backed entirely by Better Auth
  */
@@ -28,6 +34,7 @@ export function useAppAuth() {
   const sessionQuery = authClient.useSession()
   const user = sessionQuery.data?.user ?? null
   const activeOrganizationId = readActiveOrganizationId(sessionQuery.data?.session)
+  const activeOrganizationRole = readActiveOrganizationRole(sessionQuery.data?.session)
   const isAnonymous = readIsAnonymous(sessionQuery.data?.user)
   const emailVerified = readEmailVerified(sessionQuery.data?.user)
 
@@ -50,6 +57,7 @@ export function useAppAuth() {
     loading: sessionQuery.isPending,
     session: sessionQuery.data?.session,
     activeOrganizationId,
+    activeOrganizationRole,
     isAnonymous,
     emailVerified,
     signOut,

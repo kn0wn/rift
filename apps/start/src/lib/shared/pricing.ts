@@ -6,6 +6,8 @@
  * in pricing-icons.tsx.
  */
 
+import type { WorkspacePlanId } from '@/lib/shared/access-control'
+
 /** Icon identifiers for feature list items. Matches icons in pricing-icons.tsx. */
 export type FeatureIconId =
   | 'standard'
@@ -30,6 +32,8 @@ export type PricingFeature = {
 }
 
 export type LandingPlan = {
+  /** Stable internal plan id used by billing and pricing actions. */
+  workspacePlanId?: WorkspacePlanId
   name: string
   priceAmount: number | null
   currency: 'MXN' | 'USD'
@@ -53,6 +57,7 @@ export type LandingPlan = {
 /** Main pricing plans: Free, $7.99, $50, $100 - displayed in a row */
 export const mainPlans: LandingPlan[] = [
   {
+    workspacePlanId: 'free',
     name: 'Free',
     priceAmount: 0,
     currency: 'USD',
@@ -71,6 +76,7 @@ export const mainPlans: LandingPlan[] = [
     gradientId: '1',
   },
   {
+    workspacePlanId: 'plus',
     name: 'Plus',
     priceAmount: 8,
     currency: 'USD',
@@ -91,6 +97,7 @@ export const mainPlans: LandingPlan[] = [
     gradientId: '2',
   },
   {
+    workspacePlanId: 'pro',
     name: 'Pro',
     priceAmount: 50,
     currency: 'USD',
@@ -110,6 +117,7 @@ export const mainPlans: LandingPlan[] = [
     gradientId: '3',
   },
   {
+    workspacePlanId: 'scale',
     name: 'Scale',
     priceAmount: 100,
     currency: 'USD',
@@ -131,6 +139,7 @@ export const mainPlans: LandingPlan[] = [
 
 /** Enterprise plan - displayed in separate section below main plans */
 export const enterprisePlan: LandingPlan = {
+  workspacePlanId: 'enterprise',
   name: 'Enterprise',
   priceAmount: null,
   currency: 'USD',

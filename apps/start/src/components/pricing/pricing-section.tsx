@@ -3,6 +3,7 @@ import {
   enterprisePlan,
   selfHostingPlan,
 } from '@/lib/shared/pricing'
+import type { LandingPlan } from '@/lib/shared/pricing'
 import { PricingCard } from './pricing-card'
 import type { PricingPlanActionOverride } from './pricing-card'
 import { DashedBorderFrame } from './pricing-decorative'
@@ -13,7 +14,7 @@ type PricingSectionProps = {
   summary?: string
   locale?: string
   resolvePlanAction?: (
-    planName: string,
+    plan: Pick<LandingPlan, 'name' | 'workspacePlanId'>,
   ) => PricingPlanActionOverride | undefined
 }
 
@@ -114,7 +115,7 @@ export function PricingSection({
                   key={plan.name}
                   plan={plan}
                   locale={locale}
-                  actionOverride={resolvePlanAction?.(plan.name)}
+                  actionOverride={resolvePlanAction?.(plan)}
                 />
               ))}
             </div>
@@ -129,13 +130,13 @@ export function PricingSection({
                 plan={enterprisePlan}
                 locale={locale}
                 fixedWidth
-                actionOverride={resolvePlanAction?.(enterprisePlan.name)}
+                actionOverride={resolvePlanAction?.(enterprisePlan)}
               />
               <PricingCard
                 plan={selfHostingPlan}
                 locale={locale}
                 fixedWidth
-                actionOverride={resolvePlanAction?.(selfHostingPlan.name)}
+                actionOverride={resolvePlanAction?.(selfHostingPlan)}
               />
             </div>
           </DashedBorderFrame>
