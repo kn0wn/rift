@@ -263,7 +263,13 @@ async function ensureDefaultOrganizationForUser(input: {
   )
 }
 
-const auth = betterAuth({
+/**
+ * Shared Better Auth instance for both the application runtime and the CLI.
+ *
+ * The migration scripts load this module directly so the CLI can inspect the
+ * exact same configuration that the app uses at runtime.
+ */
+export const auth = betterAuth({
   appName: 'Rift',
   baseURL: authBaseURL,
   basePath: '/api/auth',
@@ -485,5 +491,3 @@ const auth = betterAuth({
       : { enabled: true },
   },
 })
-
-export { auth }

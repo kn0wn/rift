@@ -9,21 +9,24 @@
  * What this script does:
  * 1. Loads `ZERO_UPSTREAM_DB` from env/.env files.
  * 2. Acquires a Postgres advisory lock so only one runner migrates at a time.
- * 3. Creates a migration ledger table if needed.
- * 4. Bootstraps `zero/migrations/schema.sql` on fresh databases when needed.
- * 5. Applies timestamped `zero/migrations/*.sql` files in lexical order.
- * 6. Records filename + checksum, and fails if an already-applied file changed.
+ * 3. Runs Better Auth migrations first so auth-owned tables exist.
+ * 4. Creates a migration ledger table if needed.
+ * 5. Bootstraps `zero/migrations/schema.sql` on fresh databases when needed.
+ * 6. Applies timestamped `zero/migrations/*.sql` files in lexical order.
+ * 7. Records filename + checksum, and fails if an already-applied file changed.
  *
  * Run from apps/start:
  *   bun run scripts/zero-migrate.ts
  */
 
 import { createHash } from 'node:crypto'
+import { spawnSync } from 'node:child_process'
 import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { Pool, type PoolClient } from 'pg'
 
 const appDir = join(import.meta.dir, '..')
+const authConfigPath = join(appDir, 'src/lib/backend/auth/auth.server.ts')
 const migrationsDir = join(appDir, 'zero', 'migrations')
 const MIGRATION_TABLE = 'zero_schema_migrations'
 const LOCK_KEY = 4_123_771
@@ -104,6 +107,31 @@ async function applyMigration(
   }
 }
 
+/**
+ * Runs Better Auth's own migration command before Zero's schema bootstrap.
+ *
+ * Zero's baseline schema depends on Better Auth-owned tables like `user`,
+ * `organization`, `member`, and `invitation`. On a blank database, those
+ * tables do not exist yet, so the deploy script needs to bring auth schema up
+ * first before applying `schema.sql` and the incremental Zero migrations.
+ */
+function runBetterAuthMigrations(): void {
+  console.log('Running Better Auth migrations...')
+  const result = spawnSync(
+    'bunx',
+    ['@better-auth/cli', 'migrate', '--yes', '--config', authConfigPath],
+    {
+      env: process.env,
+      stdio: 'inherit',
+      cwd: appDir,
+    },
+  )
+
+  if (result.status !== 0) {
+    process.exit(result.status ?? 1)
+  }
+}
+
 async function main(): Promise<void> {
   await loadEnv()
 
@@ -130,6 +158,8 @@ async function main(): Promise<void> {
   try {
     console.log('Acquiring migration lock...')
     await client.query('SELECT pg_advisory_lock($1)', [LOCK_KEY])
+
+    runBetterAuthMigrations()
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS ${MIGRATION_TABLE} (
