@@ -128,7 +128,7 @@ export function ChatInput() {
 
   const isBusy = status === 'submitted' || status === 'streaming'
   const hasPendingUploads = files.some((file) => file.isUploading)
-  const { usedTokens } = useContextUsage(messages)
+  const { usedTokens } = useContextUsage(messages, branchUsage)
   const isContextLimitReached = usedTokens >= activeContextWindow
   const contextLimitMessage = isContextLimitReached
     ? contextWindowSupportsMaxMode && selectedContextWindowMode === 'standard'

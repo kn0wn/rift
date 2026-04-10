@@ -87,6 +87,7 @@ import {
   resolveBranchSelectionPath,
   resolveCanonicalBranch,
 } from '@/lib/shared/chat-branching/branch-resolver'
+import { buildBranchUsage } from './branch-usage'
 
 type ChatUIMessage = UIMessage<ChatMessageMetadata>
 
@@ -469,63 +470,6 @@ function buildCanonicalUIMessageSnapshot(input: {
     .map((messageId) => messageById.get(messageId))
     .filter((message): message is NonNullable<typeof message> => !!message)
     .map(toUIMessageFromStoredMessage)
-}
-
-function addDefined(
-  left: number | undefined,
-  right: number | undefined,
-): number | undefined {
-  return left == null && right == null ? undefined : (left ?? 0) + (right ?? 0)
-}
-
-function buildBranchUsage(
-  messages: readonly {
-    readonly role: 'user' | 'assistant' | 'system'
-    readonly inputTokens?: number | null
-    readonly outputTokens?: number | null
-    readonly totalTokens?: number | null
-    readonly reasoningTokens?: number | null
-    readonly textTokens?: number | null
-    readonly cacheReadTokens?: number | null
-    readonly cacheWriteTokens?: number | null
-    readonly noCacheTokens?: number | null
-  }[],
-): LanguageModelUsage | undefined {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index]
-    if (message?.role !== 'assistant') continue
-
-    const hasAnyUsage =
-      message.inputTokens != null ||
-      message.outputTokens != null ||
-      message.totalTokens != null
-
-    if (!hasAnyUsage) continue
-
-    return {
-      inputTokens: message.inputTokens ?? undefined,
-      inputTokenDetails: {
-        noCacheTokens: message.noCacheTokens ?? undefined,
-        cacheReadTokens: message.cacheReadTokens ?? undefined,
-        cacheWriteTokens: message.cacheWriteTokens ?? undefined,
-      },
-      outputTokens: message.outputTokens ?? undefined,
-      outputTokenDetails: {
-        textTokens: message.textTokens ?? undefined,
-        reasoningTokens: message.reasoningTokens ?? undefined,
-      },
-      totalTokens:
-        message.totalTokens ??
-        addDefined(
-          message.inputTokens ?? undefined,
-          message.outputTokens ?? undefined,
-        ),
-      reasoningTokens: message.reasoningTokens ?? undefined,
-      cachedInputTokens: message.cacheReadTokens ?? undefined,
-    }
-  }
-
-  return undefined
 }
 
 function buildBranchCost(
