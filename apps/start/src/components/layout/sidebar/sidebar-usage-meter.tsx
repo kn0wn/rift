@@ -5,10 +5,12 @@ import { Link } from '@tanstack/react-router'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@rift/ui/tooltip'
 import { cn } from '@rift/utils'
 import { m } from '@/paraglide/messages.js'
+import { useAppAuth } from '@/lib/frontend/auth/use-auth'
 import {
   OrgUsageSummaryProvider,
   useOrgUsageSummary,
 } from '@/lib/frontend/billing/use-org-usage'
+import { useAnonymousUsageSummary } from '@/lib/frontend/billing/use-anonymous-usage'
 import { buildSidebarUsageMeterModel } from './sidebar-usage-meter.model'
 import { ORG_SETTINGS_HREF } from '@/routes/(app)/_layout/organization/settings/-organization-settings-nav'
 
@@ -111,9 +113,14 @@ function UsageTooltipBar({
  * Compact usage meter for the icon rail. In the current single-bucket quota
  * mode, the ring represents monthly remaining budget only.
  */
-function SidebarUsageMeterContent() {
+function SidebarUsageMeterView(input: {
+  summary: ReturnType<typeof useOrgUsageSummary>['summary']
+  nowMs: number
+  loading: boolean
+  currentMemberAccess: ReturnType<typeof useOrgUsageSummary>['currentMemberAccess']
+}) {
   const reducedMotion = useReducedMotion()
-  const { summary, nowMs, loading, currentMemberAccess } = useOrgUsageSummary()
+  const { summary, nowMs, loading, currentMemberAccess } = input
   const model = buildSidebarUsageMeterModel(summary, nowMs)
   const isOverSeatRestricted =
     currentMemberAccess?.status === 'restricted'
@@ -211,10 +218,34 @@ function SidebarUsageMeterContent() {
   )
 }
 
+function OrgSidebarUsageMeterContent() {
+  const usage = useOrgUsageSummary()
+  return <SidebarUsageMeterView {...usage} />
+}
+
+function AnonymousSidebarUsageMeterContent() {
+  const { summary, nowMs, loading } = useAnonymousUsageSummary()
+
+  return (
+    <SidebarUsageMeterView
+      summary={summary}
+      nowMs={nowMs}
+      loading={loading}
+      currentMemberAccess={null}
+    />
+  )
+}
+
 export function SidebarUsageMeter() {
+  const { isAnonymous, user } = useAppAuth()
+
+  if (isAnonymous && user?.id) {
+    return <AnonymousSidebarUsageMeterContent />
+  }
+
   return (
     <OrgUsageSummaryProvider>
-      <SidebarUsageMeterContent />
+      <OrgSidebarUsageMeterContent />
     </OrgUsageSummaryProvider>
   )
 }
