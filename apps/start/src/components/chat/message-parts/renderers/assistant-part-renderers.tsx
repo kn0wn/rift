@@ -3,6 +3,7 @@ import {
   streamdownStaticComponents,
   streamdownStreamingComponents,
 } from './streamdown-components'
+import { inlineCitationRemarkPlugin } from './inline-citation-remark-plugin'
 import type {
   AssistantPartRenderContext,
   AssistantPartRenderer,
@@ -24,6 +25,7 @@ function AssistantTextPart({
       controls={false}
       isAnimating={isMessageStreaming}
       mode={isMessageStreaming ? 'streaming' : 'static'}
+      remarkPlugins={[inlineCitationRemarkPlugin]}
       components={
         isMessageStreaming
           ? streamdownStreamingComponents

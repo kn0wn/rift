@@ -22,6 +22,11 @@ import {
   TableBlockFullscreenButton,
   TableBlockTable,
 } from '../components/table-block'
+import {
+  ChatInlineCitation,
+  isInlineCitationSourceLabel,
+  parseInlineCitationLabel,
+} from '../components/inline-citation'
 import { m } from '@/paraglide/messages.js'
 
 const LANGUAGE_CLASS_PREFIX = 'language-'
@@ -138,6 +143,49 @@ const Code: NonNullable<Components['code']> = ({
   return <RenderedCodeBlock code={code} language={language} />
 }
 
+/**
+ * Citation links are the only markdown links that need custom rendering in chat.
+ * We preserve standard anchor behavior for everything else to avoid surprising
+ * changes to ordinary links in assistant or reasoning markdown.
+ */
+const Link: NonNullable<Components['a']> = ({
+  children,
+  className,
+  href,
+  ...props
+}: HTMLAttributes<HTMLAnchorElement> & {
+  children?: ReactNode
+  href?: string
+}) => {
+  const linkText = toTextContent(children)
+  const citationNumber = parseInlineCitationLabel(linkText)
+  const isSourceCitation = isInlineCitationSourceLabel(linkText)
+
+  if (href && (citationNumber || isSourceCitation)) {
+    return (
+      <ChatInlineCitation
+        href={href}
+        label={citationNumber ? `[${citationNumber}]` : linkText}
+      />
+    )
+  }
+
+  return (
+    <a
+      className={cn(
+        'text-primary underline underline-offset-4 transition-opacity hover:opacity-80',
+        className,
+      )}
+      href={href}
+      rel="noreferrer noopener"
+      target="_blank"
+      {...props}
+    >
+      {children}
+    </a>
+  )
+}
+
 function toTableContentSignature(node: ReactNode): string {
   if (node == null || typeof node === 'boolean') return ''
   if (typeof node === 'string' || typeof node === 'number') return String(node)
@@ -227,6 +275,7 @@ export const streamdownStaticComponents: Components = {
   pre: Pre,
   code: Code,
   table: Table,
+  a: Link,
 }
 
 /**
@@ -237,4 +286,5 @@ export const streamdownStreamingComponents: Components = {
   pre: Pre,
   code: Code,
   table: Table,
+  a: Link,
 }

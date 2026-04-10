@@ -20,6 +20,7 @@ import {
   streamdownStaticComponents,
   streamdownStreamingComponents,
 } from '../renderers/streamdown-components'
+import { inlineCitationRemarkPlugin } from '../renderers/inline-citation-remark-plugin'
 import { useStreamdownPlugins } from '../renderers/use-streamdown-plugins'
 import { ReasoningMotionIcon } from './reasoning-motion-icon'
 
@@ -93,6 +94,7 @@ function ReasoningPanel({
           plugins={streamdownPlugins}
           controls={false}
           mode={isStreaming ? 'streaming' : 'static'}
+          remarkPlugins={[inlineCitationRemarkPlugin]}
           components={
             isStreaming
               ? streamdownStreamingComponents
