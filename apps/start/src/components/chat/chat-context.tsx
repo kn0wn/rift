@@ -87,7 +87,7 @@ import {
   resolveBranchSelectionPath,
   resolveCanonicalBranch,
 } from '@/lib/shared/chat-branching/branch-resolver'
-import { buildBranchUsage } from './branch-usage'
+import { buildLatestAssistantUsage } from './token-usage'
 
 type ChatUIMessage = UIMessage<ChatMessageMetadata>
 
@@ -216,7 +216,7 @@ type ChatMessagesContextValue = {
   activeThreadId?: string
   hasHydratedActiveThread: boolean
   branchSelectorsByAnchorMessageId: Record<string, BranchSelectorState>
-  branchUsage?: LanguageModelUsage
+  latestAssistantUsage?: LanguageModelUsage
   branchCost?: number
   showBranchCost: boolean
 }
@@ -743,8 +743,8 @@ export function ChatProvider({
       },
     }
   }, [pendingBranchSelector, storedBranchSelectorsByAnchorMessageId])
-  const branchUsage = useMemo(
-    () => buildBranchUsage(canonicalStoredMessages),
+  const latestAssistantUsage = useMemo(
+    () => buildLatestAssistantUsage(canonicalStoredMessages),
     [canonicalStoredMessages],
   )
   const { branchCost, showBranchCost } = useMemo(
@@ -2238,7 +2238,7 @@ export function ChatProvider({
       activeThreadId,
       hasHydratedActiveThread,
       branchSelectorsByAnchorMessageId,
-      branchUsage,
+      latestAssistantUsage,
       branchCost,
       showBranchCost,
     }),
@@ -2248,7 +2248,7 @@ export function ChatProvider({
       activeThreadId,
       hasHydratedActiveThread,
       branchSelectorsByAnchorMessageId,
-      branchUsage,
+      latestAssistantUsage,
       branchCost,
       showBranchCost,
     ],

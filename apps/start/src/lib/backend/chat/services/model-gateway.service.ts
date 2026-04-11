@@ -1,5 +1,10 @@
 import { convertToModelMessages, smoothStream, streamText } from 'ai'
-import type { LanguageModelUsage, ToolSet, UIMessage } from 'ai'
+import type {
+  IdGenerator,
+  LanguageModelUsage,
+  ToolSet,
+  UIMessage,
+} from 'ai'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
 import { Effect, Layer, ServiceMap } from 'effect'
@@ -58,6 +63,7 @@ export type ModelStreamResult = {
   readonly providerMetadata: PromiseLike<Record<string, unknown> | undefined>
   readonly toUIMessageStreamResponse: (options?: {
     readonly originalMessages?: UIMessage[]
+    readonly generateMessageId?: IdGenerator
     readonly headers?: HeadersInit
     readonly onError?: (error: unknown) => string
     readonly consumeSseStream?: (options: {

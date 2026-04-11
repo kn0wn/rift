@@ -90,13 +90,6 @@ function withGatewayComplianceProviderOptions(input: {
   readonly orgPolicy?: OrgAiPolicy
   readonly hasProviderKeyOverride?: boolean
 }): Record<string, unknown> | undefined {
-  if (
-    !input.orgPolicy?.complianceFlags.require_zdr ||
-    input.hasProviderKeyOverride
-  ) {
-    return input.providerOptions
-  }
-
   const gatewayOptions =
     input.providerOptions?.gateway &&
     typeof input.providerOptions.gateway === 'object' &&
@@ -104,11 +97,15 @@ function withGatewayComplianceProviderOptions(input: {
       ? (input.providerOptions.gateway as Record<string, unknown>)
       : undefined
 
+  const requireZdr = Boolean(input.orgPolicy?.complianceFlags.require_zdr)
+  const applyZdr = requireZdr && !input.hasProviderKeyOverride
+
   return {
     ...(input.providerOptions ?? {}),
     gateway: {
       ...(gatewayOptions ?? {}),
-      zeroDataRetention: true,
+      caching: 'auto',
+      ...(applyZdr ? { zeroDataRetention: true } : {}),
     },
   }
 }
@@ -891,6 +888,7 @@ export class ChatOrchestratorService extends ServiceMap.Service<
 
           return result.toUIMessageStreamResponse({
             originalMessages: messages,
+            generateMessageId: () => assistantMessageId,
             headers: {
               'Content-Encoding': 'none',
               'Cache-Control': 'no-cache, no-transform',

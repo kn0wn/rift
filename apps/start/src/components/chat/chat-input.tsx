@@ -31,13 +31,13 @@ import { useFileAttachments } from '../../hooks/chat/upload/use-file-attachments
 import { parseChatApiError } from './chat-error-messages'
 import { getChatModeDefinition } from '@/lib/shared/chat-modes'
 import { m } from '@/paraglide/messages.js'
-import { useContextUsage } from '@/hooks/chat/use-context-usage'
 import {
   clearComposerDraft,
   getComposerDraftValue,
   setComposerDraft,
   useComposerDraftValue,
 } from './composer-draft-store'
+import { resolveCurrentContextTokens } from './token-usage'
 import type {
   ChatAttachment,
   ChatAttachmentInput,
@@ -78,7 +78,11 @@ function buildPastedTextFileName(now = new Date()): string {
 }
 
 export function ChatInput() {
-  const { branchCost, branchUsage, messages, showBranchCost } = useChatMessages()
+  const {
+    branchCost,
+    latestAssistantUsage,
+    showBranchCost,
+  } = useChatMessages()
   const {
     sendMessage,
     status,
@@ -128,8 +132,9 @@ export function ChatInput() {
 
   const isBusy = status === 'submitted' || status === 'streaming'
   const hasPendingUploads = files.some((file) => file.isUploading)
-  const { usedTokens } = useContextUsage(messages, branchUsage)
-  const isContextLimitReached = usedTokens >= activeContextWindow
+  const usedTokens = resolveCurrentContextTokens(latestAssistantUsage)
+  const isContextLimitReached =
+    usedTokens != null && usedTokens >= activeContextWindow
   const contextLimitMessage = isContextLimitReached
     ? contextWindowSupportsMaxMode && selectedContextWindowMode === 'standard'
       ? 'This conversation has reached the standard context limit. Switch to Max to continue with the larger window.'
@@ -373,7 +378,7 @@ export function ChatInput() {
           maxTokens={activeContextWindow}
           modelId={effectiveModelId}
           usedTokens={usedTokens}
-          usage={branchUsage}
+          usage={latestAssistantUsage}
           totalCost={branchCost}
           showCost={showBranchCost}
         >

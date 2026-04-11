@@ -34,6 +34,7 @@ import { ToolRegistryService } from '@/lib/backend/chat/services/tool-registry.s
 
 let lastStreamRequest: {
   readonly providerOptions?: Record<string, unknown>
+  readonly generateMessageId?: (() => string) | undefined
 } | null = null
 
 const TestModelGatewayLive = Layer.succeed(ModelGatewayService, {
@@ -61,6 +62,10 @@ const TestModelGatewayLive = Layer.succeed(ModelGatewayService, {
         providerMetadata: Promise.resolve(undefined),
         toUIMessageStreamResponse: (options) => {
           const onFinish = options?.onFinish
+          lastStreamRequest = {
+            ...lastStreamRequest,
+            generateMessageId: options?.generateMessageId,
+          }
           const assistantMessage: UIMessage = {
             id: 'assistant-1',
             role: 'assistant',
@@ -230,6 +235,7 @@ describe('chat-backend scaffold', () => {
       { type: 'reasoning', text: 'Mocked reasoning trace', state: 'done' },
       { type: 'text', text: 'Mocked assistant response' },
     ])
+    expect(lastStreamRequest?.generateMessageId?.()).toBe(messages?.[1]?.id)
   })
 
   it('applies disabled tool keys during the first create-if-missing turn', async () => {
@@ -312,12 +318,13 @@ describe('chat-backend scaffold', () => {
         reasoningEffort: 'medium',
       },
       gateway: {
+        caching: 'auto',
         zeroDataRetention: true,
       },
     })
   })
 
-  it('does not add AI Gateway ZDR provider options when org policy does not require it', async () => {
+  it('keeps AI Gateway caching enabled when org policy does not require ZDR', async () => {
     await Effect.runPromise(
       Effect.gen(function* () {
         const orchestrator = yield* ChatOrchestratorService
@@ -358,11 +365,91 @@ describe('chat-backend scaffold', () => {
       }).pipe(Effect.provide(TestChatLayer)),
     )
 
-    expect(lastStreamRequest?.providerOptions).toEqual({
-      openai: {
-        reasoningEffort: 'medium',
+    expect(lastStreamRequest?.providerOptions).toMatchObject({
+      gateway: {
+        caching: 'auto',
       },
     })
+  })
+
+  it('keeps AI Gateway caching enabled for BYOK provider overrides', async () => {
+    const ByokModelPolicyLayer = Layer.succeed(ModelPolicyService, {
+      getOrgPolicy: () => Effect.succeed(undefined),
+      resolveThreadModel: () =>
+        Effect.succeed({
+          modelId: 'openai/gpt-5-mini',
+          source: 'request' as const,
+          reasoningEffort: 'medium' as const,
+          providerApiKeyOverride: {
+            providerId: 'openai' as const,
+            apiKey: 'byok-test-key',
+          },
+        }),
+    })
+
+    const testLayer = ChatOrchestratorService.layer.pipe(
+      Layer.provideMerge(ThreadService.layerMemory),
+      Layer.provideMerge(MessageStoreService.layerMemory),
+      Layer.provideMerge(RateLimitService.layerMemory),
+      Layer.provideMerge(FreeChatAllowanceService.layerMemory),
+      Layer.provideMerge(ByokModelPolicyLayer),
+      Layer.provideMerge(ToolPolicyService.layer),
+      Layer.provideMerge(RecordingToolRegistryLayer),
+      Layer.provideMerge(TestModelGatewayLive),
+      Layer.provideMerge(StreamResumeService.layerMemory),
+      Layer.provideMerge(WorkspaceUsageQuotaService.layerNoop),
+      Layer.provideMerge(WorkspaceUsageSettlementService.layerNoop),
+    )
+
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const orchestrator = yield* ChatOrchestratorService
+        const created = yield* orchestrator.createThread({
+          userId: 'user-byok-cache',
+          requestId: 'req-byok-cache-create',
+          modelId: 'openai/gpt-5-mini',
+        })
+
+        return yield* orchestrator.streamChat({
+          userId: 'user-byok-cache',
+          threadId: created.threadId,
+          organizationId: 'org-byok-cache',
+          accessPolicy: paidAccessPolicy,
+          orgPolicy: {
+            organizationId: 'org-byok-cache',
+            disabledProviderIds: [],
+            disabledModelIds: [],
+            complianceFlags: { require_zdr: true },
+            toolPolicy: {
+              providerNativeToolsEnabled: true,
+              externalToolsEnabled: true,
+              disabledToolKeys: [],
+            },
+            orgKnowledgeEnabled: true,
+            updatedAt: Date.now(),
+          },
+          requestId: 'req-byok-cache-stream',
+          route: '/api/chat',
+          modelId: 'openai/gpt-5-mini',
+          expectedBranchVersion: 1,
+          message: {
+            id: 'user-byok-cache-message',
+            role: 'user',
+            parts: [{ type: 'text', text: 'test byok caching' }],
+          },
+        })
+      }).pipe(Effect.provide(testLayer)),
+    )
+
+    expect(lastStreamRequest?.providerOptions).toMatchObject({
+      gateway: {
+        caching: 'auto',
+      },
+    })
+    expect(
+      (lastStreamRequest?.providerOptions?.gateway as Record<string, unknown>)
+        ?.zeroDataRetention,
+    ).toBeUndefined()
   })
 
   it('creates a new edited user branch and regenerates from it', async () => {

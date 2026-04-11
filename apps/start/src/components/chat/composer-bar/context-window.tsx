@@ -23,7 +23,7 @@ const ICON_STROKE_WIDTH = 2
 type ModelId = string
 
 interface ContextSchema {
-  usedTokens: number
+  usedTokens?: number
   maxTokens: number
   usage?: LanguageModelUsage
   modelId?: ModelId
@@ -69,7 +69,7 @@ export const Context = ({
 const ContextIcon = () => {
   const { usedTokens, maxTokens } = useContextValue()
   const circumference = 2 * Math.PI * ICON_RADIUS
-  const usedPercent = usedTokens / maxTokens
+  const usedPercent = usedTokens != null ? usedTokens / maxTokens : 0
   const dashOffset = circumference * (1 - usedPercent)
 
   return (
@@ -111,11 +111,13 @@ export type ContextTriggerProps = ComponentProps<typeof Button>
 
 export const ContextTrigger = ({ children, ...props }: ContextTriggerProps) => {
   const { usedTokens, maxTokens } = useContextValue()
-  const usedPercent = usedTokens / maxTokens
-  const renderedPercent = new Intl.NumberFormat('en-US', {
-    maximumFractionDigits: 1,
-    style: 'percent',
-  }).format(usedPercent)
+  const renderedPercent =
+    usedTokens == null
+      ? '--'
+      : new Intl.NumberFormat('en-US', {
+          maximumFractionDigits: 1,
+          style: 'percent',
+        }).format(usedTokens / maxTokens)
 
   const triggerElement = isValidElement(children) ? (
     children
@@ -156,14 +158,20 @@ export const ContextContentHeader = ({
   ...props
 }: ContextContentHeaderProps) => {
   const { usedTokens, maxTokens } = useContextValue()
-  const usedPercent = usedTokens / maxTokens
-  const displayPct = new Intl.NumberFormat('en-US', {
-    maximumFractionDigits: 1,
-    style: 'percent',
-  }).format(usedPercent)
-  const used = new Intl.NumberFormat('en-US', {
-    notation: 'compact',
-  }).format(usedTokens)
+  const usedPercent = usedTokens != null ? usedTokens / maxTokens : 0
+  const displayPct =
+    usedTokens == null
+      ? '--'
+      : new Intl.NumberFormat('en-US', {
+          maximumFractionDigits: 1,
+          style: 'percent',
+        }).format(usedPercent)
+  const used =
+    usedTokens == null
+      ? '--'
+      : new Intl.NumberFormat('en-US', {
+          notation: 'compact',
+        }).format(usedTokens)
   const total = new Intl.NumberFormat('en-US', {
     notation: 'compact',
   }).format(maxTokens)

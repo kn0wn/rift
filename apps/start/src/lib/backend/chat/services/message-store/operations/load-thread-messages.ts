@@ -244,6 +244,11 @@ export const makeLoadThreadMessagesOperation = (dependencies: {
 
         const fallbackAttachmentById = new Map(
           attachmentRows
+            .filter(
+              (attachment) =>
+                typeof attachment.messageId === 'string' &&
+                canonicalRowIdSet.has(attachment.messageId),
+            )
             .filter((attachment) =>
               modelCapabilities
                 ? !supportsNativeAttachment({

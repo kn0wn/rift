@@ -22,7 +22,7 @@ const { embeddingFlagState } = vi.hoisted(() => ({
 vi.mock('./chat-context', () => ({
   useChatMessages: () => ({
     branchCost: 0,
-    branchUsage: undefined,
+    latestAssistantUsage: undefined,
     messages: [],
     showBranchCost: false,
   }),
@@ -48,12 +48,6 @@ vi.mock('./chat-context', () => ({
     contextWindowSupportsMaxMode: true,
     canUploadFiles: true,
     uploadUpgradeCallout: undefined,
-  }),
-}))
-
-vi.mock('@/hooks/chat/use-context-usage', () => ({
-  useContextUsage: () => ({
-    usedTokens: 0,
   }),
 }))
 
