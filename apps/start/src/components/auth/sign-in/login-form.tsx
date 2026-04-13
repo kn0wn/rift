@@ -367,7 +367,7 @@ export function LoginForm({
             </motion.div>
           </form>
 
-      {!isSelfHosted ? (
+          {!isSelfHosted ? (
             <>
               <motion.div
                 variants={staggerChildVariants}
@@ -435,10 +435,14 @@ export function LoginForm({
                 {m.auth_login_sign_in()}
               </Button>
             </>
-          ) : (
+          ) : !isSelfHosted ? (
             <>
+              {m.auth_form_no_account()}{' '}
+              <Button type="button" onClick={onToggleMode} variant="link">
+                {m.auth_login_create_account()}
+              </Button>
             </>
-          )}
+          ) : null}
         </p>
       </motion.div>
     </motion.div>
