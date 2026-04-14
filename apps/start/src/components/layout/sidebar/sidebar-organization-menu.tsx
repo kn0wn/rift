@@ -19,7 +19,7 @@ import { Label } from '@rift/ui/label'
 import { SidebarGroupTooltip } from '@rift/ui/tooltip'
 import { useDirection } from '@rift/ui/direction'
 import { Check, Plus, Settings } from 'lucide-react'
-import { useNavigate, Link } from '@tanstack/react-router'
+import { useNavigate, Link, useLocation } from '@tanstack/react-router'
 import { useCallback, useEffect, useState } from 'react'
 import type { ComponentType } from 'react'
 import { m } from '@/paraglide/messages.js'
@@ -40,11 +40,11 @@ let sidebarOrganizationBillingSummaryModulePromise:
   | undefined
 
 function loadSidebarOrganizationBillingSummary() {
-  sidebarOrganizationBillingSummaryModulePromise ??= import(
-    './sidebar-organization-billing-summary'
-  ).then(({ SidebarOrganizationBillingSummary }) =>
-    SidebarOrganizationBillingSummary
-  )
+  sidebarOrganizationBillingSummaryModulePromise ??=
+    import('./sidebar-organization-billing-summary').then(
+      ({ SidebarOrganizationBillingSummary }) =>
+        SidebarOrganizationBillingSummary,
+    )
 
   return sidebarOrganizationBillingSummaryModulePromise
 }
@@ -61,6 +61,7 @@ export function SidebarOrganizationMenu({
   const { activeOrganization, loading: activeOrganizationLoading } =
     useActiveOrganization()
   const navigate = useNavigate()
+  const location = useLocation()
   const direction = useDirection()
   const [OrganizationBillingSummary, setOrganizationBillingSummary] =
     useState<ComponentType | null>(null)
@@ -208,6 +209,9 @@ export function SidebarOrganizationMenu({
         await refetchSession()
         await loadOrganizations()
         setIsMenuOpen(false)
+        if (location.pathname.startsWith('/chat/')) {
+          await navigate({ to: '/chat' })
+        }
       }
     } finally {
       setSwitchingOrganizationId(null)
@@ -311,9 +315,9 @@ export function SidebarOrganizationMenu({
   const hasReachedOrganizationLimit =
     organizations.length >= MAX_ORGANIZATIONS_PER_USER
   const createOrganizationSubmitDisabled =
-    creatingOrganization
-    || createOrganizationNameTrimmed.length === 0
-    || hasReachedOrganizationLimit
+    creatingOrganization ||
+    createOrganizationNameTrimmed.length === 0 ||
+    hasReachedOrganizationLimit
 
   return (
     <>

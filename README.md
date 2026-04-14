@@ -1,5 +1,5 @@
 <h1 align="center">Rift</h1>
-<p align="center">High-performance AI chat infrastructure built for real-time teams.</p>
+<p align="center">High-performance AI chat infrastructure built for teams.</p>
 
 <p align="center">
   <a href="https://rift.mx"><strong>Website</strong></a> ·
