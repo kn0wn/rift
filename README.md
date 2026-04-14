@@ -16,7 +16,7 @@ The core product goal is simple: maximize responsiveness and quality-of-life whi
 
 Rift is built around TanStack Start for full-stack delivery, Rocicorp Zero for sync-first state and realtime updates, and the AI SDK for multi-provider support.
 
-![Rift chat app screenshot](https://github.com/user-attachments/assets/e3cd4f56-0e1d-44f1-b815-76192c905bc0)
+![Rift chat app screenshot](https://github.com/user-attachments/assets/3b5adbbd-06ef-4e8b-b6ae-7bafc5afdc61)
 
 ## Features
 
