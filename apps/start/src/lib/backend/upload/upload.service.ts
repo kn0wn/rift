@@ -1,14 +1,12 @@
 import type { UploadResponseBody } from '@/lib/shared/upload/upload.model'
 import type { UploadValidationPolicy } from '@/lib/shared/upload/upload-validation'
+import type { UploadStorageConfig } from './storage-config'
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import {
   CHAT_ATTACHMENT_UPLOAD_POLICY,
   getUploadValidationError,
 } from '@/lib/shared/upload/upload-validation'
-import {
-  resolveUploadStorageConfig,
-  type UploadStorageConfig,
-} from './storage-config'
+import { resolveUploadStorageConfig } from './storage-config'
 
 type S3WriteOptions = {
   type?: string
@@ -156,7 +154,8 @@ function buildProxyFileUrl(fileKey: string, publicBaseUrl: string): string {
 
 function buildContentDisposition(fileName: string): string {
   const normalized = fileName.trim()
-  const safeName = normalized.length > 0 ? normalized.replace(/["\\]/g, '_') : 'upload'
+  const safeName =
+    normalized.length > 0 ? normalized.replace(/["\\]/g, '_') : 'upload'
   return `inline; filename="${safeName}"`
 }
 
@@ -165,9 +164,7 @@ export class UploadService {
    * Fetches an object from the configured S3-compatible backend and returns it
    * as a web `Response` payload.
    */
-  readObjectByKey(params: {
-    key: string
-  }): Response {
+  readObjectByKey(params: { key: string }): Response {
     const config = getUploadStorageConfig()
     const objectFile = getUploadClient().file(params.key)
 
@@ -186,7 +183,8 @@ export class UploadService {
     validationPolicy?: UploadValidationPolicy
   }): Promise<UploadResponseBody> {
     const file = params.file
-    const validationPolicy = params.validationPolicy ?? CHAT_ATTACHMENT_UPLOAD_POLICY
+    const validationPolicy =
+      params.validationPolicy ?? CHAT_ATTACHMENT_UPLOAD_POLICY
 
     const validationError = getUploadValidationError(file, validationPolicy)
     if (validationError) {

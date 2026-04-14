@@ -21,9 +21,7 @@ import {
   recomputeOrgEntitlementSnapshot,
   syncWorkspaceSubscriptionFromAuth,
 } from '@/lib/backend/billing/integrations/auth-billing-hooks'
-import {
-  toInvitationSeatLimitApiError,
-} from '@/lib/backend/billing/domain/api-errors'
+import { toInvitationSeatLimitApiError } from '@/lib/backend/billing/domain/api-errors'
 import { isAdminRole } from '@/lib/shared/auth/roles'
 import { runUpstreamPostgresEffect } from '@/lib/backend/server-effect/runtime/upstream-postgres-runtime'
 import { authPool } from '@/lib/backend/auth/infra/auth-pool'
@@ -79,9 +77,7 @@ const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim()
 function requireEnv(name: string): string {
   const value = process.env[name]?.trim()
   if (!value) {
-    throw new Error(
-      `Missing required environment variable ${name}.`,
-    )
+    throw new Error(`Missing required environment variable ${name}.`)
   }
   return value
 }
@@ -99,14 +95,18 @@ function resolveAuthBaseURL(): string {
 const authBaseURL = resolveAuthBaseURL()
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY?.trim()
 const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim()
-const isTestRuntime = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true'
-function buildOrganizationSlug(input: { name: string; userId: string }): string {
+const isTestRuntime =
+  process.env.NODE_ENV === 'test' || process.env.VITEST === 'true'
+function buildOrganizationSlug(input: {
+  name: string
+  userId: string
+}): string {
   const base = slugifyOrganizationName(input.name) || 'workspace'
   return `${base}-${input.userId.slice(0, 8)}`
 }
 
-const stripePlugin
-  = !isSelfHosted && stripeSecretKey && stripeWebhookSecret
+const stripePlugin =
+  !isSelfHosted && stripeSecretKey && stripeWebhookSecret
     ? stripe({
         stripeClient: new Stripe(stripeSecretKey),
         stripeWebhookSecret,
@@ -115,12 +115,12 @@ const stripePlugin
         },
         subscription: {
           enabled: true,
-          plans: WORKSPACE_PLANS
-            .filter(isStripeManagedWorkspacePlan)
-            .map((plan) => ({
+          plans: WORKSPACE_PLANS.filter(isStripeManagedWorkspacePlan).map(
+            (plan) => ({
               name: plan.id,
               priceId: resolveStripePlanPriceId(plan.id),
-            })),
+            }),
+          ),
           authorizeReference: async ({ user, referenceId, action }) => {
             const role = await runAuthSqlEffect(
               readOrganizationMemberRoleEffect({
@@ -138,13 +138,19 @@ const stripePlugin
 
             return isAdminRole(role)
           },
-          onSubscriptionComplete: async ({ subscription, stripeSubscription }) => {
+          onSubscriptionComplete: async ({
+            subscription,
+            stripeSubscription,
+          }) => {
             await syncWorkspaceSubscription({
               subscription,
               stripeSubscription,
             })
           },
-          onSubscriptionCreated: async ({ subscription, stripeSubscription }) => {
+          onSubscriptionCreated: async ({
+            subscription,
+            stripeSubscription,
+          }) => {
             await syncWorkspaceSubscription({
               subscription,
               stripeSubscription,
@@ -153,11 +159,15 @@ const stripePlugin
           onSubscriptionUpdate: async (data) => {
             await syncWorkspaceSubscription({
               subscription: data.subscription,
-              stripeSubscription:
-                (data as { stripeSubscription?: Stripe.Subscription }).stripeSubscription,
+              stripeSubscription: (
+                data as { stripeSubscription?: Stripe.Subscription }
+              ).stripeSubscription,
             })
           },
-          onSubscriptionCancel: async ({ subscription, stripeSubscription }) => {
+          onSubscriptionCancel: async ({
+            subscription,
+            stripeSubscription,
+          }) => {
             await syncWorkspaceSubscription({
               subscription,
               stripeSubscription,
@@ -166,6 +176,13 @@ const stripePlugin
           onSubscriptionDeleted: async ({ subscription }) => {
             await markWorkspaceSubscriptionCanceled(subscription)
           },
+          getCheckoutSessionParams: async () => {
+            return {
+              params: {
+                allow_promotion_codes: true,
+              },
+            }
+          },
         },
       })
     : null
@@ -173,7 +190,9 @@ const stripePlugin
 function readStringRecordValue(record: unknown, key: string): string | null {
   if (!record || typeof record !== 'object') return null
   const value = (record as Record<string, unknown>)[key]
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+  return typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : null
 }
 
 function isSelfHostedSocialPath(path: string): boolean {
@@ -275,7 +294,8 @@ const selfHostedAuthGuard = createAuthMiddleware(async (ctx) => {
   if (!hasInvitation) {
     throw APIError.from('FORBIDDEN', {
       code: 'SELF_HOSTED_INVITE_ONLY',
-      message: 'This self-hosted instance currently accepts invite-only signups.',
+      message:
+        'This self-hosted instance currently accepts invite-only signups.',
     })
   }
 })
@@ -327,7 +347,9 @@ const ensureDefaultOrganizationForUserWithinLockEffect = Effect.fn(
     email: string
   }): Effect.Effect<string, unknown, PgClient.PgClient> =>
     Effect.gen(function* () {
-      const existingOrganizationId = yield* findFirstOrganizationForUserEffect(input.userId)
+      const existingOrganizationId = yield* findFirstOrganizationForUserEffect(
+        input.userId,
+      )
       if (existingOrganizationId) {
         return existingOrganizationId
       }
@@ -352,7 +374,9 @@ const ensureDefaultOrganizationForUserWithinLockEffect = Effect.fn(
         catch: (error) => error,
       })
 
-      const createdOrganizationId = yield* findFirstOrganizationForUserEffect(input.userId)
+      const createdOrganizationId = yield* findFirstOrganizationForUserEffect(
+        input.userId,
+      )
       if (!createdOrganizationId) {
         return yield* Effect.fail(
           new Error(
@@ -397,9 +421,14 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (user) => {
-          if (!shouldProvisionDefaultOrganization({
-            isAnonymous: 'isAnonymous' in user ? (user.isAnonymous as boolean | null | undefined) : undefined,
-          })) {
+          if (
+            !shouldProvisionDefaultOrganization({
+              isAnonymous:
+                'isAnonymous' in user
+                  ? (user.isAnonymous as boolean | null | undefined)
+                  : undefined,
+            })
+          ) {
             return
           }
           await ensureDefaultOrganizationForUser({
@@ -413,7 +442,9 @@ export const auth = betterAuth({
     session: {
       create: {
         before: async (session) => {
-          const organizationId = await findFirstOrganizationForUser(session.userId)
+          const organizationId = await findFirstOrganizationForUser(
+            session.userId,
+          )
 
           return {
             data: {
@@ -511,10 +542,10 @@ export const auth = betterAuth({
             })
           } catch (error) {
             if (
-              error
-              && typeof error === 'object'
-              && '_tag' in error
-              && error._tag === 'WorkspaceBillingSeatLimitExceededError'
+              error &&
+              typeof error === 'object' &&
+              '_tag' in error &&
+              error._tag === 'WorkspaceBillingSeatLimitExceededError'
             ) {
               throw toInvitationSeatLimitApiError(error as never)
             }
@@ -543,7 +574,8 @@ export const auth = betterAuth({
         }
 
         const inviteLink = `${authBaseURL}/auth/accept-invitation/${data.id}`
-        const inviterName = data.inviter.user.name || data.inviter.user.email || 'A team member'
+        const inviterName =
+          data.inviter.user.name || data.inviter.user.email || 'A team member'
         const orgName = data.organization.name || 'the organization'
         void sendOrganizationInvitationEmail({
           to: data.email,
@@ -570,18 +602,19 @@ export const auth = betterAuth({
               await withUserProvisioningLock(
                 toUserId,
                 Effect.gen(function* () {
-                  const targetOrganizationId = yield* ensureDefaultOrganizationForUserWithinLockEffect({
-                    userId: toUserId,
-                    name: newUser.user.name,
-                    email: newUser.user.email,
-                  })
+                  const targetOrganizationId =
+                    yield* ensureDefaultOrganizationForUserWithinLockEffect({
+                      userId: toUserId,
+                      name: newUser.user.name,
+                      email: newUser.user.email,
+                    })
 
                   yield* reassignAnonymousAppDataEffect({
                     fromUserId,
                     toUserId,
                     targetOrganizationId,
                   })
-                })
+                }),
               )
             },
           }),
