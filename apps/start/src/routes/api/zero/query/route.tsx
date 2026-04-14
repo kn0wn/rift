@@ -5,9 +5,12 @@ import { mustGetQuery } from '@rocicorp/zero'
 import { handleQueryRequest } from '@rocicorp/zero/server'
 import { Effect, Schema } from 'effect'
 import { schema } from '@/integrations/zero/schema'
-import type { Schema as ZeroSchema, ZeroContext } from '@/integrations/zero/schema'
+import type {
+  Schema as ZeroSchema,
+  ZeroContext,
+} from '@/integrations/zero/schema'
 import { queries } from '@/integrations/zero/queries'
-import { requireAppUserAuth } from '@/lib/backend/server-effect/http/server-auth'
+import { requireZeroAppUserAuth } from '@/lib/backend/server-effect/http/zero-server-auth'
 import { ServerRuntime } from '@/lib/backend/server-effect'
 
 class ZeroQueryUnauthorizedError extends Schema.TaggedErrorClass<ZeroQueryUnauthorizedError>()(
@@ -33,7 +36,7 @@ export const Route = createFileRoute('/api/zero/query')({
     handlers: {
       POST: async ({ request }) => {
         const program = Effect.gen(function* () {
-          const authContext = yield* requireAppUserAuth({
+          const authContext = yield* requireZeroAppUserAuth({
             headers: request.headers,
             onUnauthorized: () =>
               new ZeroQueryUnauthorizedError({ message: 'Unauthorized' }),
@@ -50,9 +53,10 @@ export const Route = createFileRoute('/api/zero/query')({
                 isAnonymous: authContext.isAnonymous,
               }
           const transformQuery = (name: string, args: unknown) => {
-            const query = mustGetQuery(queries, name)(
-              args as ReadonlyJSONValue | undefined,
-            ) as QueryOrQueryRequest<
+            const query = mustGetQuery(
+              queries,
+              name,
+            )(args as ReadonlyJSONValue | undefined) as QueryOrQueryRequest<
               keyof ZeroSchema['tables'] & string,
               ReadonlyJSONValue | undefined,
               ReadonlyJSONValue | undefined,
@@ -64,7 +68,8 @@ export const Route = createFileRoute('/api/zero/query')({
           }
 
           const result = yield* Effect.tryPromise({
-            try: () => handleQueryRequest(transformQuery, schema, request, 'error'),
+            try: () =>
+              handleQueryRequest(transformQuery, schema, request, 'error'),
             catch: (error) =>
               new ZeroQueryProcessingError({
                 message: 'Zero query processing failed',

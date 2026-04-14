@@ -21,6 +21,7 @@ import { Route as appLayoutIndexRouteImport } from './routes/(app)/_layout/index
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as appLayoutSplatRouteImport } from './routes/(app)/_layout/$'
 import { Route as AuthAcceptInvitationIdRouteRouteImport } from './routes/auth/accept-invitation/$id/route'
+import { Route as ApiZeroTokenRouteRouteImport } from './routes/api/zero/token/route'
 import { Route as ApiZeroQueryRouteRouteImport } from './routes/api/zero/query/route'
 import { Route as ApiZeroMutateRouteRouteImport } from './routes/api/zero/mutate/route'
 import { Route as ApiOrgModelPolicyRouteRouteImport } from './routes/api/org/model-policy/route'
@@ -112,6 +113,11 @@ const AuthAcceptInvitationIdRouteRoute =
     path: '/accept-invitation/$id',
     getParentRoute: () => AuthRouteRoute,
   } as any)
+const ApiZeroTokenRouteRoute = ApiZeroTokenRouteRouteImport.update({
+  id: '/api/zero/token',
+  path: '/api/zero/token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiZeroQueryRouteRoute = ApiZeroQueryRouteRouteImport.update({
   id: '/api/zero/query',
   path: '/api/zero/query',
@@ -301,6 +307,7 @@ export interface FileRoutesByFullPath {
   '/api/org/model-policy': typeof ApiOrgModelPolicyRouteRoute
   '/api/zero/mutate': typeof ApiZeroMutateRouteRoute
   '/api/zero/query': typeof ApiZeroQueryRouteRoute
+  '/api/zero/token': typeof ApiZeroTokenRouteRoute
   '/auth/accept-invitation/$id': typeof AuthAcceptInvitationIdRouteRoute
   '/$': typeof appLayoutSplatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -341,6 +348,7 @@ export interface FileRoutesByTo {
   '/api/org/model-policy': typeof ApiOrgModelPolicyRouteRoute
   '/api/zero/mutate': typeof ApiZeroMutateRouteRoute
   '/api/zero/query': typeof ApiZeroQueryRouteRoute
+  '/api/zero/token': typeof ApiZeroTokenRouteRoute
   '/auth/accept-invitation/$id': typeof AuthAcceptInvitationIdRouteRoute
   '/$': typeof appLayoutSplatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -384,6 +392,7 @@ export interface FileRoutesById {
   '/api/org/model-policy': typeof ApiOrgModelPolicyRouteRoute
   '/api/zero/mutate': typeof ApiZeroMutateRouteRoute
   '/api/zero/query': typeof ApiZeroQueryRouteRoute
+  '/api/zero/token': typeof ApiZeroTokenRouteRoute
   '/auth/accept-invitation/$id': typeof AuthAcceptInvitationIdRouteRoute
   '/(app)/_layout/$': typeof appLayoutSplatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -429,6 +438,7 @@ export interface FileRouteTypes {
     | '/api/org/model-policy'
     | '/api/zero/mutate'
     | '/api/zero/query'
+    | '/api/zero/token'
     | '/auth/accept-invitation/$id'
     | '/$'
     | '/api/auth/$'
@@ -469,6 +479,7 @@ export interface FileRouteTypes {
     | '/api/org/model-policy'
     | '/api/zero/mutate'
     | '/api/zero/query'
+    | '/api/zero/token'
     | '/auth/accept-invitation/$id'
     | '/$'
     | '/api/auth/$'
@@ -511,6 +522,7 @@ export interface FileRouteTypes {
     | '/api/org/model-policy'
     | '/api/zero/mutate'
     | '/api/zero/query'
+    | '/api/zero/token'
     | '/auth/accept-invitation/$id'
     | '/(app)/_layout/$'
     | '/api/auth/$'
@@ -551,6 +563,7 @@ export interface RootRouteChildren {
   ApiOrgModelPolicyRouteRoute: typeof ApiOrgModelPolicyRouteRoute
   ApiZeroMutateRouteRoute: typeof ApiZeroMutateRouteRoute
   ApiZeroQueryRouteRoute: typeof ApiZeroQueryRouteRoute
+  ApiZeroTokenRouteRoute: typeof ApiZeroTokenRouteRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -639,6 +652,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/accept-invitation/$id'
       preLoaderRoute: typeof AuthAcceptInvitationIdRouteRouteImport
       parentRoute: typeof AuthRouteRoute
+    }
+    '/api/zero/token': {
+      id: '/api/zero/token'
+      path: '/api/zero/token'
+      fullPath: '/api/zero/token'
+      preLoaderRoute: typeof ApiZeroTokenRouteRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/zero/query': {
       id: '/api/zero/query'
@@ -1027,6 +1047,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOrgModelPolicyRouteRoute: ApiOrgModelPolicyRouteRoute,
   ApiZeroMutateRouteRoute: ApiZeroMutateRouteRoute,
   ApiZeroQueryRouteRoute: ApiZeroQueryRouteRoute,
+  ApiZeroTokenRouteRoute: ApiZeroTokenRouteRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

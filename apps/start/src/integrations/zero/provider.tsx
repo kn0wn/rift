@@ -8,6 +8,7 @@ import { useAppAuth } from '@/lib/frontend/auth/use-auth'
 import { resolveZeroAuthSnapshot } from './zero-auth'
 import type { ZeroAuthSnapshot } from './zero-auth'
 import { isSelfHosted } from '@/utils/app-feature-flags'
+import { useZeroSelfHostedAccessToken } from './self-hosted-token'
 
 const cacheURL = import.meta.env.VITE_ZERO_CACHE_URL
 
@@ -15,9 +16,18 @@ const cacheURL = import.meta.env.VITE_ZERO_CACHE_URL
  * Zero identity derives from Better Auth sessions.
  * Anonymous users are provisioned with Better Auth anonymous sessions.
  */
-function useZeroAuth(): { ready: boolean; userID?: string; context?: ZeroContext } {
-  const { user, loading, activeOrganizationId, isAnonymous, signInAnonymously } =
-    useAppAuth()
+function useZeroAuth(): {
+  ready: boolean
+  userID?: string
+  context?: ZeroContext
+} {
+  const {
+    user,
+    loading,
+    activeOrganizationId,
+    isAnonymous,
+    signInAnonymously,
+  } = useAppAuth()
   const lastSnapshotRef = useRef<ZeroAuthSnapshot | null>(null)
   const anonymousBootstrapRef = useRef(false)
 
@@ -51,18 +61,32 @@ function useZeroAuth(): { ready: boolean; userID?: string; context?: ZeroContext
   }, [activeOrganizationId, isAnonymous, loading, user?.id])
 }
 
-export default function ZeroProvider({ children }: { children: React.ReactNode }) {
+export default function ZeroProvider({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const { ready, userID, context } = useZeroAuth()
   const location = useLocation()
 
   const isPublicSelfHostedRoute =
     isSelfHosted &&
-    (
-      location.pathname === '/' ||
+    (location.pathname === '/' ||
       location.pathname === '/setup' ||
       location.pathname === '/pricing' ||
-      location.pathname.startsWith('/auth')
-    )
+      location.pathname.startsWith('/auth'))
+
+  const zeroToken = useZeroSelfHostedAccessToken({
+    enabled:
+      Boolean(cacheURL) &&
+      isSelfHosted &&
+      !isPublicSelfHostedRoute &&
+      ready &&
+      Boolean(userID) &&
+      Boolean(context),
+    userID,
+    organizationId: context?.organizationId,
+  })
 
   if (!cacheURL) {
     return <>{children}</>
@@ -76,11 +100,21 @@ export default function ZeroProvider({ children }: { children: React.ReactNode }
     return null
   }
 
+  if (isSelfHosted && (!zeroToken.ready || !zeroToken.token)) {
+    return null
+  }
+
+  const zeroProviderKey = isSelfHosted
+    ? `${userID}:${context.organizationId ?? 'personal'}:${zeroToken.token ?? 'missing'}`
+    : `${userID}:${context.organizationId ?? 'personal'}:cookie`
+
   return (
     <ZeroProviderBase
+      key={zeroProviderKey}
       userID={userID}
       context={context}
       cacheURL={cacheURL}
+      {...(isSelfHosted ? { auth: zeroToken.token } : {})}
       schema={schema}
       mutators={mutators}
     >
