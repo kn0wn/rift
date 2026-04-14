@@ -5,7 +5,7 @@
   <a href="https://rift.mx"><strong>Website</strong></a> ·
   <a href="#self-hosting"><strong>Deploy on Railway</strong></a> ·
   <a href="#self-hosting"><strong>Self-hosting</strong></a> ·
-  <a href="#local-development"><strong>Local Development</strong></a>
+  <a href="./DEVELOPMENT.md"><strong>Local Development</strong></a>
 </p>
 
 ## Introduction
@@ -17,8 +17,6 @@ The core product goal is simple: maximize responsiveness and quality-of-life whi
 Rift is built around TanStack Start for full-stack delivery, Rocicorp Zero for sync-first state and realtime updates, and the AI SDK for multi-provider support.
 
 ![Rift chat app screenshot](https://github.com/user-attachments/assets/e3cd4f56-0e1d-44f1-b815-76192c905bc0)
-
-> **Note:** This repository is a new version of Rift under active development [demo.rift.mx]. The live site at [rift.mx](https://rift.mx) runs an older version of Rift.
 
 ## Features
 
@@ -75,12 +73,7 @@ This repository is a Bun + Turborepo monorepo.
 
 ## Local Development
 
-From repository root:
-
-```bash
-bun install
-bun run dev
-```
+For detailed setup instructions, see **[DEVELOPMENT.md](./DEVELOPMENT.md)**.
 
 ### Setting up the Markdown Converter Worker (Required for file attachments)
 
@@ -99,21 +92,6 @@ This interactive script will:
 5. Output the environment variables to add to your `.env` file
 
 **Note:** You'll need a Cloudflare account. The worker runs on Cloudflare's free tier.
-
-Useful commands:
-
-```bash
-bun run lint
-bun run check
-bun run build
-```
-
-Run tests for the main app:
-
-```bash
-cd apps/start
-bun run test
-```
 
 ## Contributing
 
