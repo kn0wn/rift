@@ -40,7 +40,7 @@ Rift is centered around this stack:
 - [Bun](https://bun.sh/) - runtime, package management, and scripts
 - [TanStack Start](https://tanstack.com/start) + [TanStack Router](https://tanstack.com/router) - full-stack React architecture
 - [Rocicorp Zero](https://zero.rocicorp.dev/) - Sync-based data model and realtime cache layer
-- [Effect] (https://effect.website/) - For all the Backend Logic and Services
+- [Effect](https://effect.website/) - For all the Backend Logic and Services
 - [Vercel AI SDK](https://ai-sdk.dev/) - multi-provider AI primitives and streaming
 - [Railway](https://railway.com/) - default deployment target
 
